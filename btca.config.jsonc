@@ -1,0 +1,64 @@
+{
+  "$schema": "https://btca.dev/btca.schema.json",
+  "providerTimeoutMs": 300000,
+  "resources": [
+    {
+      "type": "git",
+      "name": "svelte",
+      "url": "https://github.com/sveltejs/svelte.dev",
+      "branch": "main",
+      "searchPath": "apps/svelte.dev/content",
+      "specialNotes": "Svelte 5 documentation. Focus on runes ($state, $derived, $effect) for reactive patterns."
+    },
+    {
+      "type": "git",
+      "name": "svelteKit",
+      "url": "https://github.com/sveltejs/kit",
+      "branch": "main",
+      "searchPath": "documentation/docs",
+      "specialNotes": "SvelteKit framework docs. Covers routing, load functions, hooks, adapters, service workers."
+    },
+    {
+      "type": "git",
+      "name": "vite",
+      "url": "https://github.com/vitejs/vite",
+      "branch": "main",
+      "searchPath": "docs",
+      "specialNotes": "Vite build tool documentation."
+    },
+    {
+      "type": "git",
+      "name": "typescript",
+      "url": "https://github.com/microsoft/TypeScript-Website",
+      "branch": "v2",
+      "searchPath": "packages/documentation/copy/en",
+      "specialNotes": "TypeScript handbook and reference documentation."
+    },
+    {
+      "type": "git",
+      "name": "convex",
+      "url": "https://github.com/get-convex/convex-docs",
+      "branch": "main",
+      "searchPath": "docs",
+      "specialNotes": "Convex real-time backend. Focus on queries, mutations, file storage, and Svelte integration patterns."
+    },
+    {
+      "type": "git",
+      "name": "vitePwa",
+      "url": "https://github.com/vite-pwa/docs",
+      "branch": "main",
+      "searchPath": ".",
+      "specialNotes": "vite-plugin-pwa docs. Includes @vite-pwa/sveltekit for SvelteKit integration."
+    },
+    {
+      "type": "git",
+      "name": "idb",
+      "url": "https://github.com/jakearchibald/idb",
+      "branch": "main",
+      "searchPath": ".",
+      "specialNotes": "Lightweight IndexedDB wrapper. Check README.md for API reference."
+    }
+  ],
+  "model": "minimax/minimax-m2.1",
+  "provider": "openrouter"
+}
