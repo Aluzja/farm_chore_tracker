@@ -30,12 +30,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Convex client connects and receives real-time subscription updates
   3. Service worker caches app shell for offline access
   4. Convex WebSocket traffic is NOT cached by service worker (real-time sync works after SW install)
-**Plans**: TBD
+**Plans**: 3 plans (2 waves)
 
 Plans:
-- [ ] 01-01: PWA manifest and vite-plugin-pwa setup
-- [ ] 01-02: Convex integration with SvelteKit (client-only initialization)
-- [ ] 01-03: Service worker configuration with Convex exclusions
+- [ ] 01-01-PLAN.md — Install @vite-pwa/sveltekit, create PWA icons, add meta tags to app.html
+- [ ] 01-02-PLAN.md — Install Convex, create deployment, set up schema and client initialization
+- [ ] 01-03-PLAN.md — Configure SvelteKitPWA with Convex exclusions, register SW, create test page
 
 ### Phase 2: Data Layer
 **Goal**: Three-layer offline-first data architecture that persists locally and syncs when online
