@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { useQuery } from 'convex-svelte';
 	import { api } from '../convex/_generated/api';
+	import { browser } from '$app/environment';
 
-	const tasks = useQuery(api.tasks.list, {});
+	// Only create query on client side (Convex uses WebSocket)
+	const tasks = browser ? useQuery(api.tasks.list, {}) : null;
 </script>
 
 <main>
@@ -19,7 +21,9 @@
 
 		<div class="status-card">
 			<h3>Convex Connection</h3>
-			{#if tasks.isLoading}
+			{#if !tasks}
+				<p class="loading">Initializing...</p>
+			{:else if tasks.isLoading}
 				<p class="loading">Connecting to Convex...</p>
 			{:else if tasks.error}
 				<p class="error">Error: {tasks.error.message}</p>
