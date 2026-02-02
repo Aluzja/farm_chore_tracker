@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-01)
 ## Current Position
 
 Phase: 3 of 6 (Auth and Access)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-02 - Completed 03-01-PLAN.md (Convex Auth Setup)
+Last activity: 2026-02-02 - Completed 03-02-PLAN.md (Auth APIs and Client Utilities)
 
-Progress: [███████░░░] 40%
+Progress: [████████░░] 47%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
-- Average duration: 5.5 min
-- Total execution time: 0.55 hours
+- Total plans completed: 7
+- Average duration: 5.7 min
+- Total execution time: 0.67 hours
 
 **By Phase:**
 
@@ -29,10 +29,10 @@ Progress: [███████░░░] 40%
 |-------|-------|-------|----------|
 | 01-foundation | 3 | 15 min | 5 min |
 | 02-data-layer | 2 | 7 min | 3.5 min |
-| 03-auth-and-access | 1 | 8 min | 8 min |
+| 03-auth-and-access | 2 | 16 min | 8 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-03 (8 min), 02-01 (4 min), 02-02 (3 min), 02-03 (3 min), 03-01 (8 min)
+- Last 5 plans: 02-01 (4 min), 02-02 (3 min), 02-03 (3 min), 03-01 (8 min), 03-02 (8 min)
 - Trend: stable
 
 *Updated after each plan completion*
@@ -44,6 +44,9 @@ Progress: [███████░░░] 40%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- 03-02: Access key validate query is public (no auth) - workers use key AS authentication
+- 03-02: signIn/signOut use client.action() since Convex Auth exposes them as actions
+- 03-02: 24-hour localStorage cache for offline access key validation
 - 03-01: Password provider only (no OAuth) - simple admin-only auth for farm app
 - 03-01: First user becomes admin pattern via isAdmin boolean on users table
 - 03-01: accessKeys table for URL-based worker access (shareable keys instead of accounts)
@@ -72,15 +75,15 @@ From research (to address during implementation):
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 03-01-PLAN.md (Convex Auth Setup)
-Resume file: .planning/phases/03-auth-and-access/03-02-PLAN.md
+Stopped at: Completed 03-02-PLAN.md (Auth APIs and Client Utilities)
+Resume file: .planning/phases/03-auth-and-access/03-03-PLAN.md
 
 ## Phase 3 Plans Summary
 
 | Wave | Plan | Description | Autonomous | Status |
 |------|------|-------------|------------|--------|
 | 1 | 03-01 | Convex Auth Setup | Checkpoint | Complete |
-| 2 | 03-02 | Admin Login UI | TBD | Pending |
+| 2 | 03-02 | Auth APIs and Client Utilities | Autonomous | Complete |
 | 3 | 03-03 | Access Key Management | TBD | Pending |
 
 Key technical decisions:
@@ -89,3 +92,5 @@ Key technical decisions:
 - authTables spread for session management tables
 - accessKeys table with by_key index for URL-based worker access
 - HTTP router pattern: httpRouter() with auth.addHttpRoutes()
+- Access key validate query is public for worker authentication
+- AdminAuth class uses Svelte 5 $state runes for reactive state
