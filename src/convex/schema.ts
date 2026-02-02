@@ -26,7 +26,7 @@ export default defineSchema({
     .index("by_key", ["key"])
     .index("by_created_by", ["createdBy"]),
 
-  // Chores table - main entity for farm chore tracking
+  // Chores table - main entity for farm chore tracking (deprecated - migrate to masterChores/dailyChores)
   chores: defineTable({
     clientId: v.string(), // Client-generated UUID for offline-first idempotency
     text: v.string(),
@@ -36,6 +36,39 @@ export default defineSchema({
     lastModified: v.number(),
   })
     .index("by_last_modified", ["lastModified"])
+    .index("by_client_id", ["clientId"]),
+
+  // Master chore templates (admin-managed)
+  masterChores: defineTable({
+    text: v.string(), // Chore description
+    timeSlot: v.string(), // "morning" | "afternoon" | "evening"
+    animalCategory: v.string(), // "chickens" | "goats" | "pigs" | "general" etc.
+    sortOrder: v.number(), // Display order within group
+    isActive: v.boolean(), // Soft delete / disable
+    createdBy: v.optional(v.id("users")), // Admin who created
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_time_slot", ["timeSlot"])
+    .index("by_active", ["isActive"]),
+
+  // Daily chore instances (cloned from master each day)
+  dailyChores: defineTable({
+    date: v.string(), // ISO date "2026-02-02"
+    masterChoreId: v.optional(v.id("masterChores")), // null for ad-hoc
+    clientId: v.string(), // For offline-first idempotency
+    text: v.string(),
+    timeSlot: v.string(),
+    animalCategory: v.string(),
+    sortOrder: v.number(),
+    isCompleted: v.boolean(),
+    completedAt: v.optional(v.string()), // ISO datetime
+    completedBy: v.optional(v.string()), // Display name
+    isAdHoc: v.boolean(), // true for today-only chores
+    lastModified: v.number(),
+  })
+    .index("by_date", ["date"])
+    .index("by_date_time_slot", ["date", "timeSlot"])
     .index("by_client_id", ["clientId"]),
 
   // Keep tasks for backwards compatibility during transition
