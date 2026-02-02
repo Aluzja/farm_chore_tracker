@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-01)
 
 **Core value:** Multiple people can efficiently coordinate completing daily farm chores without stepping on each other's toes, with photo verification where needed.
-**Current focus:** Phase 4 - Chore Operations (Phase 3 complete)
+**Current focus:** Phase 4 - Core Chore Workflow (in progress)
 
 ## Current Position
 
-Phase: 3 of 6 (Auth and Access) - COMPLETE
-Plan: 3 of 3 in current phase
-Status: Phase complete
-Last activity: 2026-02-02 - Completed 03-03-PLAN.md (Admin UI)
+Phase: 4 of 6 (Core Chore Workflow)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-02 - Completed 04-01-PLAN.md (Data Layer Foundation)
 
-Progress: [█████████░] 53%
+Progress: [██████████░] 60%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: 5.5 min
-- Total execution time: 0.73 hours
+- Total plans completed: 9
+- Average duration: 5.1 min
+- Total execution time: 0.78 hours
 
 **By Phase:**
 
@@ -30,9 +30,10 @@ Progress: [█████████░] 53%
 | 01-foundation | 3 | 15 min | 5 min |
 | 02-data-layer | 2 | 7 min | 3.5 min |
 | 03-auth-and-access | 3 | 21 min | 7 min |
+| 04-core-chore-workflow | 1 | 3 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-02 (3 min), 02-03 (3 min), 03-01 (8 min), 03-02 (8 min), 03-03 (5 min)
+- Last 5 plans: 02-03 (3 min), 03-01 (8 min), 03-02 (8 min), 03-03 (5 min), 04-01 (3 min)
 - Trend: stable
 
 *Updated after each plan completion*
@@ -44,6 +45,10 @@ Progress: [█████████░] 53%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- 04-01: Two-table pattern: masterChores (templates) vs dailyChores (instances)
+- 04-01: On-demand clone on first access each day, not scheduled cron
+- 04-01: Master chore CRUD requires admin authentication
+- 04-01: Daily chore toggle uses clientId for offline-first compatibility
 - 03-03: convex-svelte has no useMutation - use useConvexClient().mutation() directly
 - 03-03: Use startsWith for pathname checks to avoid TypeScript route inference issues
 - 03-03: Admin layout allows login page without auth, protects all other admin routes
@@ -78,8 +83,22 @@ From research (to address during implementation):
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 03-03-PLAN.md (Admin UI) - Phase 3 complete
-Resume file: .planning/phases/04-chore-operations/04-01-PLAN.md (next phase)
+Stopped at: Completed 04-01-PLAN.md (Data Layer Foundation)
+Resume file: .planning/phases/04-core-chore-workflow/04-02-PLAN.md (next plan)
+
+## Phase 4 Plans Summary
+
+| Wave | Plan | Description | Autonomous | Status |
+|------|------|-------------|------------|--------|
+| 1 | 04-01 | Data Layer Foundation | Autonomous | Complete |
+| 2 | 04-02 | Daily Chore List | TBD | Pending |
+| 3 | 04-03 | Master Chore Admin | TBD | Pending |
+
+Key technical decisions:
+- Two-table pattern: masterChores (admin-managed templates) vs dailyChores (daily instances)
+- On-demand daily cloning via getOrCreateDailyList + cloneMasterToDaily
+- clientId for offline-first idempotency on dailyChores
+- IndexedDB version 2 migration for dailyChores store
 
 ## Phase 3 Plans Summary
 
