@@ -44,6 +44,14 @@ class SyncEngine {
 	private syncIntervalId: ReturnType<typeof setInterval> | null = null;
 	private initialized = false;
 
+	// Bound event handlers for cleanup
+	private handleOnline = () => this.processQueue();
+	private handleVisibility = () => {
+		if (document.visibilityState === 'visible' && connectionStatus.isOnline) {
+			this.processQueue();
+		}
+	};
+
 	async init() {
 		if (!browser || this.initialized) return;
 		this.initialized = true;
@@ -60,15 +68,9 @@ class SyncEngine {
 		// Set up periodic sync when online
 		this.startPeriodicSync();
 
-		// React to online status changes
-		$effect.root(() => {
-			$effect(() => {
-				if (connectionStatus.isOnline && connectionStatus.lastOnlineAt) {
-					// Came online or visibility changed - trigger sync
-					this.processQueue();
-				}
-			});
-		});
+		// Listen for online/visibility events directly
+		window.addEventListener('online', this.handleOnline);
+		document.addEventListener('visibilitychange', this.handleVisibility);
 	}
 
 	private startPeriodicSync() {
@@ -207,6 +209,10 @@ class SyncEngine {
 		if (this.syncIntervalId) {
 			clearInterval(this.syncIntervalId);
 			this.syncIntervalId = null;
+		}
+		if (browser) {
+			window.removeEventListener('online', this.handleOnline);
+			document.removeEventListener('visibilitychange', this.handleVisibility);
 		}
 		this.initialized = false;
 	}

@@ -101,6 +101,46 @@
 - `src/lib/index.ts` exists as conventional barrel file for library exports
 - Not currently utilized but follows SvelteKit best practices
 
+## Svelte 5 Reactivity Patterns
+
+**Avoid `$effect` When Possible:**
+- `$effect` is an escape hatch, not a primary tool. Per Svelte docs: "In general, `$effect` is best considered something of an escape hatch — useful for things like analytics and direct DOM manipulation — rather than a tool you should use frequently."
+- Never use `$effect` to synchronize state - use `$derived` instead
+- Never use `$effect` for one-time initialization - use `onMount` instead
+- Never use `$effect.root` to work around lifecycle issues - restructure the code instead
+
+**When `$effect` IS Appropriate:**
+- Third-party library integration (e.g., reacting to Convex subscription data)
+- Direct DOM manipulation (canvas, third-party widgets)
+- Analytics/logging that reacts to state changes
+- Browser API integration (IntersectionObserver, ResizeObserver)
+
+**Preferred Alternatives:**
+| Instead of...                          | Use...                                    |
+|----------------------------------------|-------------------------------------------|
+| `$effect` to compute derived values    | `$derived` or `$derived.by`               |
+| `$effect` to run code once on mount    | `onMount`                                 |
+| `$effect` to sync two pieces of state  | Event handlers or single source of truth  |
+| `$effect` to react to online/offline   | Direct event listeners (`addEventListener`) |
+
+**Example - Wrong:**
+```typescript
+// DON'T: Using $effect for one-time initialization
+$effect(() => {
+  if (browser) {
+    loadData().then(data => state = data);
+  }
+});
+```
+
+**Example - Correct:**
+```typescript
+// DO: Using onMount for one-time initialization
+onMount(async () => {
+  state = await loadData();
+});
+```
+
 ---
 
 *Convention analysis: 2026-02-01*

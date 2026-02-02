@@ -28,6 +28,8 @@
 	const serverChores = browser ? useQuery(api.chores.list, {}) : null;
 
 	// Hydrate from server when data arrives
+	// Note: $effect is appropriate here for reacting to external subscription data
+	// from convex-svelte. This is a legitimate "third-party library integration" use case.
 	$effect(() => {
 		if (browser && serverChores?.data && connectionStatus.isOnline) {
 			choreStore.hydrateFromServer(serverChores.data);

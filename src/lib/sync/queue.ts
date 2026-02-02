@@ -19,6 +19,12 @@ export async function enqueueMutation(
 	// Validate before storing
 	MutationSchema.parse(mutation);
 	await db.add(STORES.mutationQueue, mutation);
+
+	// Trigger sync engine to process immediately
+	// Import dynamically to avoid circular dependency
+	const { syncEngine } = await import('./engine.svelte');
+	syncEngine.processQueue();
+
 	return mutation.id;
 }
 

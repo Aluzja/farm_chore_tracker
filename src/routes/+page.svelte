@@ -1,20 +1,16 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { choreStore } from '$lib/stores/chores.svelte';
 	import { syncEngine } from '$lib/sync/engine.svelte';
 	import { connectionStatus } from '$lib/sync/status.svelte';
 	import { getStorageEstimate, formatStorageSize } from '$lib/db/storage';
-	import { browser } from '$app/environment';
 
 	let newChoreText = $state('');
 	let storageInfo = $state({ usage: 0, quota: 0 });
 
-	// Load storage info
-	$effect(() => {
-		if (browser) {
-			getStorageEstimate().then((info) => {
-				storageInfo = info;
-			});
-		}
+	// Load storage info once on mount
+	onMount(async () => {
+		storageInfo = await getStorageEstimate();
 	});
 
 	async function handleAddChore() {
