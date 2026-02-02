@@ -63,12 +63,13 @@ Plans:
   3. Admin can revoke existing access keys
   4. User with valid URL key gains access without login
   5. Invalid or revoked keys are rejected with clear feedback
-**Plans**: TBD
+**Plans**: 4 plans (4 waves)
 
 Plans:
-- [ ] 03-01: Admin authentication (Convex auth)
-- [ ] 03-02: URL key generation and validation
-- [ ] 03-03: Protected routes and access control
+- [ ] 03-01-PLAN.md — Convex Auth setup with Password provider and schema extension
+- [ ] 03-02-PLAN.md — Access key Convex API and client-side auth utilities
+- [ ] 03-03-PLAN.md — Admin login page and access key management UI
+- [ ] 03-04-PLAN.md — Route protection with access key validation for workers
 
 ### Phase 4: Core Chore Workflow
 **Goal**: Users can view organized chore lists, complete chores with real-time sync, and admin can manage the master list
@@ -135,7 +136,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 |-------|----------------|--------|-----------|
 | 1. Foundation | 3/3 | ✓ Complete | 2026-02-01 |
 | 2. Data Layer | 3/3 | ✓ Complete | 2026-02-02 |
-| 3. Auth and Access | 0/3 | Not started | - |
+| 3. Auth and Access | 0/4 | Not started | - |
 | 4. Core Chore Workflow | 0/4 | Not started | - |
 | 5. Photo Verification | 0/3 | Not started | - |
 | 6. Polish and History | 0/3 | Not started | - |
