@@ -1,7 +1,6 @@
 import { browser } from '$app/environment';
 import type { ConvexClient } from 'convex/browser';
 import { api } from '../../convex/_generated/api';
-import type { Id } from '../../convex/_generated/dataModel';
 import { connectionStatus } from './status.svelte';
 import {
 	getPendingMutations,
@@ -155,7 +154,7 @@ class SyncEngine {
 
 			case 'update':
 				await client.mutation(api.chores.update, payload as {
-					id: Id<'chores'>;
+					id: string; // clientId
 					text?: string;
 					isCompleted?: boolean;
 					completedAt?: string;
@@ -166,7 +165,7 @@ class SyncEngine {
 				break;
 
 			case 'delete':
-				await client.mutation(api.chores.remove, { id: payload.id } as { id: Id<'chores'> });
+				await client.mutation(api.chores.remove, { id: payload.id as string });
 				break;
 
 			default:

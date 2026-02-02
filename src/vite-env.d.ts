@@ -1,2 +1,3 @@
 /// <reference types="vite/client" />
-/// <reference types="@vite-pwa/sveltekit" />
+/// <reference types="vite-plugin-pwa/info" />
+/// <reference types="vite-plugin-pwa/vanillajs" />

@@ -53,40 +53,53 @@ export const create = mutation({
   },
 });
 
-// Mutation: Update chore
+// Mutation: Update chore (by clientId for offline-first support)
 export const update = mutation({
   args: {
-    id: v.id("chores"),
+    id: v.string(), // clientId, not Convex _id
     text: v.optional(v.string()),
     isCompleted: v.optional(v.boolean()),
     completedAt: v.optional(v.string()),
     completedBy: v.optional(v.string()),
     lastModified: v.number(),
   },
-  handler: async (ctx, { id, lastModified, ...updates }) => {
-    const existing = await ctx.db.get(id);
+  handler: async (ctx, { id: clientId, lastModified, ...updates }) => {
+    // Look up by clientId
+    const existing = await ctx.db
+      .query("chores")
+      .withIndex("by_client_id", (q) => q.eq("clientId", clientId))
+      .first();
+
     if (!existing) {
-      throw new Error(`Chore ${id} not found`);
+      // Chore doesn't exist yet - might be a create that hasn't synced
+      // Silently ignore to avoid sync failures
+      console.log(`[chores.update] Chore with clientId ${clientId} not found, skipping`);
+      return null;
     }
 
     // Last-write-wins: only apply if newer
     if (lastModified > existing.lastModified) {
-      await ctx.db.patch(id, { ...updates, lastModified });
+      await ctx.db.patch(existing._id, { ...updates, lastModified });
     }
 
-    return id;
+    return existing._id;
   },
 });
 
-// Mutation: Delete chore
+// Mutation: Delete chore (by clientId for offline-first support)
 export const remove = mutation({
-  args: { id: v.id("chores") },
-  handler: async (ctx, { id }) => {
-    const existing = await ctx.db.get(id);
+  args: { id: v.string() }, // clientId, not Convex _id
+  handler: async (ctx, { id: clientId }) => {
+    // Look up by clientId
+    const existing = await ctx.db
+      .query("chores")
+      .withIndex("by_client_id", (q) => q.eq("clientId", clientId))
+      .first();
+
     if (existing) {
-      await ctx.db.delete(id);
+      await ctx.db.delete(existing._id);
     }
     // Idempotent: no error if already deleted
-    return id;
+    return clientId;
   },
 });
