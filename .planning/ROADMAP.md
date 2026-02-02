@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - PWA shell, Convex integration, service worker with correct exclusions
 - [x] **Phase 2: Data Layer** - Three-layer offline-first architecture with IndexedDB and sync engine
-- [ ] **Phase 3: Auth and Access** - Admin authentication and URL key-based user access
+- [x] **Phase 3: Auth and Access** - Admin authentication and URL key-based user access
 - [ ] **Phase 4: Core Chore Workflow** - Master list, daily clone, completion, real-time sync
 - [ ] **Phase 5: Photo Verification** - Camera capture, offline queue, Convex file storage
 - [ ] **Phase 6: Polish and History** - Sync indicators, 7-day history, UX refinement
@@ -66,10 +66,10 @@ Plans:
 **Plans**: 4 plans (4 waves)
 
 Plans:
-- [ ] 03-01-PLAN.md — Convex Auth setup with Password provider and schema extension
-- [ ] 03-02-PLAN.md — Access key Convex API and client-side auth utilities
-- [ ] 03-03-PLAN.md — Admin login page and access key management UI
-- [ ] 03-04-PLAN.md — Route protection with access key validation for workers
+- [x] 03-01-PLAN.md — Convex Auth setup with Password provider and schema extension
+- [x] 03-02-PLAN.md — Access key Convex API and client-side auth utilities
+- [x] 03-03-PLAN.md — Admin login page and access key management UI
+- [x] 03-04-PLAN.md — Route protection with access key validation for workers
 
 ### Phase 4: Core Chore Workflow
 **Goal**: Users can view organized chore lists, complete chores with real-time sync, and admin can manage the master list
@@ -84,13 +84,13 @@ Plans:
   6. User can undo a completion (reversible state)
   7. User can add ad-hoc chore for today only
   8. Completion shows who completed and when
-**Plans**: TBD
+**Plans**: 4 plans (3 waves)
 
 Plans:
-- [ ] 04-01: Master list CRUD (admin)
-- [ ] 04-02: Daily list generation and display
-- [ ] 04-03: Chore completion with optimistic updates and real-time sync
-- [ ] 04-04: Ad-hoc chore addition
+- [ ] 04-01-PLAN.md — Schema extension (masterChores + dailyChores) and Convex API
+- [ ] 04-02-PLAN.md — Admin master chore list management UI
+- [ ] 04-03-PLAN.md — Daily list generation, grouping display, and completion sync
+- [ ] 04-04-PLAN.md — Ad-hoc chore addition and user identity flow
 
 ### Phase 5: Photo Verification
 **Goal**: Users can attach photos to chore completions; photos persist offline and upload when connected
@@ -136,7 +136,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 |-------|----------------|--------|-----------|
 | 1. Foundation | 3/3 | ✓ Complete | 2026-02-01 |
 | 2. Data Layer | 3/3 | ✓ Complete | 2026-02-02 |
-| 3. Auth and Access | 0/4 | Not started | - |
+| 3. Auth and Access | 4/4 | ✓ Complete | 2026-02-02 |
 | 4. Core Chore Workflow | 0/4 | Not started | - |
 | 5. Photo Verification | 0/3 | Not started | - |
 | 6. Polish and History | 0/3 | Not started | - |
