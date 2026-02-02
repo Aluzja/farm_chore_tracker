@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-01)
 
 **Core value:** Multiple people can efficiently coordinate completing daily farm chores without stepping on each other's toes, with photo verification where needed.
-**Current focus:** Phase 2 - Data Layer
+**Current focus:** Phase 3 - Auth and Access
 
 ## Current Position
 
-Phase: 2 of 6 (Data Layer) - COMPLETE
-Plan: 3 of 3 in current phase
-Status: Complete
-Last activity: 2026-02-02 - Completed 02-03-PLAN.md (Reactive Svelte stores and test UI)
+Phase: 3 of 6 (Auth and Access)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-02 - Completed 03-01-PLAN.md (Convex Auth Setup)
 
-Progress: [██████░░░░] 33%
+Progress: [███████░░░] 40%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
-- Average duration: 5 min
-- Total execution time: 0.37 hours
+- Total plans completed: 6
+- Average duration: 5.5 min
+- Total execution time: 0.55 hours
 
 **By Phase:**
 
@@ -29,9 +29,10 @@ Progress: [██████░░░░] 33%
 |-------|-------|-------|----------|
 | 01-foundation | 3 | 15 min | 5 min |
 | 02-data-layer | 2 | 7 min | 3.5 min |
+| 03-auth-and-access | 1 | 8 min | 8 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (4 min), 01-03 (8 min), 02-01 (4 min), 02-02 (3 min)
+- Last 5 plans: 01-03 (8 min), 02-01 (4 min), 02-02 (3 min), 02-03 (3 min), 03-01 (8 min)
 - Trend: stable
 
 *Updated after each plan completion*
@@ -43,6 +44,9 @@ Progress: [██████░░░░] 33%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- 03-01: Password provider only (no OAuth) - simple admin-only auth for farm app
+- 03-01: First user becomes admin pattern via isAdmin boolean on users table
+- 03-01: accessKeys table for URL-based worker access (shareable keys instead of accounts)
 - 02-02: Global Convex client via setConvexClient/getConvexClient for non-component sync engine access
 - 02-02: Idempotent mutations via clientId index for creates, last-write-wins for updates
 - 02-01: Zod 4 API: z.uuid(), z.iso.datetime(), z.record(key, value) instead of deprecated v3 syntax
@@ -68,21 +72,20 @@ From research (to address during implementation):
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed Phase 2 (Data Layer)
-Resume file: .planning/phases/03-auth-and-access/03-01-PLAN.md (to be created)
+Stopped at: Completed 03-01-PLAN.md (Convex Auth Setup)
+Resume file: .planning/phases/03-auth-and-access/03-02-PLAN.md
 
-## Phase 2 Plans Summary
+## Phase 3 Plans Summary
 
 | Wave | Plan | Description | Autonomous | Status |
 |------|------|-------------|------------|--------|
-| 1 | 02-01 | IndexedDB schema and idb wrapper | Yes | Complete |
-| 2 | 02-02 | Sync engine with mutation queue | Yes | Complete |
-| 3 | 02-03 | Reactive Svelte stores and test UI | Checkpoint | Complete |
+| 1 | 03-01 | Convex Auth Setup | Checkpoint | Complete |
+| 2 | 03-02 | Admin Login UI | TBD | Pending |
+| 3 | 03-03 | Access Key Management | TBD | Pending |
 
 Key technical decisions:
-- idb@^8.x for IndexedDB wrapper (02-01: installed idb@8.0.3)
-- zod@^4.x for runtime validation (02-01: installed zod@4.3.6)
-- clientId field for offline-first idempotency
-- Last-write-wins via lastModified timestamps
-- 30-second periodic sync when online/visible
-- Global Convex client access for sync engine (02-02: setConvexClient/getConvexClient)
+- @convex-dev/auth with @auth/core@0.37.0 for Convex authentication
+- Password provider only (no OAuth) for simple admin auth
+- authTables spread for session management tables
+- accessKeys table with by_key index for URL-based worker access
+- HTTP router pattern: httpRouter() with auth.addHttpRoutes()
