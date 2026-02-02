@@ -1,16 +1,23 @@
 import { browser } from '$app/environment';
 
 class ConnectionStatus {
-	isOnline = $state(browser ? navigator.onLine : true);
-	lastOnlineAt = $state<number | null>(browser && navigator.onLine ? Date.now() : null);
+	// Initialize with safe defaults that work during SSR
+	isOnline = $state(true);
+	lastOnlineAt = $state<number | null>(null);
+	private initialized = false;
 
-	constructor() {
-		if (browser) {
-			window.addEventListener('online', this.handleOnline);
-			window.addEventListener('offline', this.handleOffline);
-			// Also track visibility for sync triggers
-			document.addEventListener('visibilitychange', this.handleVisibility);
-		}
+	// Call this from onMount to set up browser-only functionality
+	init() {
+		if (!browser || this.initialized) return;
+		this.initialized = true;
+
+		// Set actual values now that we're in browser
+		this.isOnline = navigator.onLine;
+		this.lastOnlineAt = navigator.onLine ? Date.now() : null;
+
+		window.addEventListener('online', this.handleOnline);
+		window.addEventListener('offline', this.handleOffline);
+		document.addEventListener('visibilitychange', this.handleVisibility);
 	}
 
 	private handleOnline = () => {
@@ -35,6 +42,7 @@ class ConnectionStatus {
 			window.removeEventListener('offline', this.handleOffline);
 			document.removeEventListener('visibilitychange', this.handleVisibility);
 		}
+		this.initialized = false;
 	}
 }
 

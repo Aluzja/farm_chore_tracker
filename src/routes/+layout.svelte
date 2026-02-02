@@ -35,6 +35,9 @@
 	});
 
 	onMount(async () => {
+		// Initialize connection status (must happen in browser)
+		connectionStatus.init();
+
 		// Request persistent storage for IndexedDB
 		await requestPersistentStorage();
 
