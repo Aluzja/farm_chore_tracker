@@ -46,12 +46,12 @@ Plans:
   2. Mutations made offline are queued and sync when connectivity returns
   3. Real-time updates from other users appear within seconds when online
   4. Sync failures are captured and retryable
-**Plans**: TBD
+**Plans**: 3 plans (3 waves)
 
 Plans:
-- [ ] 02-01: IndexedDB schema and idb wrapper
-- [ ] 02-02: Sync engine with mutation queue
-- [ ] 02-03: Reactive Svelte stores wrapping offline-first layer
+- [ ] 02-01-PLAN.md — IndexedDB schema with idb wrapper and Zod validation
+- [ ] 02-02-PLAN.md — Sync engine with mutation queue and Convex chore mutations
+- [ ] 02-03-PLAN.md — Reactive Svelte 5 stores with optimistic updates and test UI
 
 ### Phase 3: Auth and Access
 **Goal**: Admin can log in to manage master list; workers access via shareable URL keys
