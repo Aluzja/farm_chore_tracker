@@ -9,7 +9,7 @@ import {
 	markFailed,
 	getQueueLength
 } from './queue';
-import { getChore, putChore, getChoresByStatus } from '$lib/db/operations';
+import { getChore, putChore, getChoresByStatus, getDailyChore, putDailyChore } from '$lib/db/operations';
 import type { Mutation } from '$lib/db/schema';
 
 const MAX_RETRIES = 3;
@@ -136,10 +136,69 @@ class SyncEngine {
 
 		const { type, table, payload } = mutation;
 
-		if (table !== 'chores') {
-			throw new Error(`Unknown table: ${table}`);
+		switch (table) {
+			case 'dailyChores':
+				await this.applyDailyChoresMutation(client, type, payload);
+				break;
+			case 'chores':
+				await this.applyChoresMutation(client, type, payload);
+				break;
+			default:
+				throw new Error(`Unknown table: ${table}`);
 		}
+	}
 
+	private async applyDailyChoresMutation(
+		client: ConvexClient,
+		type: Mutation['type'],
+		payload: Record<string, unknown>
+	): Promise<void> {
+		switch (type) {
+			case 'create': {
+				const createId = payload.clientId as string;
+				await client.mutation(
+					api.dailyChores.addAdHoc,
+					payload as {
+						clientId: string;
+						text: string;
+						timeSlot: string;
+						animalCategory: string;
+						createdBy?: string;
+						lastModified: number;
+					}
+				);
+				await this.markDailyChoreLocalSynced(createId);
+				const { dailyChoreStore } = await import('$lib/stores/dailyChores.svelte');
+				dailyChoreStore.markSynced(createId);
+				break;
+			}
+			case 'update': {
+				const updateId = payload.clientId as string;
+				await client.mutation(
+					api.dailyChores.toggleComplete,
+					payload as {
+						clientId: string;
+						isCompleted: boolean;
+						completedAt?: string;
+						completedBy?: string;
+						lastModified: number;
+					}
+				);
+				await this.markDailyChoreLocalSynced(updateId);
+				const { dailyChoreStore } = await import('$lib/stores/dailyChores.svelte');
+				dailyChoreStore.markSynced(updateId);
+				break;
+			}
+			default:
+				throw new Error(`Unsupported dailyChores mutation type: ${type}`);
+		}
+	}
+
+	private async applyChoresMutation(
+		client: ConvexClient,
+		type: Mutation['type'],
+		payload: Record<string, unknown>
+	): Promise<void> {
 		switch (type) {
 			case 'create': {
 				const createId = payload.clientId as string;
@@ -192,6 +251,13 @@ class SyncEngine {
 		const chore = await getChore(id);
 		if (chore) {
 			await putChore({ ...chore, syncStatus: 'synced' });
+		}
+	}
+
+	private async markDailyChoreLocalSynced(id: string): Promise<void> {
+		const chore = await getDailyChore(id);
+		if (chore) {
+			await putDailyChore({ ...chore, syncStatus: 'synced' });
 		}
 	}
 
