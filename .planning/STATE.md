@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-02-01)
 ## Current Position
 
 Phase: 2 of 6 (Data Layer)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-02 - Completed 02-01-PLAN.md (IndexedDB schema and idb wrapper)
+Last activity: 2026-02-02 - Completed 02-02-PLAN.md (Sync engine with mutation queue)
 
-Progress: [███░░░░░░░] 24%
+Progress: [████░░░░░░] 29%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
+- Total plans completed: 5
 - Average duration: 5 min
-- Total execution time: 0.32 hours
+- Total execution time: 0.37 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 3 | 15 min | 5 min |
-| 02-data-layer | 1 | 4 min | 4 min |
+| 02-data-layer | 2 | 7 min | 3.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (3 min), 01-02 (4 min), 01-03 (8 min), 02-01 (4 min)
+- Last 5 plans: 01-02 (4 min), 01-03 (8 min), 02-01 (4 min), 02-02 (3 min)
 - Trend: stable
 
 *Updated after each plan completion*
@@ -43,6 +43,8 @@ Progress: [███░░░░░░░] 24%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- 02-02: Global Convex client via setConvexClient/getConvexClient for non-component sync engine access
+- 02-02: Idempotent mutations via clientId index for creates, last-write-wins for updates
 - 02-01: Zod 4 API: z.uuid(), z.iso.datetime(), z.record(key, value) instead of deprecated v3 syntax
 - 02-01: Sync metadata on chores: syncStatus enum and lastModified timestamp
 - Phase 2: Add Zod for runtime type safety and client-side validation
@@ -66,16 +68,16 @@ From research (to address during implementation):
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 02-01-PLAN.md
-Resume file: .planning/phases/02-data-layer/02-02-PLAN.md
+Stopped at: Completed 02-02-PLAN.md
+Resume file: .planning/phases/02-data-layer/02-03-PLAN.md
 
 ## Phase 2 Plans Summary
 
 | Wave | Plan | Description | Autonomous | Status |
 |------|------|-------------|------------|--------|
 | 1 | 02-01 | IndexedDB schema and idb wrapper | Yes | Complete |
-| 2 | 02-02 | Sync engine with mutation queue | Yes | Next |
-| 3 | 02-03 | Reactive Svelte stores and test UI | Checkpoint | Pending |
+| 2 | 02-02 | Sync engine with mutation queue | Yes | Complete |
+| 3 | 02-03 | Reactive Svelte stores and test UI | Checkpoint | Next |
 
 Key technical decisions:
 - idb@^8.x for IndexedDB wrapper (02-01: installed idb@8.0.3)
@@ -83,3 +85,4 @@ Key technical decisions:
 - clientId field for offline-first idempotency
 - Last-write-wins via lastModified timestamps
 - 30-second periodic sync when online/visible
+- Global Convex client access for sync engine (02-02: setConvexClient/getConvexClient)
