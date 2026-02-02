@@ -13,7 +13,7 @@ This roadmap transforms an existing SvelteKit 2.22 + Svelte 5 starter into a pro
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - PWA shell, Convex integration, service worker with correct exclusions
-- [ ] **Phase 2: Data Layer** - Three-layer offline-first architecture with IndexedDB and sync engine
+- [x] **Phase 2: Data Layer** - Three-layer offline-first architecture with IndexedDB and sync engine
 - [ ] **Phase 3: Auth and Access** - Admin authentication and URL key-based user access
 - [ ] **Phase 4: Core Chore Workflow** - Master list, daily clone, completion, real-time sync
 - [ ] **Phase 5: Photo Verification** - Camera capture, offline queue, Convex file storage
@@ -49,9 +49,9 @@ Plans:
 **Plans**: 3 plans (3 waves)
 
 Plans:
-- [ ] 02-01-PLAN.md — IndexedDB schema with idb wrapper and Zod validation
-- [ ] 02-02-PLAN.md — Sync engine with mutation queue and Convex chore mutations
-- [ ] 02-03-PLAN.md — Reactive Svelte 5 stores with optimistic updates and test UI
+- [x] 02-01-PLAN.md — IndexedDB schema with idb wrapper and Zod validation
+- [x] 02-02-PLAN.md — Sync engine with mutation queue and Convex chore mutations
+- [x] 02-03-PLAN.md — Reactive Svelte 5 stores with optimistic updates and test UI
 
 ### Phase 3: Auth and Access
 **Goal**: Admin can log in to manage master list; workers access via shareable URL keys
@@ -134,7 +134,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 3/3 | ✓ Complete | 2026-02-01 |
-| 2. Data Layer | 0/3 | Not started | - |
+| 2. Data Layer | 3/3 | ✓ Complete | 2026-02-02 |
 | 3. Auth and Access | 0/3 | Not started | - |
 | 4. Core Chore Workflow | 0/4 | Not started | - |
 | 5. Photo Verification | 0/3 | Not started | - |
