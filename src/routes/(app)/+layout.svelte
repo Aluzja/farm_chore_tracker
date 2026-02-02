@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
+	import { useQuery } from 'convex-svelte';
 	import {
 		getStoredAccessKey,
 		storeAccessKey,
@@ -12,6 +13,9 @@
 	} from '$lib/auth/access-key';
 	import { adminAuth } from '$lib/auth/admin.svelte';
 	import { connectionStatus } from '$lib/sync/status.svelte';
+	import { choreStore } from '$lib/stores/chores.svelte';
+	import { syncEngine } from '$lib/sync/engine.svelte';
+	import { api } from '../../convex/_generated/api';
 
 	let { children } = $props();
 
@@ -19,6 +23,28 @@
 	let isValidating = $state(true);
 	let error = $state<string | null>(null);
 	let userName = $state<string | null>(null);
+	let isInitialized = $state(false);
+
+	// Server chores subscription (only active when hasAccess and online)
+	const serverChores = browser ? useQuery(api.chores.list, {}) : null;
+
+	// Hydrate from server when data arrives (only after access validated)
+	$effect(() => {
+		if (browser && hasAccess && serverChores?.data && connectionStatus.isOnline) {
+			choreStore.hydrateFromServer(serverChores.data);
+		}
+	});
+
+	async function initializeApp() {
+		if (isInitialized) return;
+		isInitialized = true;
+
+		// Load local data first (instant)
+		await choreStore.load();
+
+		// Initialize sync engine (will process queue if online)
+		await syncEngine.init();
+	}
 
 	onMount(async () => {
 		// Check for key in URL first
@@ -36,6 +62,7 @@
 				hasAccess = true;
 				userName = result.displayName ?? null;
 				isValidating = false;
+				await initializeApp();
 				return;
 			} else {
 				error =
@@ -57,6 +84,7 @@
 					hasAccess = true;
 					userName = result.displayName ?? null;
 					isValidating = false;
+					await initializeApp();
 					return;
 				} else {
 					// Key was revoked or invalid
@@ -75,11 +103,13 @@
 					hasAccess = true;
 					userName = cached.displayName ?? null;
 					isValidating = false;
+					await initializeApp();
 					return;
 				}
 				// No valid cache, but we have a key - allow access (will revalidate online)
 				hasAccess = true;
 				isValidating = false;
+				await initializeApp();
 				return;
 			}
 		}
@@ -90,6 +120,7 @@
 			hasAccess = true;
 			userName = 'Admin';
 			isValidating = false;
+			await initializeApp();
 			return;
 		}
 
