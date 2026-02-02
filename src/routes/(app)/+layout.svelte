@@ -15,7 +15,8 @@
 	import { adminAuth } from '$lib/auth/admin.svelte';
 	import { connectionStatus } from '$lib/sync/status.svelte';
 	import { choreStore } from '$lib/stores/chores.svelte';
-	import { syncEngine } from '$lib/sync/engine.svelte';
+	import { dailyChoreStore } from '$lib/stores/dailyChores.svelte';
+	import { syncEngine, getConvexClient } from '$lib/sync/engine.svelte';
 	import { api } from '../../convex/_generated/api';
 
 	let { children } = $props();
@@ -32,10 +33,41 @@
 	// Server chores subscription (only active when hasAccess and online)
 	const serverChores = browser ? useQuery(api.chores.list, {}) : null;
 
+	// Daily chores subscription
+	const dailyChoresQuery = browser ? useQuery(api.dailyChores.getOrCreateDailyList, {}) : null;
+
 	// Hydrate from server when data arrives (only after access validated)
 	$effect(() => {
 		if (browser && hasAccess && serverChores?.data && connectionStatus.isOnline) {
 			choreStore.hydrateFromServer(serverChores.data);
+		}
+	});
+
+	// Handle daily chores clone trigger
+	$effect(() => {
+		if (
+			dailyChoresQuery?.data &&
+			typeof dailyChoresQuery.data === 'object' &&
+			'needsClone' in dailyChoresQuery.data
+		) {
+			const client = getConvexClient();
+			if (client) {
+				const data = dailyChoresQuery.data as { needsClone: boolean; date: string };
+				client.mutation(api.dailyChores.cloneMasterToDaily, { date: data.date });
+			}
+		}
+	});
+
+	// Hydrate daily chores when data arrives
+	$effect(() => {
+		if (
+			browser &&
+			hasAccess &&
+			dailyChoresQuery?.data &&
+			Array.isArray(dailyChoresQuery.data) &&
+			connectionStatus.isOnline
+		) {
+			dailyChoreStore.hydrateFromServer(dailyChoresQuery.data);
 		}
 	});
 
@@ -45,6 +77,7 @@
 
 		// Load local data first (instant)
 		await choreStore.load();
+		await dailyChoreStore.load();
 
 		// Initialize sync engine (will process queue if online)
 		await syncEngine.init();
@@ -144,45 +177,152 @@
 </script>
 
 {#if isValidating}
-	<div class="min-h-screen flex items-center justify-center bg-gray-50">
-		<div class="text-center">
-			<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-			<p class="mt-4 text-gray-600">Checking access...</p>
+	<div class="loading-container">
+		<div class="loading-content">
+			<div class="spinner"></div>
+			<p class="loading-text">Checking access...</p>
 		</div>
 	</div>
 {:else if hasAccess}
-	<!-- Show user name in header if available -->
 	{#if userName}
-		<div
-			class="fixed top-2 right-2 text-xs text-gray-500 bg-white/80 px-2 py-1 rounded shadow-sm z-50"
-		>
+		<div class="user-badge">
 			{userName}
 		</div>
 	{/if}
 	{@render children?.()}
 {:else}
-	<div class="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-		<div class="max-w-md w-full text-center">
-			<div class="bg-white rounded-lg shadow-md p-8">
-				<h1 class="text-xl font-semibold text-gray-900 mb-2">Access Required</h1>
-				<p class="text-gray-600 mb-6">
-					{error ?? 'You need an access key to use this app.'}
-				</p>
-				<div class="space-y-3">
-					<button
-						onclick={handleRequestAccess}
-						class="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-					>
-						Request Access
-					</button>
-					<a
-						href={resolve('/admin/login')}
-						class="block w-full py-2 px-4 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
-					>
-						Admin Login
-					</a>
-				</div>
+	<div class="error-container">
+		<div class="error-card">
+			<h1 class="error-title">Access Required</h1>
+			<p class="error-message">
+				{error ?? 'You need an access key to use this app.'}
+			</p>
+			<div class="error-actions">
+				<button onclick={handleRequestAccess} class="btn-primary">
+					Request Access
+				</button>
+				<a href={resolve('/admin/login')} class="btn-secondary">
+					Admin Login
+				</a>
 			</div>
 		</div>
 	</div>
 {/if}
+
+<style>
+	.loading-container {
+		min-height: 100vh;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background-color: #f9fafb;
+	}
+
+	.loading-content {
+		text-align: center;
+	}
+
+	.spinner {
+		width: 2rem;
+		height: 2rem;
+		border: 2px solid #e5e7eb;
+		border-top-color: #2563eb;
+		border-radius: 50%;
+		margin: 0 auto;
+		animation: spin 1s linear infinite;
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
+	.loading-text {
+		margin-top: 1rem;
+		color: #6b7280;
+	}
+
+	.user-badge {
+		position: fixed;
+		top: 0.5rem;
+		right: 0.5rem;
+		font-size: 0.75rem;
+		color: #6b7280;
+		background: rgba(255, 255, 255, 0.9);
+		padding: 0.25rem 0.5rem;
+		border-radius: 0.25rem;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+		z-index: 50;
+	}
+
+	.error-container {
+		min-height: 100vh;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background-color: #f9fafb;
+		padding: 1rem;
+	}
+
+	.error-card {
+		max-width: 24rem;
+		width: 100%;
+		text-align: center;
+		background: white;
+		border-radius: 0.5rem;
+		box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+		padding: 2rem;
+	}
+
+	.error-title {
+		font-size: 1.25rem;
+		font-weight: 600;
+		color: #111827;
+		margin-bottom: 0.5rem;
+	}
+
+	.error-message {
+		color: #6b7280;
+		margin-bottom: 1.5rem;
+	}
+
+	.error-actions {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.btn-primary {
+		width: 100%;
+		padding: 0.5rem 1rem;
+		background-color: #2563eb;
+		color: white;
+		border: none;
+		border-radius: 0.375rem;
+		font-size: 1rem;
+		cursor: pointer;
+		transition: background-color 0.2s;
+	}
+
+	.btn-primary:hover {
+		background-color: #1d4ed8;
+	}
+
+	.btn-secondary {
+		display: block;
+		width: 100%;
+		padding: 0.5rem 1rem;
+		border: 1px solid #d1d5db;
+		color: #374151;
+		border-radius: 0.375rem;
+		text-decoration: none;
+		text-align: center;
+		font-size: 1rem;
+		transition: background-color 0.2s;
+	}
+
+	.btn-secondary:hover {
+		background-color: #f9fafb;
+	}
+</style>

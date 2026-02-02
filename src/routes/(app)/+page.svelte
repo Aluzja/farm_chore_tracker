@@ -1,392 +1,397 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { choreStore } from '$lib/stores/chores.svelte';
+	import { dailyChoreStore } from '$lib/stores/dailyChores.svelte';
 	import { syncEngine } from '$lib/sync/engine.svelte';
 	import { connectionStatus } from '$lib/sync/status.svelte';
-	import { getStorageEstimate, formatStorageSize } from '$lib/db/storage';
+	import { formatTimeSlot } from '$lib/utils/date';
 
-	let newChoreText = $state('');
-	let storageInfo = $state({ usage: 0, quota: 0 });
+	// Get user name from parent layout context (passed via URL or stored)
+	// For now, we'll use a simple approach - could be enhanced with context
+	let userName = $state('Worker');
 
-	// Load storage info once on mount
-	onMount(async () => {
-		storageInfo = await getStorageEstimate();
-	});
-
-	async function handleAddChore() {
-		if (!newChoreText.trim()) return;
-		await choreStore.add(newChoreText.trim());
-		newChoreText = '';
+	function formatCompletionTime(isoString: string | undefined): string {
+		if (!isoString) return '';
+		try {
+			const date = new Date(isoString);
+			return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+		} catch {
+			return '';
+		}
 	}
 
 	async function handleToggle(id: string) {
-		await choreStore.toggleComplete(id);
-	}
-
-	async function handleDelete(id: string) {
-		await choreStore.remove(id);
-	}
-
-	async function handleRetryFailed() {
-		const count = await syncEngine.retryFailed();
-		console.log(`[Test] Retried ${count} failed mutations`);
-	}
-
-	function formatTime(timestamp: number | null): string {
-		if (!timestamp) return 'Never';
-		return new Date(timestamp).toLocaleTimeString();
+		await dailyChoreStore.toggleComplete(id, userName);
 	}
 </script>
 
 <main class="container">
-	<h1>Kitchen Sink Farm - Data Layer Test</h1>
-
-	<!-- Connection Status -->
-	<section class="status-panel">
-		<h2>System Status</h2>
-		<div class="status-grid">
-			<div
-				class="status-item"
-				class:online={connectionStatus.isOnline}
-				class:offline={!connectionStatus.isOnline}
-			>
-				<span class="status-label">Connection</span>
-				<span class="status-value">{connectionStatus.isOnline ? 'Online' : 'Offline'}</span>
+	<header class="header">
+		<h1 class="title">Today's Chores</h1>
+		<div class="header-meta">
+			<div class="connection-status" class:online={connectionStatus.isOnline}>
+				{connectionStatus.isOnline ? 'Online' : 'Offline'}
 			</div>
-			<div class="status-item" class:syncing={syncEngine.isSyncing}>
-				<span class="status-label">Sync</span>
-				<span class="status-value">{syncEngine.isSyncing ? 'Syncing...' : 'Idle'}</span>
-			</div>
-			<div class="status-item">
-				<span class="status-label">Pending</span>
-				<span class="status-value">{syncEngine.pendingCount}</span>
-			</div>
-			<div class="status-item" class:has-failed={syncEngine.failedCount > 0}>
-				<span class="status-label">Failed</span>
-				<span class="status-value">{syncEngine.failedCount}</span>
-				{#if syncEngine.failedCount > 0}
-					<button class="retry-btn" onclick={handleRetryFailed}>Retry</button>
-				{/if}
-			</div>
-			<div class="status-item">
-				<span class="status-label">Last Sync</span>
-				<span class="status-value">{formatTime(syncEngine.lastSyncedAt)}</span>
-			</div>
-			<div class="status-item">
-				<span class="status-label">Storage</span>
-				<span class="status-value"
-					>{formatStorageSize(storageInfo.usage)} / {formatStorageSize(storageInfo.quota)}</span
-				>
-			</div>
+			{#if syncEngine.pendingCount > 0}
+				<div class="sync-indicator">
+					{syncEngine.isSyncing ? 'Syncing...' : `${syncEngine.pendingCount} pending`}
+				</div>
+			{/if}
 		</div>
-		{#if syncEngine.lastError}
-			<div class="error-banner">
-				Error: {syncEngine.lastError}
-			</div>
-		{/if}
-	</section>
+	</header>
 
-	<!-- Add Chore -->
-	<section class="add-chore">
-		<h2>Add Chore</h2>
-		<form
-			onsubmit={(e) => {
-				e.preventDefault();
-				handleAddChore();
-			}}
-		>
-			<input
-				type="text"
-				bind:value={newChoreText}
-				placeholder="Enter chore description..."
-				class="chore-input"
-			/>
-			<button type="submit" class="add-btn" disabled={!newChoreText.trim()}> Add Chore </button>
-		</form>
-	</section>
+	<div class="progress-bar-container">
+		<div class="progress-bar" style="width: {dailyChoreStore.progress}%"></div>
+	</div>
+	<div class="progress-text">
+		{dailyChoreStore.completedCount} of {dailyChoreStore.totalCount} complete ({dailyChoreStore.progress}%)
+	</div>
 
-	<!-- Chore List -->
-	<section class="chore-list">
-		<h2>
-			Chores
-			<span class="count">({choreStore.completedCount}/{choreStore.items.length} complete)</span>
-		</h2>
+	{#if dailyChoreStore.isLoading}
+		<div class="loading">
+			<div class="spinner"></div>
+			<p>Loading chores...</p>
+		</div>
+	{:else if dailyChoreStore.error}
+		<div class="error-message">
+			Error loading chores: {dailyChoreStore.error.message}
+		</div>
+	{:else if dailyChoreStore.totalCount === 0}
+		<div class="empty-state">
+			<p class="empty-title">No chores for today</p>
+			<p class="empty-subtitle">Chores will appear here when the admin adds them to the master list.</p>
+		</div>
+	{:else}
+		<div class="chore-list">
+			{#each dailyChoreStore.grouped as timeSlotGroup (timeSlotGroup.timeSlot)}
+				<section class="time-slot-section">
+					<h2 class="time-slot-header">{formatTimeSlot(timeSlotGroup.timeSlot)}</h2>
 
-		{#if choreStore.isLoading}
-			<div class="loading">Loading from local storage...</div>
-		{:else if choreStore.error}
-			<div class="error">Error: {choreStore.error.message}</div>
-		{:else if choreStore.items.length === 0}
-			<div class="empty">No chores yet. Add one above!</div>
-		{:else}
-			<ul class="chores">
-				{#each choreStore.items as chore (chore._id)}
-					<li class="chore-item" class:completed={chore.isCompleted}>
-						<button
-							class="toggle-btn"
-							onclick={() => handleToggle(chore._id)}
-							aria-label={chore.isCompleted ? 'Mark incomplete' : 'Mark complete'}
-						>
-							{chore.isCompleted ? 'v' : 'o'}
-						</button>
-						<span class="chore-text">{chore.text}</span>
-						<span
-							class="sync-status"
-							class:pending={chore.syncStatus === 'pending'}
-							class:failed={chore.syncStatus === 'failed'}
-						>
-							{#if chore.syncStatus === 'pending'}
-								...
-							{:else if chore.syncStatus === 'failed'}
-								X
-							{:else}
-								ok
-							{/if}
-						</span>
-						<button
-							class="delete-btn"
-							onclick={() => handleDelete(chore._id)}
-							aria-label="Delete chore"
-						>
-							x
-						</button>
-					</li>
-				{/each}
-			</ul>
-		{/if}
-	</section>
+					{#each timeSlotGroup.categories as categoryGroup (categoryGroup.name)}
+						<div class="category-group">
+							<h3 class="category-header">{categoryGroup.name}</h3>
 
-	<!-- Instructions -->
-	<section class="instructions">
-		<h2>Testing Offline-First Behavior</h2>
-		<ol>
-			<li><strong>Add a chore</strong> - It appears instantly (optimistic update)</li>
-			<li><strong>Check "Pending"</strong> - Shows unsynchronized mutations</li>
-			<li><strong>Go offline</strong> (DevTools > Network > Offline) - Add more chores</li>
-			<li><strong>Refresh page</strong> - Chores persist from IndexedDB!</li>
-			<li><strong>Go online</strong> - Watch "Pending" count decrease as sync runs</li>
-			<li><strong>Open another tab</strong> - Changes sync via Convex in real-time</li>
-		</ol>
-	</section>
+							<ul class="chore-items">
+								{#each categoryGroup.chores as chore (chore._id)}
+									<li class="chore-item" class:completed={chore.isCompleted}>
+										<button
+											class="toggle-button"
+											class:checked={chore.isCompleted}
+											onclick={() => handleToggle(chore._id)}
+											aria-label={chore.isCompleted ? 'Mark incomplete' : 'Mark complete'}
+										>
+											{#if chore.isCompleted}
+												<svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+													<polyline points="20 6 9 17 4 12"></polyline>
+												</svg>
+											{/if}
+										</button>
+
+										<div class="chore-content">
+											<span class="chore-text">{chore.text}</span>
+
+											{#if chore.isAdHoc}
+												<span class="badge adhoc">Today only</span>
+											{/if}
+
+											{#if chore.isCompleted && chore.completedBy}
+												<div class="completion-info">
+													{chore.completedBy} at {formatCompletionTime(chore.completedAt)}
+												</div>
+											{/if}
+										</div>
+
+										{#if chore.syncStatus === 'pending'}
+											<span class="sync-status pending" title="Pending sync">...</span>
+										{:else if chore.syncStatus === 'failed'}
+											<span class="sync-status failed" title="Sync failed">!</span>
+										{/if}
+									</li>
+								{/each}
+							</ul>
+						</div>
+					{/each}
+				</section>
+			{/each}
+		</div>
+	{/if}
 </main>
 
 <style>
 	.container {
-		max-width: 800px;
+		max-width: 600px;
 		margin: 0 auto;
 		padding: 1rem;
+		padding-bottom: 4rem;
 		font-family: system-ui, -apple-system, sans-serif;
 	}
 
-	h1 {
-		color: #4caf50;
-		margin-bottom: 1.5rem;
-	}
-
-	h2 {
-		font-size: 1.25rem;
-		margin-bottom: 0.75rem;
-		color: #333;
-	}
-
-	section {
-		background: #f9f9f9;
-		border-radius: 8px;
-		padding: 1rem;
+	.header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
 		margin-bottom: 1rem;
 	}
 
-	/* Status Panel */
-	.status-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-		gap: 0.75rem;
-	}
-
-	.status-item {
-		background: white;
-		padding: 0.5rem;
-		border-radius: 4px;
-		text-align: center;
-		border: 1px solid #ddd;
-	}
-
-	.status-item.online {
-		border-color: #4caf50;
-		background: #e8f5e9;
-	}
-	.status-item.offline {
-		border-color: #f44336;
-		background: #ffebee;
-	}
-	.status-item.syncing {
-		border-color: #2196f3;
-		background: #e3f2fd;
-	}
-	.status-item.has-failed {
-		border-color: #ff9800;
-		background: #fff3e0;
-	}
-
-	.status-label {
-		display: block;
-		font-size: 0.75rem;
-		color: #666;
-		text-transform: uppercase;
-	}
-
-	.status-value {
-		display: block;
+	.title {
+		font-size: 1.5rem;
 		font-weight: 600;
-		font-size: 1rem;
+		color: #111827;
+		margin: 0;
 	}
 
-	.retry-btn {
-		margin-top: 0.25rem;
-		padding: 0.25rem 0.5rem;
-		font-size: 0.75rem;
-		background: #ff9800;
-		color: white;
-		border: none;
-		border-radius: 3px;
-		cursor: pointer;
-	}
-
-	.error-banner {
-		margin-top: 0.75rem;
-		padding: 0.5rem;
-		background: #ffebee;
-		color: #c62828;
-		border-radius: 4px;
-	}
-
-	/* Add Chore */
-	.add-chore form {
+	.header-meta {
 		display: flex;
+		align-items: center;
 		gap: 0.5rem;
 	}
 
-	.chore-input {
-		flex: 1;
-		padding: 0.75rem;
-		font-size: 1rem;
-		border: 1px solid #ddd;
-		border-radius: 4px;
+	.connection-status {
+		font-size: 0.75rem;
+		padding: 0.25rem 0.5rem;
+		border-radius: 9999px;
+		background: #fef2f2;
+		color: #dc2626;
 	}
 
-	.add-btn {
-		padding: 0.75rem 1.5rem;
-		font-size: 1rem;
-		background: #4caf50;
-		color: white;
-		border: none;
-		border-radius: 4px;
-		cursor: pointer;
+	.connection-status.online {
+		background: #f0fdf4;
+		color: #16a34a;
 	}
 
-	.add-btn:disabled {
-		background: #ccc;
-		cursor: not-allowed;
+	.sync-indicator {
+		font-size: 0.75rem;
+		color: #6b7280;
 	}
 
-	/* Chore List */
-	.count {
-		font-weight: normal;
-		font-size: 1rem;
-		color: #666;
+	.progress-bar-container {
+		height: 0.5rem;
+		background: #e5e7eb;
+		border-radius: 9999px;
+		overflow: hidden;
+		margin-bottom: 0.5rem;
 	}
 
-	.loading,
-	.error,
-	.empty {
-		padding: 2rem;
+	.progress-bar {
+		height: 100%;
+		background: #22c55e;
+		transition: width 0.3s ease;
+	}
+
+	.progress-text {
+		font-size: 0.875rem;
+		color: #6b7280;
 		text-align: center;
-		color: #666;
+		margin-bottom: 1.5rem;
 	}
 
-	.error {
-		color: #c62828;
+	.loading {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 4rem 0;
+		color: #6b7280;
 	}
 
-	.chores {
-		list-style: none;
-		padding: 0;
+	.spinner {
+		width: 2rem;
+		height: 2rem;
+		border: 2px solid #e5e7eb;
+		border-top-color: #22c55e;
+		border-radius: 50%;
+		animation: spin 1s linear infinite;
+		margin-bottom: 1rem;
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
+	.error-message {
+		padding: 1rem;
+		background: #fef2f2;
+		color: #dc2626;
+		border-radius: 0.5rem;
+		text-align: center;
+	}
+
+	.empty-state {
+		text-align: center;
+		padding: 4rem 1rem;
+	}
+
+	.empty-title {
+		font-size: 1.125rem;
+		font-weight: 500;
+		color: #374151;
+		margin-bottom: 0.5rem;
+	}
+
+	.empty-subtitle {
+		color: #6b7280;
+	}
+
+	.chore-list {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+	}
+
+	.time-slot-section {
+		background: white;
+		border-radius: 0.75rem;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+		overflow: hidden;
+	}
+
+	.time-slot-header {
+		font-size: 1rem;
+		font-weight: 600;
+		color: white;
+		background: #4b5563;
+		padding: 0.75rem 1rem;
 		margin: 0;
+	}
+
+	.time-slot-section:nth-child(1) .time-slot-header {
+		background: #f59e0b;
+	}
+
+	.time-slot-section:nth-child(2) .time-slot-header {
+		background: #3b82f6;
+	}
+
+	.time-slot-section:nth-child(3) .time-slot-header {
+		background: #8b5cf6;
+	}
+
+	.category-group {
+		border-bottom: 1px solid #e5e7eb;
+	}
+
+	.category-group:last-child {
+		border-bottom: none;
+	}
+
+	.category-header {
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: #6b7280;
+		background: #f9fafb;
+		padding: 0.5rem 1rem;
+		margin: 0;
+	}
+
+	.chore-items {
+		list-style: none;
+		margin: 0;
+		padding: 0;
 	}
 
 	.chore-item {
 		display: flex;
-		align-items: center;
+		align-items: flex-start;
 		gap: 0.75rem;
-		padding: 0.75rem;
-		background: white;
-		border-radius: 4px;
-		margin-bottom: 0.5rem;
-		border: 1px solid #ddd;
+		padding: 1rem;
+		border-bottom: 1px solid #f3f4f6;
+		transition: background-color 0.15s;
+	}
+
+	.chore-item:last-child {
+		border-bottom: none;
+	}
+
+	.chore-item:active {
+		background: #f9fafb;
 	}
 
 	.chore-item.completed {
-		background: #f5f5f5;
+		background: #f0fdf4;
 	}
 
-	.chore-item.completed .chore-text {
-		text-decoration: line-through;
-		color: #999;
-	}
-
-	.toggle-btn {
+	.toggle-button {
+		flex-shrink: 0;
 		width: 2rem;
 		height: 2rem;
 		border-radius: 50%;
-		border: 2px solid #4caf50;
+		border: 2px solid #d1d5db;
 		background: white;
-		font-size: 1rem;
 		cursor: pointer;
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		transition: all 0.15s;
 	}
 
-	.chore-item.completed .toggle-btn {
-		background: #4caf50;
+	.toggle-button:hover {
+		border-color: #22c55e;
+	}
+
+	.toggle-button.checked {
+		background: #22c55e;
+		border-color: #22c55e;
+	}
+
+	.check-icon {
+		width: 1rem;
+		height: 1rem;
 		color: white;
 	}
 
-	.chore-text {
+	.chore-content {
 		flex: 1;
+		min-width: 0;
+	}
+
+	.chore-text {
+		display: block;
+		color: #111827;
+		line-height: 1.4;
+	}
+
+	.chore-item.completed .chore-text {
+		color: #6b7280;
+		text-decoration: line-through;
+	}
+
+	.badge {
+		display: inline-block;
+		font-size: 0.625rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		padding: 0.125rem 0.375rem;
+		border-radius: 0.25rem;
+		margin-left: 0.5rem;
+	}
+
+	.badge.adhoc {
+		background: #fef3c7;
+		color: #92400e;
+	}
+
+	.completion-info {
+		font-size: 0.75rem;
+		color: #16a34a;
+		margin-top: 0.25rem;
 	}
 
 	.sync-status {
+		flex-shrink: 0;
 		font-size: 0.875rem;
 		opacity: 0.6;
 	}
 
 	.sync-status.pending {
+		color: #f59e0b;
 		opacity: 1;
 	}
 
 	.sync-status.failed {
+		color: #dc2626;
+		font-weight: 600;
 		opacity: 1;
-		color: #f44336;
-	}
-
-	.delete-btn {
-		width: 2rem;
-		height: 2rem;
-		border-radius: 4px;
-		border: none;
-		background: #ffebee;
-		color: #c62828;
-		font-size: 1.25rem;
-		cursor: pointer;
-	}
-
-	/* Instructions */
-	.instructions ol {
-		padding-left: 1.5rem;
-	}
-
-	.instructions li {
-		margin-bottom: 0.5rem;
 	}
 </style>
