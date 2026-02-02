@@ -1,5 +1,5 @@
 import { openDB, type IDBPDatabase, type DBSchema } from 'idb';
-import { DB_NAME, DB_VERSION, STORES, type Chore, type Mutation } from './schema';
+import { DB_NAME, DB_VERSION, STORES, type Chore, type DailyChore, type Mutation } from './schema';
 
 interface KitchenSinkDB extends DBSchema {
 	chores: {
@@ -8,6 +8,14 @@ interface KitchenSinkDB extends DBSchema {
 		indexes: {
 			'by-sync-status': string;
 			'by-last-modified': number;
+		};
+	};
+	dailyChores: {
+		key: string;
+		value: DailyChore;
+		indexes: {
+			'by-date': string;
+			'by-sync-status': string;
 		};
 	};
 	mutationQueue: {
@@ -34,7 +42,12 @@ export function getDB(): Promise<IDBPDatabase<KitchenSinkDB>> {
 					const queueStore = db.createObjectStore(STORES.mutationQueue, { keyPath: 'id' });
 					queueStore.createIndex('by-created-at', 'createdAt');
 				}
-				// Future migrations: if (oldVersion < 2) { ... }
+				// Version 2: Add dailyChores store
+				if (oldVersion < 2) {
+					const dailyStore = db.createObjectStore(STORES.dailyChores, { keyPath: '_id' });
+					dailyStore.createIndex('by-date', 'date');
+					dailyStore.createIndex('by-sync-status', 'syncStatus');
+				}
 			},
 			blocked() {
 				console.warn('[DB] Database blocked - close other tabs');
