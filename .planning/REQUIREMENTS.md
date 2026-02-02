@@ -71,9 +71,9 @@ From PROJECT.md - explicitly excluded:
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PWA-01 | Phase 1 | Pending |
+| PWA-01 | Phase 1 | Complete |
 | PWA-02 | Phase 2 | Pending |
-| DATA-01 | Phase 1 | Pending |
+| DATA-01 | Phase 1 | Complete |
 | AUTH-01 | Phase 3 | Pending |
 | AUTH-02 | Phase 3 | Pending |
 | AUTH-03 | Phase 3 | Pending |

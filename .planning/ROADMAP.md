@@ -12,7 +12,7 @@ This roadmap transforms an existing SvelteKit 2.22 + Svelte 5 starter into a pro
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation** - PWA shell, Convex integration, service worker with correct exclusions
+- [x] **Phase 1: Foundation** - PWA shell, Convex integration, service worker with correct exclusions
 - [ ] **Phase 2: Data Layer** - Three-layer offline-first architecture with IndexedDB and sync engine
 - [ ] **Phase 3: Auth and Access** - Admin authentication and URL key-based user access
 - [ ] **Phase 4: Core Chore Workflow** - Master list, daily clone, completion, real-time sync
@@ -33,9 +33,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans (2 waves)
 
 Plans:
-- [ ] 01-01-PLAN.md — Install @vite-pwa/sveltekit, create PWA icons, add meta tags to app.html
-- [ ] 01-02-PLAN.md — Install Convex, create deployment, set up schema and client initialization
-- [ ] 01-03-PLAN.md — Configure SvelteKitPWA with Convex exclusions, register SW, create test page
+- [x] 01-01-PLAN.md — Install @vite-pwa/sveltekit, create PWA icons, add meta tags to app.html
+- [x] 01-02-PLAN.md — Install Convex, create deployment, set up schema and client initialization
+- [x] 01-03-PLAN.md — Configure SvelteKitPWA with Convex exclusions, register SW, create test page
 
 ### Phase 2: Data Layer
 **Goal**: Three-layer offline-first data architecture that persists locally and syncs when online
@@ -133,7 +133,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/3 | Not started | - |
+| 1. Foundation | 3/3 | ✓ Complete | 2026-02-01 |
 | 2. Data Layer | 0/3 | Not started | - |
 | 3. Auth and Access | 0/3 | Not started | - |
 | 4. Core Chore Workflow | 0/4 | Not started | - |
