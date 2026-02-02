@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-01)
 
 **Core value:** Multiple people can efficiently coordinate completing daily farm chores without stepping on each other's toes, with photo verification where needed.
-**Current focus:** Phase 3 - Auth and Access
+**Current focus:** Phase 4 - Chore Operations (Phase 3 complete)
 
 ## Current Position
 
-Phase: 3 of 6 (Auth and Access)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-02 - Completed 03-02-PLAN.md (Auth APIs and Client Utilities)
+Phase: 3 of 6 (Auth and Access) - COMPLETE
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-02-02 - Completed 03-03-PLAN.md (Admin UI)
 
-Progress: [████████░░] 47%
+Progress: [█████████░] 53%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
-- Average duration: 5.7 min
-- Total execution time: 0.67 hours
+- Total plans completed: 8
+- Average duration: 5.5 min
+- Total execution time: 0.73 hours
 
 **By Phase:**
 
@@ -29,10 +29,10 @@ Progress: [████████░░] 47%
 |-------|-------|-------|----------|
 | 01-foundation | 3 | 15 min | 5 min |
 | 02-data-layer | 2 | 7 min | 3.5 min |
-| 03-auth-and-access | 2 | 16 min | 8 min |
+| 03-auth-and-access | 3 | 21 min | 7 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-01 (4 min), 02-02 (3 min), 02-03 (3 min), 03-01 (8 min), 03-02 (8 min)
+- Last 5 plans: 02-02 (3 min), 02-03 (3 min), 03-01 (8 min), 03-02 (8 min), 03-03 (5 min)
 - Trend: stable
 
 *Updated after each plan completion*
@@ -44,6 +44,9 @@ Progress: [████████░░] 47%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- 03-03: convex-svelte has no useMutation - use useConvexClient().mutation() directly
+- 03-03: Use startsWith for pathname checks to avoid TypeScript route inference issues
+- 03-03: Admin layout allows login page without auth, protects all other admin routes
 - 03-02: Access key validate query is public (no auth) - workers use key AS authentication
 - 03-02: signIn/signOut use client.action() since Convex Auth exposes them as actions
 - 03-02: 24-hour localStorage cache for offline access key validation
@@ -75,8 +78,8 @@ From research (to address during implementation):
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 03-02-PLAN.md (Auth APIs and Client Utilities)
-Resume file: .planning/phases/03-auth-and-access/03-03-PLAN.md
+Stopped at: Completed 03-03-PLAN.md (Admin UI) - Phase 3 complete
+Resume file: .planning/phases/04-chore-operations/04-01-PLAN.md (next phase)
 
 ## Phase 3 Plans Summary
 
@@ -84,7 +87,7 @@ Resume file: .planning/phases/03-auth-and-access/03-03-PLAN.md
 |------|------|-------------|------------|--------|
 | 1 | 03-01 | Convex Auth Setup | Checkpoint | Complete |
 | 2 | 03-02 | Auth APIs and Client Utilities | Autonomous | Complete |
-| 3 | 03-03 | Access Key Management | TBD | Pending |
+| 3 | 03-03 | Admin UI | Autonomous | Complete |
 
 Key technical decisions:
 - @convex-dev/auth with @auth/core@0.37.0 for Convex authentication
@@ -94,3 +97,4 @@ Key technical decisions:
 - HTTP router pattern: httpRouter() with auth.addHttpRoutes()
 - Access key validate query is public for worker authentication
 - AdminAuth class uses Svelte 5 $state runes for reactive state
+- convex-svelte mutation pattern: useConvexClient().mutation() (no useMutation export)
