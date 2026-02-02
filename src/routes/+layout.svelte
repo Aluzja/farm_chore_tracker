@@ -8,15 +8,23 @@
 	import { setConvexClient } from '$lib/sync/engine.svelte';
 	import { connectionStatus } from '$lib/sync/status.svelte';
 	import { requestPersistentStorage } from '$lib/db/storage';
+	import { getAuthToken } from '$lib/auth/admin.svelte';
 	import favicon from '$lib/assets/favicon.svg';
 
 	let { children } = $props();
 
 	let webManifestLink = $derived(pwaInfo ? pwaInfo.webManifest.linkTag : '');
 
-	// Only initialize on client side
+	// Only initialize on client side with auth token if available
 	if (browser) {
-		setupConvex(PUBLIC_CONVEX_URL);
+		const token = getAuthToken();
+		if (token) {
+			// Set up Convex with auth token provider for authenticated users
+			setupConvex(PUBLIC_CONVEX_URL, async () => token);
+		} else {
+			// Set up Convex without auth for unauthenticated users
+			setupConvex(PUBLIC_CONVEX_URL);
+		}
 	}
 
 	// Get Convex client at component init (must be called at top level, not in onMount)

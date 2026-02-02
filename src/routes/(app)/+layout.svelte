@@ -2,7 +2,8 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
-	import { useQuery } from 'convex-svelte';
+	import { resolve } from '$app/paths';
+	import { useQuery, useConvexClient } from 'convex-svelte';
 	import {
 		getStoredAccessKey,
 		storeAccessKey,
@@ -18,6 +19,9 @@
 	import { api } from '../../convex/_generated/api';
 
 	let { children } = $props();
+
+	// Get Convex client at component level for access key validation
+	const convexClient = browser ? useConvexClient() : null;
 
 	let hasAccess = $state(false);
 	let isValidating = $state(true);
@@ -56,7 +60,7 @@
 			window.history.replaceState({}, '', cleanUrl.toString());
 
 			// Validate the URL key
-			const result = await validateAccessKey(urlKey);
+			const result = await validateAccessKey(urlKey, convexClient);
 			if (result.valid) {
 				storeAccessKey(urlKey);
 				hasAccess = true;
@@ -79,7 +83,7 @@
 		if (storedKey) {
 			// Try online validation first
 			if (connectionStatus.isOnline) {
-				const result = await validateAccessKey(storedKey);
+				const result = await validateAccessKey(storedKey, convexClient);
 				if (result.valid) {
 					hasAccess = true;
 					userName = result.displayName ?? null;
@@ -115,6 +119,9 @@
 		}
 
 		// Check admin auth as fallback
+		if (convexClient) {
+			adminAuth.setClient(convexClient);
+		}
 		await adminAuth.checkAuth();
 		if (adminAuth.isAuthenticated) {
 			hasAccess = true;
@@ -157,20 +164,6 @@
 	<div class="min-h-screen flex items-center justify-center bg-gray-50 px-4">
 		<div class="max-w-md w-full text-center">
 			<div class="bg-white rounded-lg shadow-md p-8">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-16 w-16 mx-auto text-gray-400 mb-4"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-					/>
-				</svg>
 				<h1 class="text-xl font-semibold text-gray-900 mb-2">Access Required</h1>
 				<p class="text-gray-600 mb-6">
 					{error ?? 'You need an access key to use this app.'}
@@ -183,7 +176,7 @@
 						Request Access
 					</button>
 					<a
-						href="/admin/login"
+						href={resolve('/admin/login')}
 						class="block w-full py-2 px-4 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
 					>
 						Admin Login

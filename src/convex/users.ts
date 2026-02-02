@@ -64,3 +64,25 @@ export const checkFirstUserAdmin = mutation({
     return { madeAdmin: false };
   },
 });
+
+// Force current authenticated user to become admin (use only if no admins exist)
+export const forceSetAdmin = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    // Check if any admins exist
+    const existingAdmin = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("isAdmin"), true))
+      .first();
+
+    if (existingAdmin) {
+      throw new Error("Admin already exists");
+    }
+
+    await ctx.db.patch(userId, { isAdmin: true });
+    return { success: true, userId };
+  },
+});

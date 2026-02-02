@@ -3,6 +3,7 @@
   import { api } from '../../../convex/_generated/api';
   import { adminAuth } from '$lib/auth/admin.svelte';
   import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import type { Id } from '../../../convex/_generated/dataModel';
 
   // Get Convex client for mutations
@@ -60,7 +61,7 @@
 
   function handleSignOut() {
     adminAuth.signOut();
-    goto('/admin/login');
+    goto(resolve('/admin/login'));
   }
 
   // Format date for display
@@ -201,7 +202,7 @@
 
     <!-- Back to App -->
     <div class="mt-6 text-center">
-      <a href="/" class="text-sm text-gray-500 hover:text-gray-700">
+      <a href={resolve('/')} class="text-sm text-gray-500 hover:text-gray-700">
         Back to app
       </a>
     </div>

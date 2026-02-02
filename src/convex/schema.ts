@@ -11,7 +11,7 @@ export default defineSchema({
     email: v.optional(v.string()),
     emailVerificationTime: v.optional(v.number()),
     image: v.optional(v.string()),
-    isAdmin: v.boolean(), // First user becomes admin
+    isAdmin: v.optional(v.boolean()), // First user becomes admin (set by checkFirstUserAdmin)
   }).index("email", ["email"]),
 
   // Access keys for URL-based worker access

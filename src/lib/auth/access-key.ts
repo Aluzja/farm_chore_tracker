@@ -63,13 +63,13 @@ function cacheValidation(valid: boolean, displayName?: string): void {
 }
 
 // Validate access key against Convex
-export async function validateAccessKey(key: string): Promise<{
+export async function validateAccessKey(key: string, client?: any): Promise<{
   valid: boolean;
   reason?: 'not_found' | 'revoked';
   displayName?: string;
 }> {
-  const client = getConvexClient();
-  if (!client) {
+  const convexClient = client || getConvexClient();
+  if (!convexClient) {
     // Offline - check cache
     const cached = getCachedValidation();
     if (cached) {
@@ -80,7 +80,7 @@ export async function validateAccessKey(key: string): Promise<{
   }
 
   try {
-    const result = await client.query(api.accessKeys.validate, { key });
+    const result = await convexClient.query(api.accessKeys.validate, { key });
 
     // Cache the result
     cacheValidation(result.valid, result.valid ? result.displayName : undefined);
@@ -88,7 +88,7 @@ export async function validateAccessKey(key: string): Promise<{
     // Record usage if valid
     if (result.valid) {
       // Fire and forget - don't await
-      client.mutation(api.accessKeys.recordUsage, { key }).catch(() => {
+      convexClient.mutation(api.accessKeys.recordUsage, { key }).catch(() => {
         // Ignore errors recording usage
       });
     }

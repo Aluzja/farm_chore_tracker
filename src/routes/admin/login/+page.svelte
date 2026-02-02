@@ -1,5 +1,9 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
+  import { browser } from '$app/environment';
+  import { useConvexClient } from 'convex-svelte';
   import { adminAuth } from '$lib/auth/admin.svelte';
 
   let email = $state('');
@@ -8,9 +12,24 @@
   let error = $state<string | null>(null);
   let mode = $state<'signIn' | 'signUp'>('signIn');
 
+  // Get Convex client at component level
+  const client = browser ? useConvexClient() : null;
+
+  // Ensure client is set on adminAuth
+  onMount(() => {
+    if (client) {
+      adminAuth.setClient(client);
+    }
+  });
+
   async function handleSubmit(e: SubmitEvent) {
     e.preventDefault();
     if (isSubmitting) return;
+
+    // Ensure client is set
+    if (client && !adminAuth.isAuthenticated) {
+      adminAuth.setClient(client);
+    }
 
     isSubmitting = true;
     error = null;
@@ -24,8 +43,9 @@
       }
 
       if (result.success) {
-        // Redirect to keys management page
-        goto('/admin/keys');
+        // Full page reload to reinitialize Convex client with auth token
+        window.location.href = resolve('/admin/keys');
+        return;
       } else {
         error = result.error ?? 'Authentication failed';
       }
@@ -123,7 +143,7 @@
     </form>
 
     <div class="mt-6 text-center">
-      <a href="/" class="text-sm text-gray-500 hover:text-gray-700">
+      <a href={resolve('/')} class="text-sm text-gray-500 hover:text-gray-700">
         Back to app
       </a>
     </div>
