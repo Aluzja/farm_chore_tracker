@@ -21,6 +21,9 @@
 		setupConvex(PUBLIC_CONVEX_URL);
 	}
 
+	// Get Convex client at component init (must be called at top level, not in onMount)
+	const convexClient = browser ? useConvexClient() : null;
+
 	// Server chores subscription (only active when online)
 	const serverChores = browser ? useQuery(api.chores.list, {}) : null;
 
@@ -38,14 +41,9 @@
 		// Load local data first (instant)
 		await choreStore.load();
 
-		// Share Convex client with sync engine
-		try {
-			const client = useConvexClient();
-			if (client) {
-				setConvexClient(client);
-			}
-		} catch (e) {
-			console.warn('[Layout] Could not get Convex client:', e);
+		// Share Convex client with sync engine (client was obtained at top level)
+		if (convexClient) {
+			setConvexClient(convexClient);
 		}
 
 		// Initialize sync engine (will process queue if online)
