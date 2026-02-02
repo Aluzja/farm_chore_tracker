@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-01)
 ## Current Position
 
 Phase: 4 of 6 (Core Chore Workflow)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-02 - Completed 04-01-PLAN.md (Data Layer Foundation)
+Last activity: 2026-02-02 - Completed 04-02-PLAN.md (Admin Master Chores UI)
 
-Progress: [██████████░] 60%
+Progress: [███████████░] 67%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
-- Average duration: 5.1 min
-- Total execution time: 0.78 hours
+- Total plans completed: 10
+- Average duration: 5.0 min
+- Total execution time: 0.83 hours
 
 **By Phase:**
 
@@ -30,10 +30,10 @@ Progress: [██████████░] 60%
 | 01-foundation | 3 | 15 min | 5 min |
 | 02-data-layer | 2 | 7 min | 3.5 min |
 | 03-auth-and-access | 3 | 21 min | 7 min |
-| 04-core-chore-workflow | 1 | 3 min | 3 min |
+| 04-core-chore-workflow | 2 | 7 min | 3.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-03 (3 min), 03-01 (8 min), 03-02 (8 min), 03-03 (5 min), 04-01 (3 min)
+- Last 5 plans: 03-01 (8 min), 03-02 (8 min), 03-03 (5 min), 04-01 (3 min), 04-02 (4 min)
 - Trend: stable
 
 *Updated after each plan completion*
@@ -45,6 +45,9 @@ Progress: [██████████░] 60%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- 04-02: Store pattern: hydrateFromServer method receives Convex query data
+- 04-02: Client-side grouping via $derived.by for offline display capability
+- 04-02: Category: Free text with datalist suggestions, not constrained enum
 - 04-01: Two-table pattern: masterChores (templates) vs dailyChores (instances)
 - 04-01: On-demand clone on first access each day, not scheduled cron
 - 04-01: Master chore CRUD requires admin authentication
@@ -83,22 +86,23 @@ From research (to address during implementation):
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 04-01-PLAN.md (Data Layer Foundation)
-Resume file: .planning/phases/04-core-chore-workflow/04-02-PLAN.md (next plan)
+Stopped at: Completed 04-02-PLAN.md (Admin Master Chores UI)
+Resume file: .planning/phases/04-core-chore-workflow/04-03-PLAN.md (next plan)
 
 ## Phase 4 Plans Summary
 
 | Wave | Plan | Description | Autonomous | Status |
 |------|------|-------------|------------|--------|
 | 1 | 04-01 | Data Layer Foundation | Autonomous | Complete |
-| 2 | 04-02 | Daily Chore List | TBD | Pending |
-| 3 | 04-03 | Master Chore Admin | TBD | Pending |
+| 2 | 04-02 | Admin Master Chores UI | Autonomous | Complete |
+| 3 | 04-03 | Daily Chore List (Worker UI) | TBD | Pending |
 
 Key technical decisions:
 - Two-table pattern: masterChores (admin-managed templates) vs dailyChores (daily instances)
 - On-demand daily cloning via getOrCreateDailyList + cloneMasterToDaily
 - clientId for offline-first idempotency on dailyChores
 - IndexedDB version 2 migration for dailyChores store
+- MasterChoreStore with $state and $derived.by grouping
 
 ## Phase 3 Plans Summary
 
