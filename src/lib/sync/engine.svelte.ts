@@ -141,7 +141,8 @@ class SyncEngine {
 		}
 
 		switch (type) {
-			case 'create':
+			case 'create': {
+				const createId = payload.clientId as string;
 				await client.mutation(api.chores.create, payload as {
 					clientId: string;
 					text: string;
@@ -150,11 +151,15 @@ class SyncEngine {
 					completedBy?: string;
 					lastModified: number;
 				});
-				// Update local record to synced
-				await this.markLocalSynced(payload.clientId as string);
+				// Update local record to synced (both IndexedDB and reactive state)
+				await this.markLocalSynced(createId);
+				const { choreStore } = await import('$lib/stores/chores.svelte');
+				choreStore.markSynced(createId);
 				break;
+			}
 
-			case 'update':
+			case 'update': {
+				const updateId = payload.id as string;
 				await client.mutation(api.chores.update, payload as {
 					id: string; // clientId
 					text?: string;
@@ -163,12 +168,20 @@ class SyncEngine {
 					completedBy?: string;
 					lastModified: number;
 				});
-				await this.markLocalSynced(payload.id as string);
+				await this.markLocalSynced(updateId);
+				const { choreStore } = await import('$lib/stores/chores.svelte');
+				choreStore.markSynced(updateId);
 				break;
+			}
 
-			case 'delete':
-				await client.mutation(api.chores.remove, { id: payload.id as string });
+			case 'delete': {
+				const deleteId = payload.id as string;
+				await client.mutation(api.chores.remove, { id: deleteId });
+				// Confirm delete to prevent hydration from re-adding
+				const { choreStore } = await import('$lib/stores/chores.svelte');
+				choreStore.confirmDelete(deleteId);
 				break;
+			}
 
 			default:
 				throw new Error(`Unknown mutation type: ${type}`);

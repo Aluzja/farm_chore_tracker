@@ -15,6 +15,9 @@ class ChoreStore {
 	error = $state<Error | null>(null);
 	lastLoadedAt = $state<number | null>(null);
 
+	// Track locally deleted IDs to prevent hydration from re-adding them
+	private pendingDeletes = new Set<string>();
+
 	// Load from IndexedDB (instant, offline-first)
 	async load(): Promise<void> {
 		if (!browser) return;
@@ -45,30 +48,63 @@ class ChoreStore {
 			lastModified: number;
 		}>
 	): Promise<void> {
-		if (!browser || serverChores.length === 0) return;
+		if (!browser) return;
 
 		try {
-			// Convert server chores to local format with synced status
-			const localChores: Chore[] = serverChores.map((sc) => ({
-				_id: sc.clientId, // Use clientId as local _id for consistency
-				text: sc.text,
-				isCompleted: sc.isCompleted,
-				completedAt: sc.completedAt,
-				completedBy: sc.completedBy,
-				syncStatus: 'synced' as const,
-				lastModified: sc.lastModified
-			}));
+			// Convert server chores to local format, excluding pending deletes
+			const serverMap = new Map<string, Chore>();
+			for (const sc of serverChores) {
+				// Skip items that are pending local deletion
+				if (this.pendingDeletes.has(sc.clientId)) continue;
 
-			// Merge with local data (server wins for same _id with newer timestamp)
-			const localMap = new Map(this.items.map((c) => [c._id, c]));
-
-			for (const serverChore of localChores) {
-				const local = localMap.get(serverChore._id);
-				if (!local || serverChore.lastModified >= local.lastModified) {
-					localMap.set(serverChore._id, serverChore);
-				}
-				// If local is pending and newer, keep local (will sync to server)
+				serverMap.set(sc.clientId, {
+					_id: sc.clientId,
+					text: sc.text,
+					isCompleted: sc.isCompleted,
+					completedAt: sc.completedAt,
+					completedBy: sc.completedBy,
+					syncStatus: 'synced' as const,
+					lastModified: sc.lastModified
+				});
 			}
+
+			// Build merged map starting with local items
+			const localMap = new Map(this.items.map((c) => [c._id, c]));
+			let hasChanges = false;
+
+			// Merge server data (server wins for same _id with newer or equal timestamp)
+			for (const [id, serverChore] of serverMap) {
+				const local = localMap.get(id);
+				if (!local) {
+					// New item from server
+					localMap.set(id, serverChore);
+					hasChanges = true;
+				} else if (local.syncStatus === 'pending') {
+					// Local has pending changes, keep local version
+				} else if (serverChore.lastModified > local.lastModified) {
+					// Server is newer, update local
+					localMap.set(id, serverChore);
+					hasChanges = true;
+				} else if (
+					serverChore.lastModified === local.lastModified &&
+					local.syncStatus !== 'synced'
+				) {
+					// Same timestamp but local not marked synced, update status
+					localMap.set(id, { ...local, syncStatus: 'synced' });
+					hasChanges = true;
+				}
+			}
+
+			// Check for items that exist locally but not on server (and aren't pending)
+			for (const [id, local] of localMap) {
+				if (!serverMap.has(id) && local.syncStatus === 'synced') {
+					// Item was deleted on server, remove locally
+					localMap.delete(id);
+					hasChanges = true;
+				}
+			}
+
+			if (!hasChanges) return;
 
 			const merged = Array.from(localMap.values());
 
@@ -168,6 +204,9 @@ class ChoreStore {
 
 	// Delete chore (optimistic + queue)
 	async remove(id: string): Promise<void> {
+		// Track as pending delete to prevent hydration from re-adding
+		this.pendingDeletes.add(id);
+
 		// Optimistic UI update
 		this.items = this.items.filter((c) => c._id !== id);
 
@@ -176,6 +215,20 @@ class ChoreStore {
 
 		// Queue for sync
 		await enqueueMutation('delete', 'chores', { id });
+	}
+
+	// Called by sync engine after successful delete sync
+	confirmDelete(id: string): void {
+		this.pendingDeletes.delete(id);
+	}
+
+	// Called by sync engine after successful create/update sync
+	markSynced(id: string): void {
+		const index = this.items.findIndex((c) => c._id === id);
+		if (index !== -1 && this.items[index].syncStatus !== 'synced') {
+			// Update in place to avoid full array replacement
+			this.items[index] = { ...this.items[index], syncStatus: 'synced' };
+		}
 	}
 
 	// Get chore by ID (reactive derived would be better, but simple for now)
