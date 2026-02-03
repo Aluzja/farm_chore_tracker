@@ -11,7 +11,10 @@
 import type * as accessKeys from "../accessKeys.js";
 import type * as auth from "../auth.js";
 import type * as chores from "../chores.js";
+import type * as dailyChores from "../dailyChores.js";
 import type * as http from "../http.js";
+import type * as masterChores from "../masterChores.js";
+import type * as photos from "../photos.js";
 import type * as tasks from "../tasks.js";
 import type * as users from "../users.js";
 
@@ -25,7 +28,10 @@ declare const fullApi: ApiFromModules<{
   accessKeys: typeof accessKeys;
   auth: typeof auth;
   chores: typeof chores;
+  dailyChores: typeof dailyChores;
   http: typeof http;
+  masterChores: typeof masterChores;
+  photos: typeof photos;
   tasks: typeof tasks;
   users: typeof users;
 }>;

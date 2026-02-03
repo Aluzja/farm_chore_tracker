@@ -115,6 +115,26 @@ export const toggleComplete = mutation({
   },
 });
 
+// Reset today's daily list (deletes all daily chores for today)
+// Use this to re-clone from master after adding new master chores
+export const resetTodaysList = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const today = getTodayDate();
+
+    const todaysChores = await ctx.db
+      .query("dailyChores")
+      .withIndex("by_date", (q) => q.eq("date", today))
+      .collect();
+
+    for (const chore of todaysChores) {
+      await ctx.db.delete(chore._id);
+    }
+
+    return { deleted: todaysChores.length, date: today };
+  },
+});
+
 // Add ad-hoc chore for today only
 // Idempotent via clientId check
 export const addAdHoc = mutation({
