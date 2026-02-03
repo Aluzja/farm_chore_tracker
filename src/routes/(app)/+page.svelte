@@ -169,8 +169,8 @@
 
 						{#if !isCollapsed}
 							<div class="time-slot-content" transition:slide={{ duration: 200 }}>
-								{#each timeSlotGroup.categories as categoryGroup (categoryGroup.name)}
-									<div class="category-group">
+								{#each timeSlotGroup.categories as categoryGroup, categoryIndex (categoryGroup.name)}
+									<div class="category-group category-color-{categoryIndex % 6}">
 										<h3 class="category-header">{categoryGroup.name}</h3>
 
 										<ul class="chore-items">
@@ -503,9 +503,58 @@
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		color: #6b7280;
-		background: #f9fafb;
 		padding: 0.5rem 1rem;
 		margin: 0;
+		border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+	}
+
+	/* Category color highlights */
+	.category-color-0 {
+		background-color: rgba(239, 68, 68, 0.04);
+	}
+	.category-color-0 .category-header {
+		background-color: rgba(239, 68, 68, 0.08);
+		color: #b91c1c;
+	}
+
+	.category-color-1 {
+		background-color: rgba(34, 197, 94, 0.04);
+	}
+	.category-color-1 .category-header {
+		background-color: rgba(34, 197, 94, 0.08);
+		color: #15803d;
+	}
+
+	.category-color-2 {
+		background-color: rgba(59, 130, 246, 0.04);
+	}
+	.category-color-2 .category-header {
+		background-color: rgba(59, 130, 246, 0.08);
+		color: #1d4ed8;
+	}
+
+	.category-color-3 {
+		background-color: rgba(168, 85, 247, 0.04);
+	}
+	.category-color-3 .category-header {
+		background-color: rgba(168, 85, 247, 0.08);
+		color: #7c3aed;
+	}
+
+	.category-color-4 {
+		background-color: rgba(245, 158, 11, 0.04);
+	}
+	.category-color-4 .category-header {
+		background-color: rgba(245, 158, 11, 0.08);
+		color: #b45309;
+	}
+
+	.category-color-5 {
+		background-color: rgba(20, 184, 166, 0.04);
+	}
+	.category-color-5 .category-header {
+		background-color: rgba(20, 184, 166, 0.08);
+		color: #0f766e;
 	}
 
 	.chore-items {
