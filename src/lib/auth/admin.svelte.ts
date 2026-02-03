@@ -8,6 +8,8 @@ const escapedNamespace = PUBLIC_CONVEX_URL.replace(/[^a-zA-Z0-9]/g, '');
 const TOKEN_STORAGE_KEY = `convexAuthJwt_${escapedNamespace}`;
 const REFRESH_TOKEN_KEY = `convexAuthRefreshToken_${escapedNamespace}`;
 
+console.log('[AdminAuth] Storage keys - TOKEN:', TOKEN_STORAGE_KEY, 'REFRESH:', REFRESH_TOKEN_KEY);
+
 type AuthState = 'loading' | 'authenticated' | 'unauthenticated';
 
 // Store tokens in localStorage
@@ -20,7 +22,10 @@ function storeTokens(token: string, refreshToken: string): void {
 // Get stored token
 function getStoredToken(): string | null {
 	if (!browser) return null;
-	return localStorage.getItem(TOKEN_STORAGE_KEY);
+	const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+	console.log('[AdminAuth] getStoredToken - key:', TOKEN_STORAGE_KEY, 'found:', !!token);
+	console.log('[AdminAuth] getStoredToken - all keys:', Object.keys(localStorage));
+	return token;
 }
 
 // Get stored refresh token
