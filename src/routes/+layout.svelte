@@ -8,6 +8,7 @@
 	import { setConvexClient } from '$lib/sync/engine.svelte';
 	import { connectionStatus } from '$lib/sync/status.svelte';
 	import { requestPersistentStorage } from '$lib/db/storage';
+	import { getAuthToken } from '$lib/auth/admin.svelte';
 	import favicon from '$lib/assets/favicon.svg';
 
 	let { children } = $props();
@@ -21,6 +22,11 @@
 
 	// Get Convex client at component init (must be called at top level, not in onMount)
 	const convexClient = browser ? useConvexClient() : null;
+
+	// Set up auth token provider on the client
+	if (browser && convexClient) {
+		convexClient.setAuth(async () => getAuthToken());
+	}
 
 	onMount(async () => {
 		// Initialize connection status (must happen in browser)
