@@ -12,16 +12,16 @@ See: .planning/PROJECT.md (updated 2026-02-01)
 Phase: 6 of 6 (Polish and History)
 Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-02 - Completed 06-02-PLAN.md (History View)
+Last activity: 2026-02-02 - Completed 06-01-PLAN.md (Sync Status Indicators)
 
-Progress: [██████████████████] 85%
+Progress: [██████████████████] 95%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 17
+- Total plans completed: 18
 - Average duration: 4 min
-- Total execution time: 1.5 hours
+- Total execution time: 1.6 hours
 
 **By Phase:**
 
@@ -32,10 +32,10 @@ Progress: [██████████████████] 85%
 | 03-auth-and-access | 3 | 21 min | 7 min |
 | 04-core-chore-workflow | 4 | 13 min | 3.25 min |
 | 05-photo-verification | 4 | 32 min | 8 min |
-| 06-polish-and-history | 1 | 5 min | 5 min |
+| 06-polish-and-history | 2 | 9 min | 4.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 05-01 (2 min), 05-02 (3 min), 05-03 (2 min), 05-04 (25 min), 06-02 (5 min)
+- Last 5 plans: 05-02 (3 min), 05-03 (2 min), 05-04 (25 min), 06-02 (5 min), 06-01 (4 min)
 - Trend: stable execution time
 
 *Updated after each plan completion*
@@ -47,6 +47,10 @@ Progress: [██████████████████] 85%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- 06-01: Synced status is hidden (opacity 0) for clean UI - no visual noise
+- 06-01: 44px minimum touch target on sync badge for accessibility
+- 06-01: Combined retry button handles both mutation queue and photo queue failures
+- 06-01: markFailed propagates to store for immediate UI update
 - 06-02: getHistory uses by_date index with gte for efficient date range queries
 - 06-02: Client-side date sorting since Convex filter limits index usage
 - 06-02: Sticky date headers at top:3.5rem to clear main header
@@ -109,7 +113,7 @@ From research (to address during implementation):
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 06-02-PLAN.md (History View)
+Stopped at: Completed 06-01-PLAN.md (Sync Status Indicators)
 Resume file: None (ready for 06-03)
 
 ## Phase 4 Plans Summary
@@ -154,11 +158,15 @@ Key technical decisions:
 
 | Wave | Plan | Description | Autonomous | Status |
 |------|------|-------------|------------|--------|
-| 1 | 06-01 | Badge notifications | Autonomous | Pending |
+| 1 | 06-01 | Sync Status Indicators | Autonomous | Complete |
 | 1 | 06-02 | History view | Autonomous | Complete |
 | 2 | 06-03 | PWA enhancements | Autonomous | Pending |
 
 Key technical decisions:
+- SyncStatusBadge component with CSS-only pulse animation
+- Synced status hidden (opacity 0) for clean UI
+- 44px minimum touch target for accessibility
+- markFailed/resetFailedToPending methods on dailyChoreStore
 - getHistory query with by_date index and gte filter
 - Date grouping with $derived.by for reactive computed state
 - Sticky headers pattern for scroll context
