@@ -192,19 +192,6 @@
 		</div>
 	</div>
 {:else if hasAccess}
-	<div class="app-nav">
-		<a href={resolve('/history')} class="nav-link" aria-label="View history">
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-				<circle cx="12" cy="12" r="10"></circle>
-				<polyline points="12 6 12 12 16 14"></polyline>
-			</svg>
-		</a>
-		{#if userName}
-			<div class="user-badge">
-				{userName}
-			</div>
-		{/if}
-	</div>
 	{@render children?.()}
 {:else}
 	<div class="error-container">
@@ -214,12 +201,8 @@
 				{error ?? 'You need an access key to use this app.'}
 			</p>
 			<div class="error-actions">
-				<button onclick={handleRequestAccess} class="btn-primary">
-					Request Access
-				</button>
-				<a href={resolve('/admin/login')} class="btn-secondary">
-					Admin Login
-				</a>
+				<button onclick={handleRequestAccess} class="btn-primary"> Request Access </button>
+				<a href={resolve('/admin/login')} class="btn-secondary"> Admin Login </a>
 			</div>
 		</div>
 	</div>
@@ -242,7 +225,7 @@
 		width: 2rem;
 		height: 2rem;
 		border: 2px solid #e5e7eb;
-		border-top-color: #2563eb;
+		border-top-color: #22c55e;
 		border-radius: 50%;
 		margin: 0 auto;
 		animation: spin 1s linear infinite;
@@ -259,49 +242,6 @@
 		color: #6b7280;
 	}
 
-	.app-nav {
-		position: fixed;
-		top: 0.5rem;
-		right: 0.5rem;
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		z-index: 50;
-	}
-
-	.nav-link {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 2rem;
-		height: 2rem;
-		background: rgba(255, 255, 255, 0.9);
-		border-radius: 0.375rem;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-		color: #6b7280;
-		text-decoration: none;
-		transition: color 0.15s, background-color 0.15s;
-	}
-
-	.nav-link:hover {
-		color: #2563eb;
-		background: white;
-	}
-
-	.nav-link svg {
-		width: 1.25rem;
-		height: 1.25rem;
-	}
-
-	.user-badge {
-		font-size: 0.75rem;
-		color: #6b7280;
-		background: rgba(255, 255, 255, 0.9);
-		padding: 0.25rem 0.5rem;
-		border-radius: 0.25rem;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-	}
-
 	.error-container {
 		min-height: 100vh;
 		display: flex;
@@ -316,21 +256,22 @@
 		width: 100%;
 		text-align: center;
 		background: white;
-		border-radius: 0.5rem;
-		box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+		border-radius: 0.75rem;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 		padding: 2rem;
 	}
 
 	.error-title {
-		font-size: 1.25rem;
-		font-weight: 600;
+		font-size: 1.5rem;
+		font-weight: 700;
 		color: #111827;
-		margin-bottom: 0.5rem;
+		margin: 0 0 0.5rem 0;
 	}
 
 	.error-message {
 		color: #6b7280;
-		margin-bottom: 1.5rem;
+		margin: 0 0 1.5rem 0;
+		line-height: 1.5;
 	}
 
 	.error-actions {
@@ -341,34 +282,44 @@
 
 	.btn-primary {
 		width: 100%;
-		padding: 0.5rem 1rem;
-		background-color: #2563eb;
+		padding: 0.75rem 1rem;
+		min-height: 48px;
+		background-color: #22c55e;
 		color: white;
+		font-weight: 500;
 		border: none;
 		border-radius: 0.375rem;
 		font-size: 1rem;
 		cursor: pointer;
-		transition: background-color 0.2s;
+		transition: background-color 0.15s;
 	}
 
 	.btn-primary:hover {
-		background-color: #1d4ed8;
+		background-color: #16a34a;
 	}
 
 	.btn-secondary {
-		display: block;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		width: 100%;
-		padding: 0.5rem 1rem;
+		padding: 0.75rem 1rem;
+		min-height: 48px;
+		background-color: white;
 		border: 1px solid #d1d5db;
 		color: #374151;
+		font-weight: 500;
 		border-radius: 0.375rem;
 		text-decoration: none;
 		text-align: center;
 		font-size: 1rem;
-		transition: background-color 0.2s;
+		transition:
+			background-color 0.15s,
+			border-color 0.15s;
 	}
 
 	.btn-secondary:hover {
 		background-color: #f9fafb;
+		border-color: #9ca3af;
 	}
 </style>

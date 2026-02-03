@@ -12,9 +12,6 @@
 
 	const { choreId, storageId }: Props = $props();
 
-	// Track when the actual image element has loaded
-	let imageLoaded = $state(false);
-
 	// Make query reactive to storageId changes (e.g., when photo is replaced)
 	const photoUrlQuery = $derived(
 		useQuery(api.photos.getPhotoUrl, {
@@ -27,37 +24,42 @@
 		photoUrlQuery.data ? `${photoUrlQuery.data}${photoUrlQuery.data.includes('?') ? '&' : '?'}v=${storageId}` : null
 	);
 
-	// Show loading until both query completes AND image loads
-	const isLoading = $derived(photoUrlQuery.isLoading || (photoUrl && !imageLoaded));
+	// Preload image and return promise that resolves when loaded
+	function preloadImage(url: string): Promise<string> {
+		return new Promise((resolve, reject) => {
+			const img = new Image();
+			img.onload = () => resolve(url);
+			img.onerror = () => reject(new Error('Failed to load image'));
+			img.src = url;
+		});
+	}
 
-	// Reset imageLoaded when URL changes
-	$effect(() => {
-		if (photoUrl) {
-			imageLoaded = false;
-		}
-	});
+	// Create promise that reacts to URL changes - {#await} will show loading while image loads
+	const imagePromise = $derived(photoUrl ? preloadImage(photoUrl) : null);
 
 	function handleClick() {
 		goto(resolve(`/photo-view/${choreId}`));
 	}
-
-	function handleImageLoad() {
-		imageLoaded = true;
-	}
 </script>
 
 <button class="thumbnail" onclick={handleClick} aria-label="View photo">
-	{#if isLoading}
+	{#if photoUrlQuery.isLoading}
 		<span class="thumbnail-loading"></span>
-	{/if}
-	{#if photoUrl}
-		<img
-			src={photoUrl}
-			alt="Completion photo"
-			onload={handleImageLoad}
-			class:hidden={!imageLoaded}
-		/>
-	{:else if !isLoading}
+	{:else if imagePromise}
+		{#await imagePromise}
+			<span class="thumbnail-loading"></span>
+		{:then url}
+			<img src={url} alt="Chore completion" />
+		{:catch}
+			<span class="thumbnail-placeholder">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+					<circle cx="8.5" cy="8.5" r="1.5"></circle>
+					<polyline points="21 15 16 10 5 21"></polyline>
+				</svg>
+			</span>
+		{/await}
+	{:else}
 		<span class="thumbnail-placeholder">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 				<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -92,10 +94,6 @@
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
-	}
-
-	.thumbnail img.hidden {
-		display: none;
 	}
 
 	.thumbnail-loading {

@@ -8,6 +8,8 @@
 
 Phase 6 focuses on two primary areas: (1) enhancing sync status visibility with clear pending/synced/failed indicators, and (2) building a 7-day history view for completed chores with photos. The existing codebase has solid foundations - syncStatus enum already exists on daily chores (`pending | synced | failed`), sync engine tracks pending/failed counts, and the PhotoThumbnail component pattern can be reused for history.
 
+**Mobile-First Priority:** The app is 80% phone use, 20% desktop. Admin may use desktop for initial master chore list entry, but daily worker use is almost entirely mobile. All UX decisions should optimize for phone-first (touch, viewport, thumb zones) while remaining usable on desktop.
+
 For UI polish, the standard approach is leveraging Svelte 5's built-in transition system (`svelte/transition`) for smooth animations, using CSS-based skeleton loaders for perceived performance, and optimizing touch targets for field use (minimum 44x44px per accessibility standards). The history view should use Convex's indexed date queries for efficient 7-day lookups.
 
 Key insight: This phase is primarily CSS/UX work with minimal new backend logic. The Convex schema already supports date-based queries via `by_date` index, and sync status tracking is fully implemented. Focus should be on visual polish, touch-friendly interactions, and adding a history query endpoint.

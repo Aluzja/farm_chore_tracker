@@ -51,13 +51,48 @@
 </script>
 
 {#if adminAuth.isLoading}
-  <div class="min-h-screen flex items-center justify-center">
-    <div class="text-lg text-gray-500">Loading...</div>
+  <div class="admin-loading">
+    <div class="spinner"></div>
+    <p>Loading...</p>
   </div>
 {:else if showContent}
   {@render children?.()}
 {:else}
-  <div class="min-h-screen flex items-center justify-center">
-    <div class="text-lg text-gray-500">Checking authorization...</div>
+  <div class="admin-loading">
+    <div class="spinner"></div>
+    <p>Checking authorization...</p>
   </div>
 {/if}
+
+<style>
+  .admin-loading {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    background-color: #f9fafb;
+  }
+
+  .admin-loading p {
+    font-size: 1rem;
+    color: #6b7280;
+    margin: 0;
+  }
+
+  .spinner {
+    width: 2rem;
+    height: 2rem;
+    border: 3px solid #e5e7eb;
+    border-top-color: #22c55e;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+</style>

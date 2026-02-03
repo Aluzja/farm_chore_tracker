@@ -111,7 +111,7 @@ kitchen_sink_farm/
 **Styling:**
 - Component styles: Within `<style>` blocks in `.svelte` files (scoped to component)
 - Global styles: Create `src/lib/styles/global.css` and import in `src/routes/+layout.svelte`
-- Tailwind/CSS framework: Configure in `svelte.config.js` and `vite.config.ts` as needed
+- CSS framework: Configure in `svelte.config.js` and `vite.config.ts` as needed
 
 **Assets:**
 - Favicon and shared icons: `src/lib/assets/`

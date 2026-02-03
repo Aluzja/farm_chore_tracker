@@ -7,6 +7,7 @@
 	import { connectionStatus } from '$lib/sync/status.svelte';
 	import { formatTimeSlot } from '$lib/utils/date';
 	import { getCurrentUser } from '$lib/auth/user-context.svelte';
+	import AdminNav from '$lib/components/AdminNav.svelte';
 	import PhotoThumbnail from '$lib/components/PhotoThumbnail.svelte';
 	import SyncStatusBadge from '$lib/components/SyncStatusBadge.svelte';
 	import type { DailyChore } from '$lib/db/schema';
@@ -32,133 +33,174 @@
 	}
 </script>
 
-<main class="container">
-	<header class="header">
-		<h1 class="title">Today's Chores</h1>
-		<div class="header-meta">
-			<div class="connection-status" class:online={connectionStatus.isOnline}>
-				{connectionStatus.isOnline ? 'Online' : 'Offline'}
+<AdminNav />
+
+<div class="page">
+	<main class="container">
+		<header class="header">
+			<h1 class="title">Today's Chores</h1>
+			<div class="header-meta">
+				<div class="connection-status" class:online={connectionStatus.isOnline}>
+					{connectionStatus.isOnline ? 'Online' : 'Offline'}
+				</div>
+				{#if syncEngine.pendingCount > 0}
+					<div class="sync-indicator">
+						{syncEngine.isSyncing ? 'Syncing...' : `${syncEngine.pendingCount} pending`}
+					</div>
+				{/if}
+				{#if syncEngine.pendingPhotoCount > 0}
+					<div class="photo-upload-indicator">
+						{#if syncEngine.currentPhotoUpload}
+							<span class="upload-spinner"></span>
+						{/if}
+						{syncEngine.currentPhotoUpload
+							? 'Uploading photo...'
+							: `${syncEngine.pendingPhotoCount} photos`}
+					</div>
+				{/if}
+				{#if syncEngine.failedCount > 0 || syncEngine.failedPhotoCount > 0}
+					<button
+						class="retry-button"
+						onclick={() => {
+							syncEngine.retryFailed();
+							syncEngine.retryFailedPhotos();
+						}}
+					>
+						{syncEngine.failedCount + syncEngine.failedPhotoCount} failed - Retry
+					</button>
+				{/if}
 			</div>
-			{#if syncEngine.pendingCount > 0}
-				<div class="sync-indicator">
-					{syncEngine.isSyncing ? 'Syncing...' : `${syncEngine.pendingCount} pending`}
-				</div>
-			{/if}
-			{#if syncEngine.pendingPhotoCount > 0}
-				<div class="photo-upload-indicator">
-					{#if syncEngine.currentPhotoUpload}
-						<span class="upload-spinner"></span>
-					{/if}
-					{syncEngine.currentPhotoUpload ? 'Uploading photo...' : `${syncEngine.pendingPhotoCount} photos`}
-				</div>
-			{/if}
-			{#if syncEngine.failedCount > 0 || syncEngine.failedPhotoCount > 0}
-				<button class="retry-button" onclick={() => {
-					syncEngine.retryFailed();
-					syncEngine.retryFailedPhotos();
-				}}>
-					{syncEngine.failedCount + syncEngine.failedPhotoCount} failed - Retry
-				</button>
-			{/if}
-		</div>
-	</header>
+		</header>
 
-	<div class="progress-bar-container">
-		<div class="progress-bar" style="width: {dailyChoreStore.progress}%"></div>
-	</div>
-	<div class="progress-text">
-		{dailyChoreStore.completedCount} of {dailyChoreStore.totalCount} complete ({dailyChoreStore.progress}%)
-	</div>
-
-	{#if dailyChoreStore.isLoading}
-		<div class="loading">
-			<div class="spinner"></div>
-			<p>Loading chores...</p>
+		<div class="progress-bar-container">
+			<div class="progress-bar" style="width: {dailyChoreStore.progress}%"></div>
 		</div>
-	{:else if dailyChoreStore.error}
-		<div class="error-message">
-			Error loading chores: {dailyChoreStore.error.message}
+		<div class="progress-text">
+			{dailyChoreStore.completedCount} of {dailyChoreStore.totalCount} complete ({dailyChoreStore.progress}%)
 		</div>
-	{:else if dailyChoreStore.totalCount === 0}
-		<div class="empty-state">
-			<p class="empty-title">No chores for today</p>
-			<p class="empty-subtitle">Chores will appear here when the admin adds them to the master list.</p>
-		</div>
-	{:else}
-		<div class="chore-list">
-			{#each dailyChoreStore.grouped as timeSlotGroup (timeSlotGroup.timeSlot)}
-				<section class="time-slot-section">
-					<h2 class="time-slot-header">{formatTimeSlot(timeSlotGroup.timeSlot)}</h2>
 
-					{#each timeSlotGroup.categories as categoryGroup (categoryGroup.name)}
-						<div class="category-group">
-							<h3 class="category-header">{categoryGroup.name}</h3>
+		{#if dailyChoreStore.isLoading}
+			<div class="loading">
+				<div class="spinner"></div>
+				<p>Loading chores...</p>
+			</div>
+		{:else if dailyChoreStore.error}
+			<div class="error-message">
+				Error loading chores: {dailyChoreStore.error.message}
+			</div>
+		{:else if dailyChoreStore.totalCount === 0}
+			<div class="empty-state">
+				<p class="empty-title">No chores for today</p>
+				<p class="empty-subtitle">
+					Chores will appear here when the admin adds them to the master list.
+				</p>
+			</div>
+		{:else}
+			<div class="chore-list">
+				{#each dailyChoreStore.grouped as timeSlotGroup (timeSlotGroup.timeSlot)}
+					<section class="time-slot-section">
+						<h2 class="time-slot-header">{formatTimeSlot(timeSlotGroup.timeSlot)}</h2>
 
-							<ul class="chore-items">
-								{#each categoryGroup.chores as chore (chore._id)}
-									<li class="chore-item" class:completed={chore.isCompleted} transition:slide={{ duration: 150 }}>
-										<button
-											class="toggle-button"
-											class:checked={chore.isCompleted}
-											onclick={() => handleChoreAction(chore)}
-											aria-label={chore.isCompleted ? 'Mark incomplete' : (chore.requiresPhoto ? 'Take photo to complete' : 'Mark complete')}
+						{#each timeSlotGroup.categories as categoryGroup (categoryGroup.name)}
+							<div class="category-group">
+								<h3 class="category-header">{categoryGroup.name}</h3>
+
+								<ul class="chore-items">
+									{#each categoryGroup.chores as chore (chore._id)}
+										<li
+											class="chore-item"
+											class:completed={chore.isCompleted}
+											transition:slide={{ duration: 150 }}
 										>
-											{#if chore.isCompleted}
-												<svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-													<polyline points="20 6 9 17 4 12"></polyline>
-												</svg>
-											{:else if chore.requiresPhoto}
-												<svg class="camera-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-													<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-													<circle cx="12" cy="13" r="4"></circle>
-												</svg>
-											{/if}
-										</button>
-
-										<div class="chore-content">
-											<span class="chore-text">
-												{chore.text}
-												{#if chore.requiresPhoto && !chore.isCompleted}
-													<span class="badge photo-required" title="Photo required">Photo</span>
+											<button
+												class="toggle-button"
+												class:checked={chore.isCompleted}
+												onclick={() => handleChoreAction(chore)}
+												aria-label={chore.isCompleted
+													? 'Mark incomplete'
+													: chore.requiresPhoto
+														? 'Take photo to complete'
+														: 'Mark complete'}
+											>
+												{#if chore.isCompleted}
+													<svg
+														class="check-icon"
+														viewBox="0 0 24 24"
+														fill="none"
+														stroke="currentColor"
+														stroke-width="3"
+													>
+														<polyline points="20 6 9 17 4 12"></polyline>
+													</svg>
+												{:else if chore.requiresPhoto}
+													<svg
+														class="camera-icon"
+														viewBox="0 0 24 24"
+														fill="none"
+														stroke="currentColor"
+														stroke-width="2"
+													>
+														<path
+															d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+														></path>
+														<circle cx="12" cy="13" r="4"></circle>
+													</svg>
 												{/if}
-											</span>
+											</button>
 
-											{#if chore.isAdHoc}
-												<span class="badge adhoc">Today only</span>
+											<div class="chore-content">
+												<span class="chore-text">
+													{chore.text}
+													{#if chore.requiresPhoto && !chore.isCompleted}
+														<span class="badge photo-required" title="Photo required">Photo</span>
+													{/if}
+												</span>
+
+												{#if chore.isAdHoc}
+													<span class="badge adhoc">Today only</span>
+												{/if}
+
+												{#if chore.isCompleted && chore.completedBy}
+													<div class="completion-info" transition:fade={{ duration: 200 }}>
+														{chore.completedBy} at {formatCompletionTime(chore.completedAt)}
+													</div>
+												{/if}
+											</div>
+
+											{#if chore.isCompleted && chore.photoStorageId}
+												{#key chore.photoStorageId}
+													<PhotoThumbnail choreId={chore._id} storageId={chore.photoStorageId} />
+												{/key}
 											{/if}
 
-											{#if chore.isCompleted && chore.completedBy}
-												<div class="completion-info" transition:fade={{ duration: 200 }}>
-													{chore.completedBy} at {formatCompletionTime(chore.completedAt)}
-												</div>
-											{/if}
-										</div>
-
-										{#if chore.isCompleted && chore.photoStorageId}
-											{#key chore.photoStorageId}
-												<PhotoThumbnail choreId={chore._id} storageId={chore.photoStorageId} />
-											{/key}
-										{/if}
-
-										<SyncStatusBadge status={chore.syncStatus} />
-									</li>
-								{/each}
-							</ul>
-						</div>
-					{/each}
-				</section>
-			{/each}
-		</div>
-	{/if}
-</main>
+											<SyncStatusBadge status={chore.syncStatus} />
+										</li>
+									{/each}
+								</ul>
+							</div>
+						{/each}
+					</section>
+				{/each}
+			</div>
+		{/if}
+	</main>
+</div>
 
 <style>
+	.page {
+		min-height: 100vh;
+		background-color: #f9fafb;
+	}
+
 	.container {
 		max-width: 600px;
 		margin: 0 auto;
 		padding: 1rem;
 		padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
-		font-family: system-ui, -apple-system, sans-serif;
+		font-family:
+			system-ui,
+			-apple-system,
+			sans-serif;
 		-webkit-overflow-scrolling: touch;
 	}
 
@@ -379,7 +421,10 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+		transition:
+			background-color 0.15s ease,
+			border-color 0.15s ease,
+			transform 0.1s ease;
 		/* Larger touch target for mobile - toggle button positioned on right via flex order */
 		order: 1;
 		/* Remove browser tap highlight (the blue square) on mobile */

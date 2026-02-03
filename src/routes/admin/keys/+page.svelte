@@ -1,210 +1,564 @@
 <script lang="ts">
-  import { useQuery, useConvexClient } from 'convex-svelte';
-  import { api } from '../../../convex/_generated/api';
-  import { adminAuth } from '$lib/auth/admin.svelte';
-  import { goto } from '$app/navigation';
-  import { resolve } from '$app/paths';
-  import type { Id } from '../../../convex/_generated/dataModel';
+	import { useQuery, useConvexClient } from 'convex-svelte';
+	import { api } from '../../../convex/_generated/api';
+	import { resolve } from '$app/paths';
+	import type { Id } from '../../../convex/_generated/dataModel';
+	import AdminNav from '$lib/components/AdminNav.svelte';
 
-  // Get Convex client for mutations
-  const client = useConvexClient();
+	// Get Convex client for mutations
+	const client = useConvexClient();
 
-  // Query for listing keys
-  const keysQuery = useQuery(api.accessKeys.list, {});
+	// Query for listing keys
+	const keysQuery = useQuery(api.accessKeys.list, {});
 
-  // Form state
-  let newKeyName = $state('');
-  let isCreating = $state(false);
-  let createError = $state<string | null>(null);
+	// Form state
+	let newKeyName = $state('');
+	let isCreating = $state(false);
+	let createError = $state<string | null>(null);
 
-  // Created key display (shown after creation)
-  let createdKey = $state<string | null>(null);
+	// Created key display (shown after creation)
+	let createdKey = $state<string | null>(null);
 
-  async function handleCreate(e: SubmitEvent) {
-    e.preventDefault();
-    if (!newKeyName.trim() || isCreating) return;
+	// Revoked keys panel state
+	let showRevoked = $state(false);
 
-    isCreating = true;
-    createError = null;
+	// Split keys into active and revoked
+	const activeKeys = $derived(keysQuery.data?.filter((k) => !k.isRevoked) ?? []);
+	const revokedKeys = $derived(keysQuery.data?.filter((k) => k.isRevoked) ?? []);
 
-    try {
-      const result = await client.mutation(api.accessKeys.create, { displayName: newKeyName.trim() });
-      createdKey = result.key;
-      newKeyName = '';
-    } catch (error) {
-      createError = error instanceof Error ? error.message : 'Failed to create key';
-    } finally {
-      isCreating = false;
-    }
-  }
+	async function handleCreate(e: SubmitEvent) {
+		e.preventDefault();
+		if (!newKeyName.trim() || isCreating) return;
 
-  async function handleRevoke(id: Id<"accessKeys">, displayName: string) {
-    if (!confirm(`Revoke access key "${displayName}"? This cannot be undone.`)) return;
+		isCreating = true;
+		createError = null;
 
-    try {
-      await client.mutation(api.accessKeys.revoke, { id });
-    } catch (error) {
-      console.error('Failed to revoke key:', error);
-      alert('Failed to revoke key');
-    }
-  }
+		try {
+			const result = await client.mutation(api.accessKeys.create, {
+				displayName: newKeyName.trim()
+			});
+			createdKey = result.key;
+			newKeyName = '';
+		} catch (error) {
+			createError = error instanceof Error ? error.message : 'Failed to create key';
+		} finally {
+			isCreating = false;
+		}
+	}
 
-  function copyKey() {
-    if (createdKey) {
-      navigator.clipboard.writeText(`${window.location.origin}/?key=${createdKey}`);
-    }
-  }
+	async function handleRevoke(id: Id<'accessKeys'>, displayName: string) {
+		if (!confirm(`Revoke access key "${displayName}"? This cannot be undone.`)) return;
 
-  function dismissCreatedKey() {
-    createdKey = null;
-  }
+		try {
+			await client.mutation(api.accessKeys.revoke, { id });
+		} catch (error) {
+			console.error('Failed to revoke key:', error);
+			alert('Failed to revoke key');
+		}
+	}
 
-  function handleSignOut() {
-    adminAuth.signOut();
-    goto(resolve('/admin/login'));
-  }
+	function copyKey() {
+		if (createdKey) {
+			navigator.clipboard.writeText(`${window.location.origin}/?key=${createdKey}`);
+		}
+	}
 
-  // Format date for display
-  function formatDate(timestamp: number): string {
-    return new Date(timestamp).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  }
+	function dismissCreatedKey() {
+		createdKey = null;
+	}
+
+	// Format date for display
+	function formatDate(timestamp: number): string {
+		return new Date(timestamp).toLocaleDateString('en-US', {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric'
+		});
+	}
 </script>
 
 <svelte:head>
-  <title>Access Keys - Kitchen Sink Farm Admin</title>
+	<title>Access Keys - Kitchen Sink Farm Admin</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50">
-  <!-- Header -->
-  <header class="bg-white shadow-sm">
-    <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
-      <h1 class="text-xl font-semibold text-gray-900">Access Keys</h1>
-      <button
-        onclick={handleSignOut}
-        class="text-sm text-gray-600 hover:text-gray-900"
-      >
-        Sign Out
-      </button>
-    </div>
-  </header>
+<div class="page">
+	<AdminNav />
 
-  <main class="max-w-4xl mx-auto px-4 py-8">
-    <!-- Created Key Banner -->
-    {#if createdKey}
-      <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-        <div class="flex items-start justify-between">
-          <div>
-            <h3 class="font-medium text-green-800">Access Key Created!</h3>
-            <p class="text-sm text-green-700 mt-1">
-              Share this link with the worker. They only need to open it once.
-            </p>
-            <div class="mt-2 flex items-center gap-2">
-              <code class="px-2 py-1 bg-white rounded text-sm font-mono">
-                {window.location.origin}/?key={createdKey}
-              </code>
-              <button
-                onclick={copyKey}
-                class="px-2 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
-              >
-                Copy
-              </button>
-            </div>
-          </div>
-          <button
-            onclick={dismissCreatedKey}
-            class="text-green-600 hover:text-green-800"
-            aria-label="Dismiss"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-            </svg>
-          </button>
-        </div>
-      </div>
-    {/if}
+	<main class="main">
+		<!-- Created Key Banner -->
+		{#if createdKey}
+			<div class="success-banner">
+				<div class="success-content">
+					<div class="success-info">
+						<h3>Access Key Created!</h3>
+						<p>Share this link with the worker. They only need to open it once.</p>
+						<div class="key-display">
+							<code>{window.location.origin}/?key={createdKey}</code>
+							<button onclick={copyKey} class="btn-copy">Copy</button>
+						</div>
+					</div>
+					<button onclick={dismissCreatedKey} class="btn-dismiss" aria-label="Dismiss">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="20"
+							height="20"
+							viewBox="0 0 20 20"
+							fill="currentColor"
+						>
+							<path
+								fill-rule="evenodd"
+								d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+								clip-rule="evenodd"
+							/>
+						</svg>
+					</button>
+				</div>
+			</div>
+		{/if}
 
-    <!-- Create New Key Form -->
-    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-      <h2 class="text-lg font-medium text-gray-900 mb-4">Create New Access Key</h2>
-      <form onsubmit={handleCreate} class="flex gap-3">
-        <input
-          type="text"
-          bind:value={newKeyName}
-          placeholder="Display name (e.g., John's Phone)"
-          required
-          class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <button
-          type="submit"
-          disabled={isCreating || !newKeyName.trim()}
-          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400 transition-colors"
-        >
-          {isCreating ? 'Creating...' : 'Create Key'}
-        </button>
-      </form>
-      {#if createError}
-        <p class="mt-2 text-sm text-red-600">{createError}</p>
-      {/if}
-    </div>
+		<!-- Create New Key Form -->
+		<div class="card">
+			<h2 class="card-title">Create New Access Key</h2>
+			<form onsubmit={handleCreate} class="create-form">
+				<input
+					type="text"
+					bind:value={newKeyName}
+					placeholder="Display name (e.g., John's Phone)"
+					required
+					class="form-input"
+				/>
+				<button type="submit" disabled={isCreating || !newKeyName.trim()} class="btn-primary">
+					{isCreating ? 'Creating...' : 'Create Key'}
+				</button>
+			</form>
+			{#if createError}
+				<p class="error-message">{createError}</p>
+			{/if}
+		</div>
 
-    <!-- Keys List -->
-    <div class="bg-white rounded-lg shadow-sm">
-      <div class="px-6 py-4 border-b border-gray-200">
-        <h2 class="text-lg font-medium text-gray-900">Existing Keys</h2>
-      </div>
+		<!-- Active Keys List -->
+		<div class="card">
+			<div class="card-header">
+				<h2 class="card-title">Active Keys</h2>
+			</div>
 
-      {#if keysQuery.isLoading}
-        <div class="p-6 text-center text-gray-500">Loading keys...</div>
-      {:else if keysQuery.error}
-        <div class="p-6 text-center text-red-600">Failed to load keys</div>
-      {:else if !keysQuery.data?.length}
-        <div class="p-6 text-center text-gray-500">
-          No access keys yet. Create one above to share access with workers.
-        </div>
-      {:else}
-        <ul class="divide-y divide-gray-200">
-          {#each keysQuery.data as key}
-            <li class="px-6 py-4 flex items-center justify-between">
-              <div>
-                <p class="font-medium text-gray-900">
-                  {key.displayName}
-                  {#if key.isRevoked}
-                    <span class="ml-2 px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded">
-                      Revoked
-                    </span>
-                  {/if}
-                </p>
-                <p class="text-sm text-gray-500">
-                  Created {formatDate(key.createdAt)}
-                  {#if key.lastUsedAt}
-                    <span class="mx-1">&bull;</span>
-                    Last used {formatDate(key.lastUsedAt)}
-                  {/if}
-                </p>
-              </div>
-              {#if !key.isRevoked}
-                <button
-                  onclick={() => handleRevoke(key.id, key.displayName)}
-                  class="text-sm text-red-600 hover:text-red-800"
-                >
-                  Revoke
-                </button>
-              {/if}
-            </li>
-          {/each}
-        </ul>
-      {/if}
-    </div>
+			{#if keysQuery.isLoading}
+				<div class="empty-state">Loading keys...</div>
+			{:else if keysQuery.error}
+				<div class="empty-state error">Failed to load keys</div>
+			{:else if activeKeys.length === 0}
+				<div class="empty-state">
+					No active access keys. Create one above to share access with workers.
+				</div>
+			{:else}
+				<ul class="keys-list">
+					{#each activeKeys as key (key.id)}
+						<li class="key-item">
+							<span class="key-name">{key.displayName}</span>
+							<span class="key-meta">
+								{formatDate(key.createdAt)}
+								{#if key.lastUsedAt}
+									<span class="separator">&bull;</span>
+									used {formatDate(key.lastUsedAt)}
+								{/if}
+							</span>
+							<button
+								onclick={() => handleRevoke(key.id, key.displayName)}
+								class="btn-revoke"
+								title="Revoke access"
+							>
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<circle cx="12" cy="12" r="10"></circle>
+									<line x1="15" y1="9" x2="9" y2="15"></line>
+									<line x1="9" y1="9" x2="15" y2="15"></line>
+								</svg>
+							</button>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</div>
 
-    <!-- Back to App -->
-    <div class="mt-6 text-center">
-      <a href={resolve('/')} class="text-sm text-gray-500 hover:text-gray-700">
-        Back to app
-      </a>
-    </div>
-  </main>
+		<!-- Revoked Keys (collapsible) -->
+		{#if revokedKeys.length > 0}
+			<div class="card revoked-card">
+				<button class="collapsible-header" onclick={() => (showRevoked = !showRevoked)}>
+					<span class="collapsible-title">
+						Revoked Keys
+						<span class="revoked-count">{revokedKeys.length}</span>
+					</span>
+					<svg
+						class="chevron"
+						class:expanded={showRevoked}
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<polyline points="6 9 12 15 18 9"></polyline>
+					</svg>
+				</button>
+
+				{#if showRevoked}
+					<ul class="keys-list revoked-list">
+						{#each revokedKeys as key (key.id)}
+							<li class="key-item revoked">
+								<span class="key-name">{key.displayName}</span>
+								<span class="key-meta">
+									{formatDate(key.createdAt)}
+									{#if key.lastUsedAt}
+										<span class="separator">&bull;</span>
+										used {formatDate(key.lastUsedAt)}
+									{/if}
+								</span>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			</div>
+		{/if}
+	</main>
 </div>
+
+<style>
+	.page {
+		min-height: 100vh;
+		background-color: #f9fafb;
+	}
+
+	/* Main Content */
+	.main {
+		max-width: 56rem;
+		margin: 0 auto;
+		padding: 2rem 1rem;
+	}
+
+	/* Success Banner */
+	.success-banner {
+		margin-bottom: 1.5rem;
+		padding: 1rem;
+		background-color: #f0fdf4;
+		border: 1px solid #bbf7d0;
+		border-radius: 0.75rem;
+	}
+
+	.success-content {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+		gap: 1rem;
+	}
+
+	.success-info h3 {
+		font-weight: 500;
+		color: #166534;
+		margin: 0 0 0.25rem 0;
+	}
+
+	.success-info p {
+		font-size: 0.875rem;
+		color: #15803d;
+		margin: 0 0 0.75rem 0;
+	}
+
+	.key-display {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+
+	.key-display code {
+		padding: 0.375rem 0.5rem;
+		background-color: white;
+		border-radius: 0.25rem;
+		font-size: 0.8125rem;
+		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+		word-break: break-all;
+	}
+
+	.btn-copy {
+		padding: 0.375rem 0.75rem;
+		font-size: 0.875rem;
+		background-color: #22c55e;
+		color: white;
+		border: none;
+		border-radius: 0.25rem;
+		cursor: pointer;
+		white-space: nowrap;
+	}
+
+	.btn-copy:hover {
+		background-color: #16a34a;
+	}
+
+	.btn-dismiss {
+		padding: 0.25rem;
+		background: none;
+		border: none;
+		color: #22c55e;
+		cursor: pointer;
+		flex-shrink: 0;
+	}
+
+	.btn-dismiss:hover {
+		color: #16a34a;
+	}
+
+	/* Cards */
+	.card {
+		background-color: white;
+		border-radius: 0.75rem;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+		margin-bottom: 1.5rem;
+		overflow: hidden;
+	}
+
+	.card-header {
+		padding: 1rem 1.5rem;
+		border-bottom: 1px solid #e5e7eb;
+	}
+
+	.card-title {
+		font-size: 1.125rem;
+		font-weight: 500;
+		color: #111827;
+		margin: 0;
+	}
+
+	.card > .card-title {
+		padding: 1.5rem 1.5rem 0;
+	}
+
+	/* Create Form */
+	.create-form {
+		display: flex;
+		gap: 0.75rem;
+		padding: 1rem 1.5rem 1.5rem;
+	}
+
+	.form-input {
+		flex: 1;
+		padding: 0.625rem 0.75rem;
+		border: 1px solid #d1d5db;
+		border-radius: 0.375rem;
+		font-size: 1rem;
+		min-height: 44px;
+		box-sizing: border-box;
+	}
+
+	.form-input:focus {
+		outline: none;
+		border-color: #22c55e;
+		box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+	}
+
+	.form-input::placeholder {
+		color: #9ca3af;
+	}
+
+	.btn-primary {
+		padding: 0.625rem 1rem;
+		background-color: #22c55e;
+		color: white;
+		font-weight: 500;
+		border: none;
+		border-radius: 0.375rem;
+		font-size: 0.9375rem;
+		cursor: pointer;
+		transition: background-color 0.15s;
+		white-space: nowrap;
+		min-height: 44px;
+	}
+
+	.btn-primary:hover:not(:disabled) {
+		background-color: #16a34a;
+	}
+
+	.btn-primary:disabled {
+		background-color: #86efac;
+		cursor: not-allowed;
+	}
+
+	.error-message {
+		padding: 0 1.5rem 1rem;
+		color: #dc2626;
+		font-size: 0.875rem;
+		margin: 0;
+	}
+
+	/* Keys List */
+	.keys-list {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+	}
+
+	.key-item {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		padding: 0.75rem 1.5rem;
+		border-bottom: 1px solid #e5e7eb;
+	}
+
+	.key-item:last-child {
+		border-bottom: none;
+	}
+
+	.key-name {
+		font-weight: 500;
+		color: #111827;
+		white-space: nowrap;
+	}
+
+	.key-meta {
+		flex: 1;
+		font-size: 0.8125rem;
+		color: #9ca3af;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.separator {
+		margin: 0 0.25rem;
+	}
+
+	.btn-revoke {
+		color: #dc2626;
+		background-color: #fef2f2;
+		border: none;
+		cursor: pointer;
+		padding: 0.5rem;
+		border-radius: 0.375rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition:
+			color 0.15s,
+			background-color 0.15s;
+		flex-shrink: 0;
+		margin-left: auto;
+	}
+
+	.btn-revoke svg {
+		width: 1.25rem;
+		height: 1.25rem;
+	}
+
+	.btn-revoke:hover {
+		color: #b91c1c;
+		background-color: #fee2e2;
+	}
+
+	/* Revoked Keys Collapsible */
+	.revoked-card {
+		overflow: hidden;
+	}
+
+	.collapsible-header {
+		width: 100%;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 1rem 1.5rem;
+		background: none;
+		border: none;
+		cursor: pointer;
+		text-align: left;
+		transition: background-color 0.15s;
+	}
+
+	.collapsible-header:hover {
+		background-color: #f9fafb;
+	}
+
+	.collapsible-title {
+		font-size: 1rem;
+		font-weight: 500;
+		color: #6b7280;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.revoked-count {
+		font-size: 0.75rem;
+		font-weight: 600;
+		background-color: #f3f4f6;
+		color: #6b7280;
+		padding: 0.125rem 0.5rem;
+		border-radius: 9999px;
+	}
+
+	.chevron {
+		width: 1.25rem;
+		height: 1.25rem;
+		color: #9ca3af;
+		transition: transform 0.2s;
+	}
+
+	.chevron.expanded {
+		transform: rotate(180deg);
+	}
+
+	.revoked-list {
+		border-top: 1px solid #e5e7eb;
+	}
+
+	.key-item.revoked {
+		background-color: #fafafa;
+	}
+
+	.key-item.revoked .key-name {
+		color: #9ca3af;
+	}
+
+	.key-item.revoked .key-meta {
+		color: #d1d5db;
+	}
+
+	/* Empty/Loading States */
+	.empty-state {
+		padding: 2rem 1.5rem;
+		text-align: center;
+		color: #6b7280;
+	}
+
+	.empty-state.error {
+		color: #dc2626;
+	}
+
+	/* Back Link */
+	.back-link {
+		margin-top: 1.5rem;
+		text-align: center;
+	}
+
+	.back-link a {
+		font-size: 0.875rem;
+		color: #6b7280;
+		text-decoration: none;
+	}
+
+	.back-link a:hover {
+		color: #111827;
+	}
+
+	/* Responsive */
+	@media (max-width: 640px) {
+		.create-form {
+			flex-direction: column;
+		}
+
+		.key-item {
+			padding: 0.75rem 1rem;
+			gap: 0.75rem;
+		}
+
+		.key-meta {
+			display: none;
+		}
+	}
+</style>

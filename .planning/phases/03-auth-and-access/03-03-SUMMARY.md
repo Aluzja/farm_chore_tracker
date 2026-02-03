@@ -2,7 +2,7 @@
 phase: 03-auth-and-access
 plan: 03
 subsystem: ui
-tags: [svelte, admin, auth, access-keys, tailwind]
+tags: [svelte, admin, auth, access-keys]
 
 # Dependency graph
 requires:
