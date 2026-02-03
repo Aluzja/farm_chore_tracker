@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-01)
 
 **Core value:** Multiple people can efficiently coordinate completing daily farm chores without stepping on each other's toes, with photo verification where needed.
-**Current focus:** Phase 4 - Core Chore Workflow (complete)
+**Current focus:** Phase 5 - Photo Verification (in progress)
 
 ## Current Position
 
-Phase: 4 of 6 (Core Chore Workflow)
-Plan: 4 of 4 in current phase
-Status: Phase complete
-Last activity: 2026-02-03 - Completed 04-04-PLAN.md (Ad-hoc Chores and User Identity)
+Phase: 5 of 6 (Photo Verification)
+Plan: 1 of 4 in current phase
+Status: In progress
+Last activity: 2026-02-03 - Completed 05-01-PLAN.md (Photo Capture Infrastructure)
 
-Progress: [█████████████░] 80%
+Progress: [█████████████░░] 81%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
-- Average duration: 4.5 min
-- Total execution time: 0.9 hours
+- Total plans completed: 13
+- Average duration: 4.3 min
+- Total execution time: 0.93 hours
 
 **By Phase:**
 
@@ -31,9 +31,10 @@ Progress: [█████████████░] 80%
 | 02-data-layer | 2 | 7 min | 3.5 min |
 | 03-auth-and-access | 3 | 21 min | 7 min |
 | 04-core-chore-workflow | 4 | 13 min | 3.25 min |
+| 05-photo-verification | 1 | 2 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-03 (5 min), 04-01 (3 min), 04-02 (4 min), 04-03 (4 min), 04-04 (2 min)
+- Last 5 plans: 04-01 (3 min), 04-02 (4 min), 04-03 (4 min), 04-04 (2 min), 05-01 (2 min)
 - Trend: stable/improving
 
 *Updated after each plan completion*
@@ -45,6 +46,9 @@ Progress: [█████████████░] 80%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- 05-01: Camera access via file input with capture=environment (simpler than getUserMedia)
+- 05-01: Strip EXIF metadata on compression for privacy (preserveExif: false)
+- 05-01: Store Blob directly in IndexedDB (not base64) for efficiency
 - 04-04: User context via module exports: setCurrentUser/getCurrentUser for cross-component sharing
 - 04-04: Layout effect syncs userName to user context when access validated
 - 04-04: Ad-hoc form defaults time slot to current time of day
@@ -92,8 +96,8 @@ From research (to address during implementation):
 ## Session Continuity
 
 Last session: 2026-02-03
-Stopped at: Completed 04-04-PLAN.md (Ad-hoc Chores and User Identity)
-Resume file: Phase 5 planning required
+Stopped at: Completed 05-01-PLAN.md (Photo Capture Infrastructure)
+Resume file: .planning/phases/05-photo-verification/05-02-PLAN.md
 
 ## Phase 4 Plans Summary
 
@@ -132,3 +136,18 @@ Key technical decisions:
 - Access key validate query is public for worker authentication
 - AdminAuth class uses Svelte 5 $state runes for reactive state
 - convex-svelte mutation pattern: useConvexClient().mutation() (no useMutation export)
+
+## Phase 5 Plans Summary
+
+| Wave | Plan | Description | Autonomous | Status |
+|------|------|-------------|------------|--------|
+| 1 | 05-01 | Photo Capture Infrastructure | Autonomous | Complete |
+| 2 | 05-02 | Photo Queue Operations | Autonomous | Pending |
+| 3 | 05-03 | Photo Capture UI | Autonomous | Pending |
+| 3 | 05-04 | Convex Upload Integration | Autonomous | Pending |
+
+Key technical decisions:
+- browser-image-compression for ~1MB JPEG output with EXIF stripping
+- HTML5 file input with capture=environment for camera access
+- IndexedDB version 3 with photoQueue store
+- PhotoQueueEntry Zod schema with uploadStatus enum for retry management
