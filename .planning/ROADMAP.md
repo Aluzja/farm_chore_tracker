@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Data Layer** - Three-layer offline-first architecture with IndexedDB and sync engine
 - [x] **Phase 3: Auth and Access** - Admin authentication and URL key-based user access
 - [x] **Phase 4: Core Chore Workflow** - Master list, daily clone, completion, real-time sync
-- [ ] **Phase 5: Photo Verification** - Camera capture, offline queue, Convex file storage
+- [x] **Phase 5: Photo Verification** - Camera capture, offline queue, Convex file storage
 - [ ] **Phase 6: Polish and History** - Sync indicators, 7-day history, UX refinement
 
 ## Phase Details
@@ -106,10 +106,10 @@ Plans:
 **Plans**: 4 plans (3 waves)
 
 Plans:
-- [ ] 05-01-PLAN.md — Photo capture module and IndexedDB schema extension
-- [ ] 05-02-PLAN.md — Convex schema and photo storage API
-- [ ] 05-03-PLAN.md — Photo upload queue and sync engine integration
-- [ ] 05-04-PLAN.md — Worker UI integration with capture flow and photo viewing
+- [x] 05-01-PLAN.md — Photo capture module and IndexedDB schema extension
+- [x] 05-02-PLAN.md — Convex schema and photo storage API
+- [x] 05-03-PLAN.md — Photo upload queue and sync engine integration
+- [x] 05-04-PLAN.md — Worker UI integration with capture flow and photo viewing
 
 ### Phase 6: Polish and History
 **Goal**: Users have visibility into sync status and can review past 7 days of completions
@@ -121,12 +121,12 @@ Plans:
   3. History shows completion photos, timestamps, and who completed
   4. UI is optimized for field use: large touch targets, minimal taps
   5. App performs well on mid-range mobile devices
-**Plans**: TBD
+**Plans**: 3 plans (2 waves)
 
 Plans:
-- [ ] 06-01: Sync status indicators
-- [ ] 06-02: 7-day history view
-- [ ] 06-03: UX polish and performance optimization
+- [ ] 06-01-PLAN.md — SyncStatusBadge component with retry capability
+- [ ] 06-02-PLAN.md — 7-day history view with date-grouped display
+- [ ] 06-03-PLAN.md — UX polish with transitions and touch optimization
 
 ## Progress
 
@@ -139,8 +139,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 2. Data Layer | 3/3 | ✓ Complete | 2026-02-02 |
 | 3. Auth and Access | 4/4 | ✓ Complete | 2026-02-02 |
 | 4. Core Chore Workflow | 4/4 | ✓ Complete | 2026-02-02 |
-| 5. Photo Verification | 0/4 | Planned | - |
-| 6. Polish and History | 0/3 | Not started | - |
+| 5. Photo Verification | 4/4 | ✓ Complete | 2026-02-02 |
+| 6. Polish and History | 0/3 | Ready | - |
 
 ## Requirement Coverage
 
