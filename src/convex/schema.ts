@@ -45,6 +45,7 @@ export default defineSchema({
     animalCategory: v.string(), // "chickens" | "goats" | "pigs" | "general" etc.
     sortOrder: v.number(), // Display order within group
     isActive: v.boolean(), // Soft delete / disable
+    requiresPhoto: v.optional(v.boolean()), // Admin configures if photo proof needed
     createdBy: v.optional(v.id("users")), // Admin who created
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -65,6 +66,10 @@ export default defineSchema({
     completedAt: v.optional(v.string()), // ISO datetime
     completedBy: v.optional(v.string()), // Display name
     isAdHoc: v.boolean(), // true for today-only chores
+    requiresPhoto: v.boolean(), // Copied from master on clone (defaults false)
+    photoStorageId: v.optional(v.id("_storage")), // Convex file storage ID
+    photoCapturedAt: v.optional(v.number()), // When photo was taken
+    photoCapturedBy: v.optional(v.string()), // Who took the photo
     lastModified: v.number(),
   })
     .index("by_date", ["date"])

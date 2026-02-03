@@ -69,6 +69,7 @@ export const cloneMasterToDaily = mutation({
         sortOrder: master.sortOrder,
         isCompleted: false,
         isAdHoc: false,
+        requiresPhoto: master.requiresPhoto ?? false,
         lastModified: now,
       });
       const inserted = await ctx.db.get(id);
@@ -158,6 +159,7 @@ export const addAdHoc = mutation({
       sortOrder: maxOrder + 1,
       isCompleted: false,
       isAdHoc: true,
+      requiresPhoto: false, // Ad-hoc chores don't require photo proof
       lastModified: args.lastModified,
     });
   },
