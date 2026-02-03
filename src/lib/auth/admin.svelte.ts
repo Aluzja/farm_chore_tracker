@@ -66,12 +66,14 @@ class AdminAuth {
 
 	async checkAuth(): Promise<void> {
 		if (!browser || !this.client) {
+			console.log('[AdminAuth] checkAuth: no browser or client');
 			this.state = 'unauthenticated';
 			return;
 		}
 
 		// Check if we have a stored token
 		const token = getStoredToken();
+		console.log('[AdminAuth] checkAuth: stored token exists:', !!token);
 		if (!token) {
 			this.state = 'unauthenticated';
 			return;
@@ -79,9 +81,12 @@ class AdminAuth {
 
 		// Set the auth token on the client
 		this.client.setAuth(async () => token);
+		console.log('[AdminAuth] checkAuth: set auth on client');
 
 		try {
+			console.log('[AdminAuth] checkAuth: querying currentUser...');
 			const user = await this.client.query(api.users.currentUser, {});
+			console.log('[AdminAuth] checkAuth: currentUser result:', user);
 			if (user) {
 				this.userId = user._id;
 				this.isAdmin = user.isAdmin ?? false;
@@ -98,8 +103,11 @@ class AdminAuth {
 				}
 			} else {
 				// Token might be expired, try to refresh
+				console.log('[AdminAuth] checkAuth: no user returned, trying refresh...');
 				const refreshed = await this.refreshToken();
+				console.log('[AdminAuth] checkAuth: refresh result:', refreshed);
 				if (!refreshed) {
+					console.log('[AdminAuth] checkAuth: refresh failed, clearing tokens');
 					clearTokens();
 					this.state = 'unauthenticated';
 					this.userId = null;
