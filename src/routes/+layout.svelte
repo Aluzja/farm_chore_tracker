@@ -23,9 +23,21 @@
 	// Get Convex client at component init (must be called at top level, not in onMount)
 	const convexClient = browser ? useConvexClient() : null;
 
-	// Set up auth token provider on the client
+	// Set up auth - read token from the namespaced localStorage key that @convex-dev/auth uses
 	if (browser && convexClient) {
-		convexClient.setAuth(async () => getAuthToken());
+		const escapedNamespace = PUBLIC_CONVEX_URL.replace(/[^a-zA-Z0-9]/g, '');
+		const tokenKey = `convexAuthJwt_${escapedNamespace}`;
+
+		convexClient.setAuth(async ({ forceRefreshToken }) => {
+			const token = localStorage.getItem(tokenKey);
+			console.log(
+				'[Layout] Auth fetcher called, token exists:',
+				!!token,
+				'forceRefresh:',
+				forceRefreshToken
+			);
+			return token;
+		});
 	}
 
 	onMount(async () => {
