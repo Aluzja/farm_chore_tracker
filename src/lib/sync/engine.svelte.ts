@@ -9,6 +9,16 @@ import {
 	markFailed,
 	getQueueLength
 } from './queue';
+import {
+	getPhotoQueue,
+	removePhoto,
+	incrementPhotoRetry,
+	markPhotoFailed,
+	markPhotoUploading,
+	getPendingPhotoCount,
+	getFailedPhotoCount
+} from '$lib/photo/queue';
+import { uploadPhoto } from '$lib/photo/upload';
 import { getChore, putChore, getChoresByStatus, getDailyChore, putDailyChore } from '$lib/db/operations';
 import type { Mutation } from '$lib/db/schema';
 
@@ -41,6 +51,11 @@ class SyncEngine {
 	lastSyncedAt = $state<number | null>(null);
 	lastError = $state<string | null>(null);
 
+	// Photo queue state
+	pendingPhotoCount = $state(0);
+	failedPhotoCount = $state(0);
+	currentPhotoUpload = $state<string | null>(null);
+
 	private syncIntervalId: ReturnType<typeof setInterval> | null = null;
 	private initialized = false;
 
@@ -56,9 +71,13 @@ class SyncEngine {
 		if (!browser || this.initialized) return;
 		this.initialized = true;
 
-		// Initial count
+		// Initial mutation queue counts
 		this.pendingCount = await getQueueLength();
 		this.failedCount = (await getChoresByStatus('failed')).length;
+
+		// Initial photo queue counts
+		this.pendingPhotoCount = await getPendingPhotoCount();
+		this.failedPhotoCount = await getFailedPhotoCount();
 
 		// Process queue if we start online
 		if (connectionStatus.isOnline) {
@@ -119,6 +138,9 @@ class SyncEngine {
 				}
 			}
 
+			// Process photo queue after mutations
+			await this.processPhotoQueue();
+
 			this.lastSyncedAt = Date.now();
 		} catch (error) {
 			this.lastError = error instanceof Error ? error.message : 'Sync failed';
@@ -126,6 +148,39 @@ class SyncEngine {
 		} finally {
 			this.isSyncing = false;
 		}
+	}
+
+	async processPhotoQueue(): Promise<void> {
+		const client = getConvexClient();
+		if (!client || !connectionStatus.isOnline) return;
+
+		const photos = await getPhotoQueue();
+		this.pendingPhotoCount = photos.filter((p) => p.uploadStatus !== 'failed').length;
+
+		// Process sequentially (one at a time)
+		for (const photo of photos) {
+			if (photo.uploadStatus === 'failed') continue;
+
+			this.currentPhotoUpload = photo.id;
+			await markPhotoUploading(photo.id);
+
+			try {
+				await uploadPhoto(client, photo.blob, photo.dailyChoreClientId, photo.capturedAt, photo.capturedBy);
+				await removePhoto(photo.id);
+				this.pendingPhotoCount = Math.max(0, this.pendingPhotoCount - 1);
+			} catch (error) {
+				const retryCount = await incrementPhotoRetry(photo.id);
+				if (retryCount >= MAX_RETRIES) {
+					await markPhotoFailed(photo.id);
+					this.failedPhotoCount += 1;
+					console.error(`[Sync] Photo ${photo.id} failed after ${MAX_RETRIES} retries`, error);
+				} else {
+					console.warn(`[Sync] Photo ${photo.id} failed, retry ${retryCount}/${MAX_RETRIES}`, error);
+				}
+			}
+		}
+
+		this.currentPhotoUpload = null;
 	}
 
 	private async applyMutation(mutation: Mutation): Promise<void> {
@@ -282,6 +337,14 @@ class SyncEngine {
 		this.failedCount = 0;
 		await this.processQueue();
 		return resetCount;
+	}
+
+	async retryFailedPhotos(): Promise<number> {
+		const { resetFailedPhotos } = await import('$lib/photo/queue');
+		const count = await resetFailedPhotos();
+		this.failedPhotoCount = 0;
+		await this.processPhotoQueue();
+		return count;
 	}
 
 	destroy() {
