@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -20,12 +19,14 @@
 	let isCapturing = $state(false);
 	let isSubmitting = $state(false);
 	let error = $state<string | null>(null);
+	let hasAttemptedCapture = $state(false);
 
 	// Find the chore to display its name
 	const chore = $derived(dailyChoreStore.items.find((c) => c._id === choreId));
 
 	async function handleCapture() {
 		isCapturing = true;
+		hasAttemptedCapture = true;
 		error = null;
 
 		try {
@@ -35,8 +36,8 @@
 				capturedBlob = result.blob;
 				originalSize = result.originalSize;
 			} else {
-				// User cancelled
-				await goto(resolve('/'));
+				// User cancelled - stay on page so they can try again
+				// (iOS Safari requires user gesture for file input)
 			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to capture photo';
@@ -104,10 +105,9 @@
 		goto(resolve('/'));
 	}
 
-	// Auto-trigger capture on mount
-	onMount(() => {
-		handleCapture();
-	});
+	// Note: We do NOT auto-trigger capture on mount.
+	// iOS Safari requires file input clicks to be triggered by a direct user gesture.
+	// Calling input.click() from onMount() (not a user gesture) will silently fail on iOS.
 </script>
 
 <main class="capture-container">
@@ -136,7 +136,7 @@
 	{:else if isCapturing}
 		<div class="loading-container">
 			<div class="spinner"></div>
-			<p>Opening camera...</p>
+			<p>Processing...</p>
 		</div>
 	{:else if previewUrl}
 		<div class="preview-container">
@@ -164,8 +164,19 @@
 			</button>
 		</div>
 	{:else}
-		<div class="loading-container">
-			<p>Ready to capture</p>
+		<div class="ready-container">
+			<button class="capture-button" onclick={handleCapture}>
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<path
+						d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+					></path>
+					<circle cx="12" cy="13" r="4"></circle>
+				</svg>
+				{hasAttemptedCapture ? 'Try Again' : 'Take Photo'}
+			</button>
+			{#if hasAttemptedCapture}
+				<p class="hint-text">Tap the button to open your camera</p>
+			{/if}
 		</div>
 	{/if}
 </main>
@@ -341,5 +352,49 @@
 		border-top-color: white;
 		border-radius: 50%;
 		animation: spin 1s linear infinite;
+	}
+
+	.ready-container {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 1.5rem;
+		padding: 2rem;
+	}
+
+	.capture-button {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 1rem;
+		width: 10rem;
+		height: 10rem;
+		border-radius: 50%;
+		border: 3px solid rgba(255, 255, 255, 0.3);
+		background: rgba(255, 255, 255, 0.1);
+		color: white;
+		font-size: 1.1rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.capture-button:active {
+		transform: scale(0.95);
+		background: rgba(255, 255, 255, 0.2);
+	}
+
+	.capture-button svg {
+		width: 3rem;
+		height: 3rem;
+	}
+
+	.hint-text {
+		color: rgba(255, 255, 255, 0.6);
+		font-size: 0.9rem;
+		text-align: center;
 	}
 </style>
