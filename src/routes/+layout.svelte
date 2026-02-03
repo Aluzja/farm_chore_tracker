@@ -22,13 +22,10 @@
 	// Get Convex client at component init (must be called at top level, not in onMount)
 	const convexClient = browser ? useConvexClient() : null;
 
-	// Set up auth - read token from the namespaced localStorage key that @convex-dev/auth uses
+	// Set up auth token provider
 	if (browser && convexClient) {
-		const escapedNamespace = PUBLIC_CONVEX_URL.replace(/[^a-zA-Z0-9]/g, '');
-		const tokenKey = `convexAuthJwt_${escapedNamespace}`;
-
 		convexClient.setAuth(async () => {
-			return localStorage.getItem(tokenKey);
+			return localStorage.getItem('convex_auth_token');
 		});
 	}
 
