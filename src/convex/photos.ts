@@ -31,6 +31,7 @@ export const attachPhotoToChore = mutation({
       photoStorageId: args.storageId,
       photoCapturedAt: args.capturedAt,
       photoCapturedBy: args.capturedBy,
+      lastModified: Date.now(), // Trigger store merge on real-time update
     });
 
     return { success: true };
