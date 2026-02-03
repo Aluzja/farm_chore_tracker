@@ -30,6 +30,9 @@
 	let error = $state<string | null>(null);
 	let userName = $state<string | null>(null);
 	let isInitialized = $state(false);
+	let manualKey = $state('');
+	let isSubmittingKey = $state(false);
+	let keyError = $state<string | null>(null);
 
 	// Server chores subscription (only active when hasAccess and online)
 	const serverChores = browser ? useQuery(api.chores.list, {}) : null;
@@ -177,10 +180,31 @@
 		isValidating = false;
 	});
 
-	function handleRequestAccess() {
-		// Could open a modal or redirect to a request page
-		// For now, just show info about getting access
-		alert('Please contact the farm administrator for an access key.');
+	async function handleSubmitKey() {
+		const key = manualKey.trim();
+		if (!key) {
+			keyError = 'Please enter an access key';
+			return;
+		}
+
+		isSubmittingKey = true;
+		keyError = null;
+
+		const result = await validateAccessKey(key, convexClient);
+		if (result.valid) {
+			storeAccessKey(key);
+			hasAccess = true;
+			userName = result.displayName ?? null;
+			error = null;
+			await initializeApp();
+		} else {
+			keyError =
+				result.reason === 'revoked'
+					? 'This access key has been revoked.'
+					: 'Invalid access key. Please check and try again.';
+		}
+
+		isSubmittingKey = false;
 	}
 </script>
 
@@ -200,10 +224,42 @@
 			<p class="error-message">
 				{error ?? 'You need an access key to use this app.'}
 			</p>
-			<div class="error-actions">
-				<button onclick={handleRequestAccess} class="btn-primary"> Request Access </button>
-				<a href={resolve('/admin/login')} class="btn-secondary"> Admin Login </a>
+
+			<form
+				class="key-form"
+				onsubmit={(e) => {
+					e.preventDefault();
+					handleSubmitKey();
+				}}
+			>
+				<label for="access-key" class="key-label">Enter Access Key</label>
+				<input
+					id="access-key"
+					type="text"
+					bind:value={manualKey}
+					placeholder="e.g. abc123"
+					class="key-input"
+					disabled={isSubmittingKey}
+					autocapitalize="none"
+					autocorrect="off"
+				/>
+				{#if keyError}
+					<p class="key-error">{keyError}</p>
+				{/if}
+				<button type="submit" class="btn-primary" disabled={isSubmittingKey}>
+					{#if isSubmittingKey}
+						Checking...
+					{:else}
+						Submit Key
+					{/if}
+				</button>
+			</form>
+
+			<div class="divider">
+				<span>or</span>
 			</div>
+
+			<a href={resolve('/admin/login')} class="btn-secondary"> Admin Login </a>
 		</div>
 	</div>
 {/if}
@@ -321,5 +377,64 @@
 	.btn-secondary:hover {
 		background-color: #f9fafb;
 		border-color: #9ca3af;
+	}
+
+	.key-form {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		margin-bottom: 1rem;
+	}
+
+	.key-label {
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: #374151;
+		text-align: left;
+	}
+
+	.key-input {
+		width: 100%;
+		padding: 0.75rem 1rem;
+		border: 1px solid #d1d5db;
+		border-radius: 0.375rem;
+		font-size: 1rem;
+		box-sizing: border-box;
+		transition: border-color 0.15s;
+	}
+
+	.key-input:focus {
+		outline: none;
+		border-color: #22c55e;
+		box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+	}
+
+	.key-input:disabled {
+		background-color: #f9fafb;
+		color: #9ca3af;
+	}
+
+	.key-error {
+		color: #dc2626;
+		font-size: 0.875rem;
+		margin: 0;
+		text-align: left;
+	}
+
+	.divider {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		margin: 0.5rem 0;
+		color: #9ca3af;
+		font-size: 0.875rem;
+	}
+
+	.divider::before,
+	.divider::after {
+		content: '';
+		flex: 1;
+		height: 1px;
+		background-color: #e5e7eb;
 	}
 </style>
