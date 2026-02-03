@@ -54,7 +54,7 @@
 	}
 
 	async function handleAccept() {
-		if (!capturedBlob || !choreId) return;
+		if (!capturedBlob || !choreId || !chore) return;
 
 		isSubmitting = true;
 		error = null;
@@ -63,10 +63,10 @@
 			const user = getCurrentUser();
 			const capturedAt = Date.now();
 
-			// Queue photo for upload
+			// Queue photo for upload - use chore.clientId for Convex lookup
 			await enqueuePhoto({
 				id: crypto.randomUUID(),
-				dailyChoreClientId: choreId,
+				dailyChoreClientId: chore.clientId,
 				blob: capturedBlob,
 				mimeType: 'image/jpeg',
 				originalSize,
