@@ -8,8 +8,6 @@ const escapedNamespace = PUBLIC_CONVEX_URL.replace(/[^a-zA-Z0-9]/g, '');
 const TOKEN_STORAGE_KEY = `convexAuthJwt_${escapedNamespace}`;
 const REFRESH_TOKEN_KEY = `convexAuthRefreshToken_${escapedNamespace}`;
 
-console.log('[AdminAuth] Storage keys - TOKEN:', TOKEN_STORAGE_KEY, 'REFRESH:', REFRESH_TOKEN_KEY);
-
 type AuthState = 'loading' | 'authenticated' | 'unauthenticated';
 
 // Store tokens in localStorage
@@ -22,10 +20,7 @@ function storeTokens(token: string, refreshToken: string): void {
 // Get stored token
 function getStoredToken(): string | null {
 	if (!browser) return null;
-	const token = localStorage.getItem(TOKEN_STORAGE_KEY);
-	console.log('[AdminAuth] getStoredToken - key:', TOKEN_STORAGE_KEY, 'found:', !!token);
-	console.log('[AdminAuth] getStoredToken - all keys:', Object.keys(localStorage));
-	return token;
+	return localStorage.getItem(TOKEN_STORAGE_KEY);
 }
 
 // Get stored refresh token
@@ -68,18 +63,12 @@ class AdminAuth {
 		// Set up auth token provider and wait for auth to be established
 		const token = getStoredToken();
 		if (token && this.client) {
-			console.log('[AdminAuth] setClient: setting auth with token...');
-
 			// Create a promise that resolves when auth state changes
 			await new Promise<void>((resolve) => {
 				let resolved = false;
 				this.client!.setAuth(
 					async () => token,
-					(isAuthenticated) => {
-						console.log(
-							'[AdminAuth] setClient: auth state changed, isAuthenticated:',
-							isAuthenticated
-						);
+					() => {
 						if (!resolved) {
 							resolved = true;
 							resolve();
@@ -89,27 +78,22 @@ class AdminAuth {
 				// Also resolve after a timeout in case onChange doesn't fire
 				setTimeout(() => {
 					if (!resolved) {
-						console.log('[AdminAuth] setClient: auth timeout, resolving anyway');
 						resolved = true;
 						resolve();
 					}
 				}, 2000);
 			});
-
-			console.log('[AdminAuth] setClient: auth set complete');
 		}
 	}
 
 	async checkAuth(): Promise<void> {
 		if (!browser || !this.client) {
-			console.log('[AdminAuth] checkAuth: no browser or client');
 			this.state = 'unauthenticated';
 			return;
 		}
 
 		// Check if we have a stored token
 		const token = getStoredToken();
-		console.log('[AdminAuth] checkAuth: stored token exists:', !!token);
 		if (!token) {
 			this.state = 'unauthenticated';
 			return;
@@ -117,12 +101,9 @@ class AdminAuth {
 
 		// Set the auth token on the client
 		this.client.setAuth(async () => token);
-		console.log('[AdminAuth] checkAuth: set auth on client');
 
 		try {
-			console.log('[AdminAuth] checkAuth: querying currentUser...');
 			const user = await this.client.query(api.users.currentUser, {});
-			console.log('[AdminAuth] checkAuth: currentUser result:', user);
 			if (user) {
 				this.userId = user._id;
 				this.isAdmin = user.isAdmin ?? false;
@@ -139,12 +120,9 @@ class AdminAuth {
 				}
 			} else {
 				// Token might be expired, try to refresh
-				console.log('[AdminAuth] checkAuth: no user returned, trying refresh...');
 				const refreshed = await this.refreshToken();
-				console.log('[AdminAuth] checkAuth: refresh result:', refreshed);
 				if (!refreshed) {
-					console.log('[AdminAuth] checkAuth: refresh failed, NOT clearing tokens (debug)');
-					// clearTokens(); // TEMPORARILY DISABLED FOR DEBUGGING
+					clearTokens();
 					this.state = 'unauthenticated';
 					this.userId = null;
 					this.isAdmin = false;
@@ -205,8 +183,6 @@ class AdminAuth {
 				params: { email, password, flow: 'signIn' }
 			});
 
-			console.log('[AdminAuth] signIn result:', JSON.stringify(result, null, 2));
-
 			const tokens = result?.tokens;
 			if (tokens?.token) {
 				// Store tokens
@@ -220,8 +196,7 @@ class AdminAuth {
 				await this.checkAuth();
 				return { success: true };
 			} else {
-				console.error('[AdminAuth] Unexpected result structure:', result);
-				return { success: false, error: 'No token received - check console for details' };
+				return { success: false, error: 'No token received' };
 			}
 		} catch (error) {
 			console.error('[AdminAuth] signIn error:', error);
@@ -244,11 +219,9 @@ class AdminAuth {
 				params: { email, password, flow: 'signUp' }
 			});
 
-			console.log('[AdminAuth] signUp result:', JSON.stringify(result, null, 2));
-
 			const tokens = result?.tokens;
 			if (tokens?.token) {
-				// Store tokens (tokens are nested under 'tokens' property)
+				// Store tokens
 				storeTokens(tokens.token, tokens.refreshToken);
 
 				// Set auth on client
@@ -260,8 +233,7 @@ class AdminAuth {
 				await this.checkAuth();
 				return { success: true };
 			} else {
-				console.error('[AdminAuth] Unexpected result structure:', result);
-				return { success: false, error: 'No token received - check console for details' };
+				return { success: false, error: 'No token received' };
 			}
 		} catch (error) {
 			console.error('[AdminAuth] signUp error:', error);

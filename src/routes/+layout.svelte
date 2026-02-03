@@ -8,7 +8,6 @@
 	import { setConvexClient } from '$lib/sync/engine.svelte';
 	import { connectionStatus } from '$lib/sync/status.svelte';
 	import { requestPersistentStorage } from '$lib/db/storage';
-	import { getAuthToken } from '$lib/auth/admin.svelte';
 	import favicon from '$lib/assets/favicon.svg';
 
 	let { children } = $props();
@@ -27,21 +26,9 @@
 	if (browser && convexClient) {
 		const escapedNamespace = PUBLIC_CONVEX_URL.replace(/[^a-zA-Z0-9]/g, '');
 		const tokenKey = `convexAuthJwt_${escapedNamespace}`;
-		console.log('[Layout] Setting up auth with tokenKey:', tokenKey);
-		console.log('[Layout] All localStorage keys:', Object.keys(localStorage));
 
-		convexClient.setAuth(async ({ forceRefreshToken }) => {
-			const token = localStorage.getItem(tokenKey);
-			console.log(
-				'[Layout] Auth fetcher called, token exists:',
-				!!token,
-				'forceRefresh:',
-				forceRefreshToken
-			);
-			if (token) {
-				console.log('[Layout] Token starts with:', token.substring(0, 50));
-			}
-			return token;
+		convexClient.setAuth(async () => {
+			return localStorage.getItem(tokenKey);
 		});
 	}
 
