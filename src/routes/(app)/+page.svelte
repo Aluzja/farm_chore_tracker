@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { fade, slide } from 'svelte/transition';
 	import { dailyChoreStore } from '$lib/stores/dailyChores.svelte';
 	import { syncEngine } from '$lib/sync/engine.svelte';
 	import { connectionStatus } from '$lib/sync/status.svelte';
@@ -95,7 +96,7 @@
 
 							<ul class="chore-items">
 								{#each categoryGroup.chores as chore (chore._id)}
-									<li class="chore-item" class:completed={chore.isCompleted}>
+									<li class="chore-item" class:completed={chore.isCompleted} transition:slide={{ duration: 150 }}>
 										<button
 											class="toggle-button"
 											class:checked={chore.isCompleted}
@@ -127,7 +128,7 @@
 											{/if}
 
 											{#if chore.isCompleted && chore.completedBy}
-												<div class="completion-info">
+												<div class="completion-info" transition:fade={{ duration: 200 }}>
 													{chore.completedBy} at {formatCompletionTime(chore.completedAt)}
 												</div>
 											{/if}
@@ -373,7 +374,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		transition: all 0.15s;
+		transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 	}
 
 	.toggle-button:hover {
@@ -389,6 +390,18 @@
 		width: 1rem;
 		height: 1rem;
 		color: white;
+		animation: fadeIn 0.15s ease-out;
+	}
+
+	@keyframes fadeIn {
+		from {
+			opacity: 0;
+			transform: scale(0.8);
+		}
+		to {
+			opacity: 1;
+			transform: scale(1);
+		}
 	}
 
 	.chore-content {
