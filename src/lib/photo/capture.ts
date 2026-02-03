@@ -1,7 +1,7 @@
 import imageCompression from 'browser-image-compression';
 
 /**
- * Compress an image file to ~1MB JPEG.
+ * Compress an image file to ~2MB JPEG (high quality).
  * Uses web worker for non-blocking compression.
  * Strips EXIF metadata (GPS, timestamps) - app tracks its own metadata.
  *
@@ -14,11 +14,11 @@ export async function compressImage(
 	onProgress?: (percent: number) => void
 ): Promise<Blob> {
 	const options = {
-		maxSizeMB: 1,
+		maxSizeMB: 2,
 		useWebWorker: true,
 		preserveExif: false,
 		fileType: 'image/jpeg' as const,
-		initialQuality: 0.85,
+		initialQuality: 0.92,
 		onProgress: onProgress
 	};
 
