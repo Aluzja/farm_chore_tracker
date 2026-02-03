@@ -1,5 +1,10 @@
 import imageCompression from 'browser-image-compression';
 
+export interface CompressionProgress {
+	percent: number;
+	usingMainThread: boolean;
+}
+
 /**
  * Compress an image file to ~2MB JPEG (high quality).
  * Strips EXIF metadata (GPS, timestamps) - app tracks its own metadata.
@@ -7,30 +12,36 @@ import imageCompression from 'browser-image-compression';
  * Falls back to main thread compression if Web Worker fails (older iOS devices).
  *
  * @param file - Original image file from camera/file input
- * @param onProgress - Optional callback for compression progress (0-100)
+ * @param onProgress - Optional callback for compression progress
  * @returns Compressed Blob as JPEG
  */
 export async function compressImage(
 	file: File,
-	onProgress?: (percent: number) => void
+	onProgress?: (progress: CompressionProgress) => void
 ): Promise<Blob> {
-	const baseOptions = {
+	const makeOptions = (useWebWorker: boolean) => ({
 		maxSizeMB: 2,
 		preserveExif: false,
 		fileType: 'image/jpeg' as const,
 		initialQuality: 0.92,
+		useWebWorker,
 		onProgress: onProgress
-	};
+			? (percent: number) => onProgress({ percent, usingMainThread: !useWebWorker })
+			: undefined
+	});
 
 	// Try with Web Worker first (faster, non-blocking)
 	try {
-		return await imageCompression(file, { ...baseOptions, useWebWorker: true });
+		return await imageCompression(file, makeOptions(true));
 	} catch (error) {
 		console.warn('[Photo] Web Worker compression failed, falling back to main thread:', error);
 	}
 
+	// Reset progress for fallback attempt
+	onProgress?.({ percent: 0, usingMainThread: true });
+
 	// Fallback: compress on main thread (works on older iOS devices)
-	return await imageCompression(file, { ...baseOptions, useWebWorker: false });
+	return await imageCompression(file, makeOptions(false));
 }
 
 /**
@@ -38,9 +49,10 @@ export async function compressImage(
  * Creates a hidden file input to trigger native camera.
  * Compresses the captured image before returning.
  *
+ * @param onProgress - Optional callback for compression progress updates
  * @returns Object with compressed blob, preview URL, and original size, or null if cancelled
  */
-export async function capturePhoto(): Promise<{
+export async function capturePhoto(onProgress?: (progress: CompressionProgress) => void): Promise<{
 	blob: Blob;
 	previewUrl: string;
 	originalSize: number;
@@ -64,8 +76,8 @@ export async function capturePhoto(): Promise<{
 			const originalSize = file.size;
 
 			try {
-				// Compress the image
-				const compressedBlob = await compressImage(file);
+				// Compress the image with progress tracking
+				const compressedBlob = await compressImage(file, onProgress);
 
 				// Create preview URL
 				const previewUrl = URL.createObjectURL(compressedBlob);

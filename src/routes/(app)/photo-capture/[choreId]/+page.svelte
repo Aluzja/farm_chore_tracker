@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { capturePhoto } from '$lib/photo/capture';
+	import { capturePhoto, type CompressionProgress } from '$lib/photo/capture';
 	import { enqueuePhoto } from '$lib/photo/queue';
 	import { dailyChoreStore } from '$lib/stores/dailyChores.svelte';
 	import { getCurrentUser } from '$lib/auth/user-context.svelte';
@@ -21,16 +21,27 @@
 	let error = $state<string | null>(null);
 	let hasAttemptedCapture = $state(false);
 
+	// Compression progress tracking
+	let compressionProgress = $state(0);
+	let usingMainThread = $state(false);
+
 	// Find the chore to display its name
 	const chore = $derived(dailyChoreStore.items.find((c) => c._id === choreId));
+
+	function handleProgress(progress: CompressionProgress) {
+		compressionProgress = Math.round(progress.percent);
+		usingMainThread = progress.usingMainThread;
+	}
 
 	async function handleCapture() {
 		isCapturing = true;
 		hasAttemptedCapture = true;
 		error = null;
+		compressionProgress = 0;
+		usingMainThread = false;
 
 		try {
-			const result = await capturePhoto();
+			const result = await capturePhoto(handleProgress);
 			if (result) {
 				previewUrl = result.previewUrl;
 				capturedBlob = result.blob;
@@ -135,8 +146,29 @@
 		</div>
 	{:else if isCapturing}
 		<div class="loading-container">
-			<div class="spinner"></div>
-			<p>Processing...</p>
+			<div class="progress-ring-container">
+				<svg class="progress-ring" viewBox="0 0 100 100">
+					<circle class="progress-ring-bg" cx="50" cy="50" r="45" />
+					<circle
+						class="progress-ring-fill"
+						cx="50"
+						cy="50"
+						r="45"
+						style="stroke-dashoffset: {283 - (283 * compressionProgress) / 100}"
+					/>
+				</svg>
+				<span class="progress-percent">{compressionProgress}%</span>
+			</div>
+			<p class="progress-label">
+				{#if usingMainThread}
+					Processing (compatibility mode)...
+				{:else}
+					Processing...
+				{/if}
+			</p>
+			{#if usingMainThread}
+				<p class="progress-hint">This may take a moment on older devices</p>
+			{/if}
 		</div>
 	{:else if previewUrl}
 		<div class="preview-container">
@@ -246,13 +278,53 @@
 		color: rgba(255, 255, 255, 0.7);
 	}
 
-	.spinner {
-		width: 2.5rem;
-		height: 2.5rem;
-		border: 3px solid rgba(255, 255, 255, 0.2);
-		border-top-color: white;
-		border-radius: 50%;
-		animation: spin 1s linear infinite;
+	.progress-ring-container {
+		position: relative;
+		width: 6rem;
+		height: 6rem;
+	}
+
+	.progress-ring {
+		width: 100%;
+		height: 100%;
+		transform: rotate(-90deg);
+	}
+
+	.progress-ring-bg {
+		fill: none;
+		stroke: rgba(255, 255, 255, 0.2);
+		stroke-width: 6;
+	}
+
+	.progress-ring-fill {
+		fill: none;
+		stroke: #22c55e;
+		stroke-width: 6;
+		stroke-linecap: round;
+		stroke-dasharray: 283;
+		transition: stroke-dashoffset 0.2s ease;
+	}
+
+	.progress-percent {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 1.25rem;
+		font-weight: 600;
+		color: white;
+	}
+
+	.progress-label {
+		margin: 0;
+		font-size: 1rem;
+	}
+
+	.progress-hint {
+		margin: 0;
+		font-size: 0.875rem;
+		color: rgba(255, 255, 255, 0.5);
 	}
 
 	@keyframes spin {
