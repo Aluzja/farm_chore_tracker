@@ -448,7 +448,7 @@
 						>
 							<span class="time-slot-title">{group.label}</span>
 							<span class="time-slot-count"
-								>{group.chores.length} chore{group.chores.length !== 1 ? 's' : ''}</span
+								>{group.totalChores} chore{group.totalChores !== 1 ? 's' : ''}</span
 							>
 							<svg
 								class="chevron"
@@ -463,86 +463,93 @@
 						</button>
 
 						{#if !isCollapsed}
-							<ul class="chore-list" transition:slide={{ duration: 200 }}>
-								{#each group.chores as chore (chore._id)}
-									<li class="chore-item">
-										<div class="chore-info">
-											<div class="chore-text-row">
-												<span class="chore-text">{chore.text}</span>
-												{#if chore.requiresPhoto}
-													<span class="photo-badge" title="Requires photo">
-														<svg
-															xmlns="http://www.w3.org/2000/svg"
-															width="14"
-															height="14"
-															viewBox="0 0 24 24"
-															fill="none"
-															stroke="currentColor"
-															stroke-width="2"
-															stroke-linecap="round"
-															stroke-linejoin="round"
+							<div class="time-slot-content" transition:slide={{ duration: 200 }}>
+								{#each group.categories as category, categoryIndex (category.name)}
+									<div class="category-group category-color-{categoryIndex % 6}">
+										<h4 class="category-header">{category.name}</h4>
+										<ul class="chore-list">
+											{#each category.chores as chore (chore._id)}
+												<li class="chore-item">
+													<div class="chore-info">
+														<div class="chore-text-row">
+															<span class="chore-text">{chore.text}</span>
+															{#if chore.requiresPhoto}
+																<span class="photo-badge" title="Requires photo">
+																	<svg
+																		xmlns="http://www.w3.org/2000/svg"
+																		width="14"
+																		height="14"
+																		viewBox="0 0 24 24"
+																		fill="none"
+																		stroke="currentColor"
+																		stroke-width="2"
+																		stroke-linecap="round"
+																		stroke-linejoin="round"
+																	>
+																		<path
+																			d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+																		></path>
+																		<circle cx="12" cy="13" r="4"></circle>
+																	</svg>
+																</span>
+															{/if}
+														</div>
+														{#if chore.description}
+															<span class="chore-description">{chore.description}</span>
+														{/if}
+													</div>
+													<div class="chore-actions">
+														<button
+															class="btn-icon"
+															onclick={() => startEdit(chore)}
+															aria-label="Edit chore"
 														>
-															<path
-																d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
-															></path>
-															<circle cx="12" cy="13" r="4"></circle>
-														</svg>
-													</span>
-												{/if}
-											</div>
-											{#if chore.description}
-												<span class="chore-description">{chore.description}</span>
-											{/if}
-											<span class="chore-category">{chore.animalCategory}</span>
-										</div>
-										<div class="chore-actions">
-											<button
-												class="btn-icon"
-												onclick={() => startEdit(chore)}
-												aria-label="Edit chore"
-											>
-												<svg
-													xmlns="http://www.w3.org/2000/svg"
-													width="18"
-													height="18"
-													viewBox="0 0 24 24"
-													fill="none"
-													stroke="currentColor"
-													stroke-width="2"
-													stroke-linecap="round"
-													stroke-linejoin="round"
-												>
-													<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
-													></path>
-													<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-												</svg>
-											</button>
-											<button
-												class="btn-icon btn-danger"
-												onclick={() => handleDelete(chore._id, chore.text)}
-												aria-label="Delete chore"
-											>
-												<svg
-													xmlns="http://www.w3.org/2000/svg"
-													width="18"
-													height="18"
-													viewBox="0 0 24 24"
-													fill="none"
-													stroke="currentColor"
-													stroke-width="2"
-													stroke-linecap="round"
-													stroke-linejoin="round"
-												>
-													<polyline points="3 6 5 6 21 6"></polyline>
-													<path
-														d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
-													></path>
-												</svg>
-											</button>
-										</div>
-									</li>
+															<svg
+																xmlns="http://www.w3.org/2000/svg"
+																width="18"
+																height="18"
+																viewBox="0 0 24 24"
+																fill="none"
+																stroke="currentColor"
+																stroke-width="2"
+																stroke-linecap="round"
+																stroke-linejoin="round"
+															>
+																<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+																></path>
+																<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+																></path>
+															</svg>
+														</button>
+														<button
+															class="btn-icon btn-danger"
+															onclick={() => handleDelete(chore._id, chore.text)}
+															aria-label="Delete chore"
+														>
+															<svg
+																xmlns="http://www.w3.org/2000/svg"
+																width="18"
+																height="18"
+																viewBox="0 0 24 24"
+																fill="none"
+																stroke="currentColor"
+																stroke-width="2"
+																stroke-linecap="round"
+																stroke-linejoin="round"
+															>
+																<polyline points="3 6 5 6 21 6"></polyline>
+																<path
+																	d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+																></path>
+															</svg>
+														</button>
+													</div>
+												</li>
+											{/each}
+										</ul>
+									</div>
 								{/each}
-							</ul>
+							</div>
 						{/if}
 					</div>
 				{/each}
@@ -894,6 +901,78 @@
 		border-radius: 0.5rem;
 	}
 
+	.time-slot-content {
+		overflow: hidden;
+	}
+
+	.category-group {
+		border-bottom: 1px solid #e5e7eb;
+	}
+
+	.category-group:last-child {
+		border-bottom: none;
+	}
+
+	.category-header {
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: #6b7280;
+		padding: 0.5rem 1rem;
+		margin: 0;
+		border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+	}
+
+	/* Category color highlights - very faint backgrounds */
+	.category-color-0 {
+		background-color: rgba(239, 68, 68, 0.04);
+	}
+	.category-color-0 .category-header {
+		background-color: rgba(239, 68, 68, 0.08);
+		color: #b91c1c;
+	}
+
+	.category-color-1 {
+		background-color: rgba(34, 197, 94, 0.04);
+	}
+	.category-color-1 .category-header {
+		background-color: rgba(34, 197, 94, 0.08);
+		color: #15803d;
+	}
+
+	.category-color-2 {
+		background-color: rgba(59, 130, 246, 0.04);
+	}
+	.category-color-2 .category-header {
+		background-color: rgba(59, 130, 246, 0.08);
+		color: #1d4ed8;
+	}
+
+	.category-color-3 {
+		background-color: rgba(168, 85, 247, 0.04);
+	}
+	.category-color-3 .category-header {
+		background-color: rgba(168, 85, 247, 0.08);
+		color: #7c3aed;
+	}
+
+	.category-color-4 {
+		background-color: rgba(245, 158, 11, 0.04);
+	}
+	.category-color-4 .category-header {
+		background-color: rgba(245, 158, 11, 0.08);
+		color: #b45309;
+	}
+
+	.category-color-5 {
+		background-color: rgba(20, 184, 166, 0.04);
+	}
+	.category-color-5 .category-header {
+		background-color: rgba(20, 184, 166, 0.08);
+		color: #0f766e;
+	}
+
 	.chore-list {
 		list-style: none;
 		padding: 0;
@@ -943,11 +1022,6 @@
 		background-color: #dcfce7;
 		color: #22c55e;
 		border-radius: 0.25rem;
-	}
-
-	.chore-category {
-		font-size: 0.75rem;
-		color: #6b7280;
 	}
 
 	.chore-actions {

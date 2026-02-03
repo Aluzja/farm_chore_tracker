@@ -16,10 +16,16 @@ export interface MasterChore {
 	updatedAt: number;
 }
 
+interface CategoryGroup {
+	name: string;
+	chores: MasterChore[];
+}
+
 interface GroupedMasterChores {
 	timeSlot: TimeSlot;
 	label: string;
-	chores: MasterChore[];
+	categories: CategoryGroup[];
+	totalChores: number;
 }
 
 const TIME_SLOT_ORDER: TimeSlot[] = ['morning', 'afternoon', 'evening'];
@@ -33,7 +39,7 @@ class MasterChoreStore {
 	items = $state<MasterChore[]>([]);
 	isLoading = $state(true);
 
-	// Group by time slot for display (only active chores)
+	// Group by time slot, then by category for display (only active chores)
 	grouped = $derived.by(() => {
 		const result: GroupedMasterChores[] = [];
 
@@ -43,10 +49,26 @@ class MasterChoreStore {
 				.sort((a, b) => a.sortOrder - b.sortOrder);
 
 			if (slotChores.length > 0) {
+				// Group by category
+				const categoryMap = new Map<string, MasterChore[]>();
+				for (const chore of slotChores) {
+					const cat = chore.animalCategory;
+					if (!categoryMap.has(cat)) {
+						categoryMap.set(cat, []);
+					}
+					categoryMap.get(cat)!.push(chore);
+				}
+
+				// Convert to array and sort categories alphabetically
+				const categories: CategoryGroup[] = Array.from(categoryMap.entries())
+					.sort((a, b) => a[0].localeCompare(b[0]))
+					.map(([name, chores]) => ({ name, chores }));
+
 				result.push({
 					timeSlot: slot,
 					label: TIME_SLOT_LABELS[slot],
-					chores: slotChores
+					categories,
+					totalChores: slotChores.length
 				});
 			}
 		}
