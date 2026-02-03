@@ -7,7 +7,7 @@ export default defineConfig({
 		sveltekit(),
 		SvelteKitPWA({
 			strategies: 'generateSW',
-			registerType: 'prompt',
+			registerType: 'autoUpdate',
 			manifest: {
 				name: 'Kitchen Sink Farm',
 				short_name: 'KSF',
