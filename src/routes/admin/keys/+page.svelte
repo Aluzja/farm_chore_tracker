@@ -56,9 +56,22 @@
 		}
 	}
 
-	function copyKey() {
+	let copiedUrl = $state(false);
+	let copiedKey = $state(false);
+
+	function copyUrl() {
 		if (createdKey) {
 			navigator.clipboard.writeText(`${window.location.origin}/?key=${createdKey}`);
+			copiedUrl = true;
+			setTimeout(() => (copiedUrl = false), 2000);
+		}
+	}
+
+	function copyKeyOnly() {
+		if (createdKey) {
+			navigator.clipboard.writeText(createdKey);
+			copiedKey = true;
+			setTimeout(() => (copiedKey = false), 2000);
 		}
 	}
 
@@ -89,28 +102,44 @@
 			<div class="success-banner">
 				<div class="success-content">
 					<div class="success-info">
+						<button onclick={dismissCreatedKey} class="btn-dismiss" aria-label="Dismiss">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="20"
+								height="20"
+								viewBox="0 0 20 20"
+								fill="currentColor"
+							>
+								<path
+									fill-rule="evenodd"
+									d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+									clip-rule="evenodd"
+								/>
+							</svg>
+						</button>
 						<h3>Access Key Created!</h3>
-						<p>Share this link with the worker. They only need to open it once.</p>
-						<div class="key-display">
-							<code>{window.location.origin}/?key={createdKey}</code>
-							<button onclick={copyKey} class="btn-copy">Copy</button>
+
+						<div class="instructions">
+							<p class="instruction-step"><strong>Step 1:</strong> Send this link to the user:</p>
+							<div class="key-display">
+								<code>{window.location.origin}/?key={createdKey}</code>
+								<button onclick={copyUrl} class="btn-copy">
+									{copiedUrl ? 'Copied!' : 'Copy Link'}
+								</button>
+							</div>
+
+							<p class="instruction-step">
+								<strong>Step 2:</strong> If they install the app to their home screen, they'll need to
+								enter this key manually:
+							</p>
+							<div class="key-display">
+								<code class="key-only">{createdKey}</code>
+								<button onclick={copyKeyOnly} class="btn-copy">
+									{copiedKey ? 'Copied!' : 'Copy Key'}
+								</button>
+							</div>
 						</div>
 					</div>
-					<button onclick={dismissCreatedKey} class="btn-dismiss" aria-label="Dismiss">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							width="20"
-							height="20"
-							viewBox="0 0 20 20"
-							fill="currentColor"
-						>
-							<path
-								fill-rule="evenodd"
-								d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-								clip-rule="evenodd"
-							/>
-						</svg>
-					</button>
 				</div>
 			</div>
 		{/if}
@@ -236,29 +265,37 @@
 	/* Success Banner */
 	.success-banner {
 		margin-bottom: 1.5rem;
-		padding: 1rem;
+		padding: 1.25rem;
 		background-color: #f0fdf4;
 		border: 1px solid #bbf7d0;
 		border-radius: 0.75rem;
 	}
 
 	.success-content {
-		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
-		gap: 1rem;
+		position: relative;
 	}
 
 	.success-info h3 {
-		font-weight: 500;
+		font-weight: 600;
 		color: #166534;
-		margin: 0 0 0.25rem 0;
+		margin: 0 0 1rem 0;
+		font-size: 1.125rem;
 	}
 
-	.success-info p {
+	.instructions {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.instruction-step {
 		font-size: 0.875rem;
 		color: #15803d;
-		margin: 0 0 0.75rem 0;
+		margin: 0;
+	}
+
+	.instruction-step strong {
+		color: #166534;
 	}
 
 	.key-display {
@@ -266,26 +303,39 @@
 		align-items: center;
 		gap: 0.5rem;
 		flex-wrap: wrap;
+		margin-bottom: 0.5rem;
 	}
 
 	.key-display code {
-		padding: 0.375rem 0.5rem;
+		padding: 0.5rem 0.75rem;
 		background-color: white;
-		border-radius: 0.25rem;
+		border: 1px solid #d1d5db;
+		border-radius: 0.375rem;
 		font-size: 0.8125rem;
 		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 		word-break: break-all;
+		flex: 1;
+		min-width: 0;
+	}
+
+	.key-display code.key-only {
+		flex: 0 0 auto;
+		font-size: 1rem;
+		font-weight: 600;
+		letter-spacing: 0.05em;
 	}
 
 	.btn-copy {
-		padding: 0.375rem 0.75rem;
+		padding: 0.5rem 0.75rem;
 		font-size: 0.875rem;
 		background-color: #22c55e;
 		color: white;
 		border: none;
-		border-radius: 0.25rem;
+		border-radius: 0.375rem;
 		cursor: pointer;
 		white-space: nowrap;
+		min-width: 5.5rem;
+		transition: background-color 0.15s;
 	}
 
 	.btn-copy:hover {
@@ -293,12 +343,14 @@
 	}
 
 	.btn-dismiss {
+		position: absolute;
+		top: 0;
+		right: 0;
 		padding: 0.25rem;
 		background: none;
 		border: none;
 		color: #22c55e;
 		cursor: pointer;
-		flex-shrink: 0;
 	}
 
 	.btn-dismiss:hover {
