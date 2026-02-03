@@ -437,7 +437,6 @@
 
 	.chore-item.completed .chore-text {
 		color: #6b7280;
-		text-decoration: line-through;
 	}
 
 	.badge {
