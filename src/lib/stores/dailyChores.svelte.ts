@@ -208,6 +208,34 @@ class DailyChoreStore {
 		}
 	}
 
+	// Mark item as failed
+	markFailed(id: string): void {
+		const index = this.items.findIndex((c) => c._id === id);
+		if (index !== -1 && this.items[index].syncStatus !== 'failed') {
+			this.items[index] = { ...this.items[index], syncStatus: 'failed' };
+		}
+	}
+
+	// Get count of failed items
+	get failedCount(): number {
+		return this.items.filter((c) => c.syncStatus === 'failed').length;
+	}
+
+	// Reset failed items to pending for retry
+	async resetFailedToPending(): Promise<number> {
+		const failedItems = this.items.filter((c) => c.syncStatus === 'failed');
+		let count = 0;
+
+		for (const chore of failedItems) {
+			const updated: DailyChore = { ...chore, syncStatus: 'pending' };
+			this.items = this.items.map((c) => (c._id === chore._id ? updated : c));
+			await putDailyChore($state.snapshot(updated));
+			count++;
+		}
+
+		return count;
+	}
+
 	// Add ad-hoc chore for today only
 	async addAdHoc(
 		text: string,

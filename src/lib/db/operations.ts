@@ -64,6 +64,12 @@ export async function getDailyChoresByDate(date: string): Promise<DailyChore[]> 
 	return chores.map((c) => DailyChoreSchema.parse(c));
 }
 
+export async function getDailyChoresByStatus(status: DailyChore['syncStatus']): Promise<DailyChore[]> {
+	const db = await getDB();
+	const allChores = await db.getAll(STORES.dailyChores);
+	return allChores.filter((c) => c.syncStatus === status).map((c) => DailyChoreSchema.parse(c));
+}
+
 export async function putDailyChore(chore: DailyChore): Promise<void> {
 	const validated = DailyChoreSchema.parse(chore);
 	const db = await getDB();

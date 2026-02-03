@@ -125,6 +125,14 @@ class SyncEngine {
 					if (retryCount >= MAX_RETRIES) {
 						await markFailed(mutation.id);
 						this.failedCount += 1;
+						// Mark the associated dailyChore as failed in the store
+						if (mutation.table === 'dailyChores') {
+							const clientId = (mutation.payload.clientId || mutation.payload.id) as string;
+							if (clientId) {
+								const { dailyChoreStore } = await import('$lib/stores/dailyChores.svelte');
+								dailyChoreStore.markFailed(clientId);
+							}
+						}
 						console.error(
 							`[Sync] Mutation ${mutation.id} failed after ${MAX_RETRIES} retries`,
 							error
@@ -333,6 +341,10 @@ class SyncEngine {
 				resetCount += 1;
 			}
 		}
+
+		// Also reset failed dailyChores in the store to pending
+		const { dailyChoreStore } = await import('$lib/stores/dailyChores.svelte');
+		await dailyChoreStore.resetFailedToPending();
 
 		this.failedCount = 0;
 		await this.processQueue();
