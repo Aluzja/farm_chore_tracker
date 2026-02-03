@@ -494,11 +494,13 @@
 	}
 
 	/* Photo thumbnail and sync badge ordering for thumb-friendly layout */
+	/* Photo thumbnail appears to the left of toggle button */
 	.chore-item :global(.photo-thumbnail) {
-		order: 2;
+		order: 0.5;
+		margin-left: auto;
 	}
 
 	.chore-item :global(.sync-badge) {
-		order: 3;
+		order: 2;
 	}
 </style>
