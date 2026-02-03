@@ -13,6 +13,7 @@
 		extractKeyFromUrl
 	} from '$lib/auth/access-key';
 	import { adminAuth } from '$lib/auth/admin.svelte';
+	import { setCurrentUser } from '$lib/auth/user-context.svelte';
 	import { connectionStatus } from '$lib/sync/status.svelte';
 	import { choreStore } from '$lib/stores/chores.svelte';
 	import { dailyChoreStore } from '$lib/stores/dailyChores.svelte';
@@ -68,6 +69,13 @@
 			connectionStatus.isOnline
 		) {
 			dailyChoreStore.hydrateFromServer(dailyChoresQuery.data);
+		}
+	});
+
+	// Keep user context in sync with layout's userName state
+	$effect(() => {
+		if (browser && hasAccess && userName) {
+			setCurrentUser(userName);
 		}
 	});
 

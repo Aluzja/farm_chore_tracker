@@ -2,11 +2,15 @@
 	import { dailyChoreStore } from '$lib/stores/dailyChores.svelte';
 	import { syncEngine } from '$lib/sync/engine.svelte';
 	import { connectionStatus } from '$lib/sync/status.svelte';
-	import { formatTimeSlot } from '$lib/utils/date';
+	import { formatTimeSlot, getCurrentTimeSlot } from '$lib/utils/date';
+	import { getCurrentUser } from '$lib/auth/user-context.svelte';
 
-	// Get user name from parent layout context (passed via URL or stored)
-	// For now, we'll use a simple approach - could be enhanced with context
-	let userName = $state('Worker');
+	// Ad-hoc chore form state
+	let showAddForm = $state(false);
+	let newChoreText = $state('');
+	let newChoreTimeSlot = $state<'morning' | 'afternoon' | 'evening'>(getCurrentTimeSlot());
+	let newChoreCategory = $state('General');
+	let isSubmitting = $state(false);
 
 	function formatCompletionTime(isoString: string | undefined): string {
 		if (!isoString) return '';
@@ -19,7 +23,36 @@
 	}
 
 	async function handleToggle(id: string) {
-		await dailyChoreStore.toggleComplete(id, userName);
+		await dailyChoreStore.toggleComplete(id, getCurrentUser());
+	}
+
+	async function handleAddAdHoc() {
+		if (!newChoreText.trim() || isSubmitting) return;
+
+		isSubmitting = true;
+		try {
+			await dailyChoreStore.addAdHoc(
+				newChoreText.trim(),
+				newChoreTimeSlot,
+				newChoreCategory.trim() || 'General',
+				getCurrentUser()
+			);
+
+			// Reset form
+			newChoreText = '';
+			newChoreCategory = 'General';
+			newChoreTimeSlot = getCurrentTimeSlot();
+			showAddForm = false;
+		} finally {
+			isSubmitting = false;
+		}
+	}
+
+	function handleCancelAdd() {
+		showAddForm = false;
+		newChoreText = '';
+		newChoreCategory = 'General';
+		newChoreTimeSlot = getCurrentTimeSlot();
 	}
 </script>
 
@@ -43,6 +76,47 @@
 	</div>
 	<div class="progress-text">
 		{dailyChoreStore.completedCount} of {dailyChoreStore.totalCount} complete ({dailyChoreStore.progress}%)
+	</div>
+
+	<!-- Add ad-hoc chore section -->
+	<div class="add-section">
+		{#if showAddForm}
+			<form class="add-form" onsubmit={(e) => { e.preventDefault(); handleAddAdHoc(); }}>
+				<input
+					type="text"
+					bind:value={newChoreText}
+					placeholder="What needs to be done?"
+					class="add-input"
+					disabled={isSubmitting}
+				/>
+				<div class="form-row">
+					<select bind:value={newChoreTimeSlot} class="time-select" disabled={isSubmitting}>
+						<option value="morning">Morning</option>
+						<option value="afternoon">Afternoon</option>
+						<option value="evening">Evening</option>
+					</select>
+					<input
+						type="text"
+						bind:value={newChoreCategory}
+						placeholder="Category"
+						class="category-input"
+						disabled={isSubmitting}
+					/>
+				</div>
+				<div class="form-actions">
+					<button type="button" class="cancel-btn" onclick={handleCancelAdd} disabled={isSubmitting}>
+						Cancel
+					</button>
+					<button type="submit" class="submit-btn" disabled={!newChoreText.trim() || isSubmitting}>
+						{isSubmitting ? 'Adding...' : 'Add Chore'}
+					</button>
+				</div>
+			</form>
+		{:else}
+			<button class="add-btn" onclick={() => { showAddForm = true; }}>
+				+ Add Today's Chore
+			</button>
+		{/if}
 	</div>
 
 	{#if dailyChoreStore.isLoading}
@@ -180,7 +254,119 @@
 		font-size: 0.875rem;
 		color: #6b7280;
 		text-align: center;
+		margin-bottom: 1rem;
+	}
+
+	/* Add ad-hoc chore styles */
+	.add-section {
 		margin-bottom: 1.5rem;
+	}
+
+	.add-btn {
+		width: 100%;
+		padding: 0.75rem;
+		background: #fff;
+		border: 2px dashed #4caf50;
+		border-radius: 8px;
+		color: #4caf50;
+		font-size: 1rem;
+		cursor: pointer;
+		transition: all 0.2s;
+	}
+
+	.add-btn:hover {
+		background: #e8f5e9;
+	}
+
+	.add-form {
+		background: #fff;
+		border-radius: 8px;
+		padding: 1rem;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	}
+
+	.add-input {
+		width: 100%;
+		padding: 0.75rem;
+		font-size: 1rem;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+		margin-bottom: 0.75rem;
+		box-sizing: border-box;
+	}
+
+	.add-input:focus {
+		outline: none;
+		border-color: #4caf50;
+	}
+
+	.form-row {
+		display: flex;
+		gap: 0.5rem;
+		margin-bottom: 0.75rem;
+	}
+
+	.time-select,
+	.category-input {
+		flex: 1;
+		padding: 0.5rem;
+		font-size: 0.875rem;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+		box-sizing: border-box;
+	}
+
+	.time-select:focus,
+	.category-input:focus {
+		outline: none;
+		border-color: #4caf50;
+	}
+
+	.form-actions {
+		display: flex;
+		gap: 0.5rem;
+		justify-content: flex-end;
+	}
+
+	.cancel-btn,
+	.submit-btn {
+		padding: 0.5rem 1rem;
+		font-size: 0.875rem;
+		border-radius: 4px;
+		cursor: pointer;
+	}
+
+	.cancel-btn {
+		background: #f5f5f5;
+		border: 1px solid #ddd;
+		color: #666;
+	}
+
+	.cancel-btn:hover:not(:disabled) {
+		background: #e8e8e8;
+	}
+
+	.submit-btn {
+		background: #4caf50;
+		border: none;
+		color: #fff;
+	}
+
+	.submit-btn:hover:not(:disabled) {
+		background: #43a047;
+	}
+
+	.submit-btn:disabled {
+		background: #ccc;
+		cursor: not-allowed;
+	}
+
+	.cancel-btn:disabled,
+	.time-select:disabled,
+	.category-input:disabled,
+	.add-input:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
 	}
 
 	.loading {
