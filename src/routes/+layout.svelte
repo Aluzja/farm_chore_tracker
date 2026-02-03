@@ -27,6 +27,8 @@
 	if (browser && convexClient) {
 		const escapedNamespace = PUBLIC_CONVEX_URL.replace(/[^a-zA-Z0-9]/g, '');
 		const tokenKey = `convexAuthJwt_${escapedNamespace}`;
+		console.log('[Layout] Setting up auth with tokenKey:', tokenKey);
+		console.log('[Layout] All localStorage keys:', Object.keys(localStorage));
 
 		convexClient.setAuth(async ({ forceRefreshToken }) => {
 			const token = localStorage.getItem(tokenKey);
@@ -36,6 +38,9 @@
 				'forceRefresh:',
 				forceRefreshToken
 			);
+			if (token) {
+				console.log('[Layout] Token starts with:', token.substring(0, 50));
+			}
 			return token;
 		});
 	}
