@@ -2,8 +2,9 @@ import imageCompression from 'browser-image-compression';
 
 /**
  * Compress an image file to ~2MB JPEG (high quality).
- * Uses web worker for non-blocking compression.
  * Strips EXIF metadata (GPS, timestamps) - app tracks its own metadata.
+ *
+ * Falls back to main thread compression if Web Worker fails (older iOS devices).
  *
  * @param file - Original image file from camera/file input
  * @param onProgress - Optional callback for compression progress (0-100)
@@ -13,16 +14,23 @@ export async function compressImage(
 	file: File,
 	onProgress?: (percent: number) => void
 ): Promise<Blob> {
-	const options = {
+	const baseOptions = {
 		maxSizeMB: 2,
-		useWebWorker: true,
 		preserveExif: false,
 		fileType: 'image/jpeg' as const,
 		initialQuality: 0.92,
 		onProgress: onProgress
 	};
 
-	return await imageCompression(file, options);
+	// Try with Web Worker first (faster, non-blocking)
+	try {
+		return await imageCompression(file, { ...baseOptions, useWebWorker: true });
+	} catch (error) {
+		console.warn('[Photo] Web Worker compression failed, falling back to main thread:', error);
+	}
+
+	// Fallback: compress on main thread (works on older iOS devices)
+	return await imageCompression(file, { ...baseOptions, useWebWorker: false });
 }
 
 /**
@@ -37,7 +45,7 @@ export async function capturePhoto(): Promise<{
 	previewUrl: string;
 	originalSize: number;
 } | null> {
-	return new Promise((resolve) => {
+	return new Promise((resolve, reject) => {
 		// Create hidden file input
 		const input = document.createElement('input');
 		input.type = 'file';
@@ -69,7 +77,8 @@ export async function capturePhoto(): Promise<{
 				});
 			} catch (error) {
 				console.error('[Photo] Compression failed:', error);
-				resolve(null);
+				// Reject with error so UI can display it
+				reject(error instanceof Error ? error : new Error('Failed to process photo'));
 			}
 		};
 
