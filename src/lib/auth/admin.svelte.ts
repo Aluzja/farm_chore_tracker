@@ -1,9 +1,12 @@
 import { browser } from '$app/environment';
+import { PUBLIC_CONVEX_URL } from '$env/static/public';
 import type { ConvexClient } from 'convex/browser';
 import { api } from '../../convex/_generated/api';
 
-const TOKEN_STORAGE_KEY = 'convex_auth_token';
-const REFRESH_TOKEN_KEY = 'convex_auth_refresh_token';
+// Use the same storage key format as @convex-dev/auth
+const escapedNamespace = PUBLIC_CONVEX_URL.replace(/[^a-zA-Z0-9]/g, '');
+const TOKEN_STORAGE_KEY = `convexAuthJwt_${escapedNamespace}`;
+const REFRESH_TOKEN_KEY = `convexAuthRefreshToken_${escapedNamespace}`;
 
 type AuthState = 'loading' | 'authenticated' | 'unauthenticated';
 
