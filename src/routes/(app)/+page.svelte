@@ -7,6 +7,7 @@
 	import { formatTimeSlot } from '$lib/utils/date';
 	import { getCurrentUser } from '$lib/auth/user-context.svelte';
 	import PhotoThumbnail from '$lib/components/PhotoThumbnail.svelte';
+	import SyncStatusBadge from '$lib/components/SyncStatusBadge.svelte';
 	import type { DailyChore } from '$lib/db/schema';
 
 	function formatCompletionTime(isoString: string | undefined): string {
@@ -49,6 +50,14 @@
 					{/if}
 					{syncEngine.currentPhotoUpload ? 'Uploading photo...' : `${syncEngine.pendingPhotoCount} photos`}
 				</div>
+			{/if}
+			{#if syncEngine.failedCount > 0 || syncEngine.failedPhotoCount > 0}
+				<button class="retry-button" onclick={() => {
+					syncEngine.retryFailed();
+					syncEngine.retryFailedPhotos();
+				}}>
+					{syncEngine.failedCount + syncEngine.failedPhotoCount} failed - Retry
+				</button>
 			{/if}
 		</div>
 	</header>
@@ -130,11 +139,7 @@
 											{/key}
 										{/if}
 
-										{#if chore.syncStatus === 'pending'}
-											<span class="sync-status pending" title="Pending sync">...</span>
-										{:else if chore.syncStatus === 'failed'}
-											<span class="sync-status failed" title="Sync failed">!</span>
-										{/if}
+										<SyncStatusBadge status={chore.syncStatus} />
 									</li>
 								{/each}
 							</ul>
@@ -191,6 +196,20 @@
 	.sync-indicator {
 		font-size: 0.75rem;
 		color: #6b7280;
+	}
+
+	.retry-button {
+		font-size: 0.75rem;
+		color: #dc2626;
+		background: none;
+		border: none;
+		padding: 0.25rem 0.5rem;
+		cursor: pointer;
+		text-decoration: underline;
+	}
+
+	.retry-button:hover {
+		color: #b91c1c;
 	}
 
 	.progress-bar-container {
@@ -407,23 +426,6 @@
 		font-size: 0.75rem;
 		color: #16a34a;
 		margin-top: 0.25rem;
-	}
-
-	.sync-status {
-		flex-shrink: 0;
-		font-size: 0.875rem;
-		opacity: 0.6;
-	}
-
-	.sync-status.pending {
-		color: #f59e0b;
-		opacity: 1;
-	}
-
-	.sync-status.failed {
-		color: #dc2626;
-		font-weight: 600;
-		opacity: 1;
 	}
 
 	.photo-upload-indicator {
