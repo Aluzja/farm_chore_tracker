@@ -20,7 +20,12 @@
 			: null
 	);
 
-	const photoUrl = $derived(photoUrlQuery?.data ?? null);
+	// Add cache-busting param to prevent browser caching old images after replacement
+	const photoUrl = $derived(
+		photoUrlQuery?.data && chore?.photoStorageId
+			? `${photoUrlQuery.data}${photoUrlQuery.data.includes('?') ? '&' : '?'}v=${chore.photoStorageId}`
+			: null
+	);
 	const isLoading = $derived(photoUrlQuery?.isLoading ?? !chore?.photoStorageId);
 	const queryError = $derived(photoUrlQuery?.error?.message ?? null);
 

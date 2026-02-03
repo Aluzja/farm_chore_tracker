@@ -19,7 +19,10 @@
 		})
 	);
 
-	const photoUrl = $derived(photoUrlQuery.data ?? null);
+	// Add cache-busting param using storageId to prevent browser caching old images
+	const photoUrl = $derived(
+		photoUrlQuery.data ? `${photoUrlQuery.data}${photoUrlQuery.data.includes('?') ? '&' : '?'}v=${storageId}` : null
+	);
 	const isLoading = $derived(photoUrlQuery.isLoading);
 
 	function handleClick() {
