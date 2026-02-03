@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Auth and Access** - Admin authentication and URL key-based user access
 - [x] **Phase 4: Core Chore Workflow** - Master list, daily clone, completion, real-time sync
 - [x] **Phase 5: Photo Verification** - Camera capture, offline queue, Convex file storage
-- [ ] **Phase 6: Polish and History** - Sync indicators, 7-day history, UX refinement
+- [x] **Phase 6: Polish and History** - Sync indicators, 7-day history, UX refinement
 
 ## Phase Details
 
@@ -124,9 +124,9 @@ Plans:
 **Plans**: 3 plans (2 waves)
 
 Plans:
-- [ ] 06-01-PLAN.md — SyncStatusBadge component with retry capability
-- [ ] 06-02-PLAN.md — 7-day history view with date-grouped display
-- [ ] 06-03-PLAN.md — UX polish with transitions and touch optimization
+- [x] 06-01-PLAN.md — SyncStatusBadge component with retry capability
+- [x] 06-02-PLAN.md — 7-day history view with date-grouped display
+- [x] 06-03-PLAN.md — UX polish with transitions and touch optimization
 
 ## Progress
 
@@ -140,7 +140,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 3. Auth and Access | 4/4 | ✓ Complete | 2026-02-02 |
 | 4. Core Chore Workflow | 4/4 | ✓ Complete | 2026-02-02 |
 | 5. Photo Verification | 4/4 | ✓ Complete | 2026-02-02 |
-| 6. Polish and History | 0/3 | Ready | - |
+| 6. Polish and History | 3/3 | ✓ Complete | 2026-02-02 |
 
 ## Requirement Coverage
 

@@ -81,13 +81,13 @@ From PROJECT.md - explicitly excluded:
 | CHORE-02 | Phase 4 | Complete |
 | CHORE-03 | Phase 4 | Complete |
 | CHORE-04 | Phase 4 | Complete |
-| CHORE-05 | Phase 4 + 5 | In Progress |
-| CHORE-06 | Phase 5 | Pending |
+| CHORE-05 | Phase 4 + 5 | Complete |
+| CHORE-06 | Phase 5 | Complete |
 | CHORE-07 | Phase 4 | Complete |
 | CHORE-08 | Phase 4 | Complete |
 | CHORE-09 | Phase 4 | Complete |
-| HIST-01 | Phase 6 | Pending |
-| UX-01 | Phase 6 | Pending |
+| HIST-01 | Phase 6 | Complete |
+| UX-01 | Phase 6 | Complete |
 
 **Coverage: 17/17 v1 requirements mapped**
 
