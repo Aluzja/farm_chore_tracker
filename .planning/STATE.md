@@ -10,17 +10,17 @@ See: .planning/PROJECT.md (updated 2026-02-01)
 ## Current Position
 
 Phase: 4 of 6 (Core Chore Workflow)
-Plan: 3 of 3 in current phase
+Plan: 4 of 4 in current phase
 Status: Phase complete
-Last activity: 2026-02-02 - Completed 04-03-PLAN.md (Daily Chore List)
+Last activity: 2026-02-03 - Completed 04-04-PLAN.md (Ad-hoc Chores and User Identity)
 
-Progress: [████████████░] 73%
+Progress: [█████████████░] 80%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 11
-- Average duration: 4.9 min
+- Total plans completed: 12
+- Average duration: 4.5 min
 - Total execution time: 0.9 hours
 
 **By Phase:**
@@ -30,11 +30,11 @@ Progress: [████████████░] 73%
 | 01-foundation | 3 | 15 min | 5 min |
 | 02-data-layer | 2 | 7 min | 3.5 min |
 | 03-auth-and-access | 3 | 21 min | 7 min |
-| 04-core-chore-workflow | 3 | 11 min | 3.7 min |
+| 04-core-chore-workflow | 4 | 13 min | 3.25 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-02 (8 min), 03-03 (5 min), 04-01 (3 min), 04-02 (4 min), 04-03 (4 min)
-- Trend: stable
+- Last 5 plans: 03-03 (5 min), 04-01 (3 min), 04-02 (4 min), 04-03 (4 min), 04-04 (2 min)
+- Trend: stable/improving
 
 *Updated after each plan completion*
 
@@ -45,6 +45,9 @@ Progress: [████████████░] 73%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- 04-04: User context via module exports: setCurrentUser/getCurrentUser for cross-component sharing
+- 04-04: Layout effect syncs userName to user context when access validated
+- 04-04: Ad-hoc form defaults time slot to current time of day
 - 04-03: Grouped derived state: Time slots ordered, categories alphabetical within
 - 04-03: Clone trigger in layout via effect watching query result
 - 04-03: Replace Tailwind with scoped CSS in app layout/page
@@ -88,8 +91,8 @@ From research (to address during implementation):
 
 ## Session Continuity
 
-Last session: 2026-02-02
-Stopped at: Completed 04-03-PLAN.md (Daily Chore List)
+Last session: 2026-02-03
+Stopped at: Completed 04-04-PLAN.md (Ad-hoc Chores and User Identity)
 Resume file: Phase 5 planning required
 
 ## Phase 4 Plans Summary
@@ -99,6 +102,7 @@ Resume file: Phase 5 planning required
 | 1 | 04-01 | Data Layer Foundation | Autonomous | Complete |
 | 2 | 04-02 | Admin Master Chores UI | Autonomous | Complete |
 | 3 | 04-03 | Daily Chore List (Worker UI) | Autonomous | Complete |
+| 3 | 04-04 | Ad-hoc Chores and User Identity | Autonomous | Complete |
 
 Key technical decisions:
 - Two-table pattern: masterChores (admin-managed templates) vs dailyChores (daily instances)
@@ -108,6 +112,8 @@ Key technical decisions:
 - MasterChoreStore with $state and $derived.by grouping
 - DailyChoreStore with time slot and category grouping
 - Sync engine multi-table support for chores and dailyChores
+- User context module for cross-component user identity sharing
+- Ad-hoc chore creation with optimistic UI
 
 ## Phase 3 Plans Summary
 
