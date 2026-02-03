@@ -5,11 +5,24 @@ export interface CompressionProgress {
 	usingMainThread: boolean;
 }
 
+// Timeout for Web Worker compression before falling back to main thread
+const WEB_WORKER_TIMEOUT_MS = 5000;
+
+/**
+ * Run a promise with a timeout
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, timeoutError: Error): Promise<T> {
+	return Promise.race([
+		promise,
+		new Promise<T>((_, reject) => setTimeout(() => reject(timeoutError), ms))
+	]);
+}
+
 /**
  * Compress an image file to ~2MB JPEG (high quality).
  * Strips EXIF metadata (GPS, timestamps) - app tracks its own metadata.
  *
- * Falls back to main thread compression if Web Worker fails (older iOS devices).
+ * Falls back to main thread compression if Web Worker fails or times out (older iOS devices).
  *
  * @param file - Original image file from camera/file input
  * @param onProgress - Optional callback for compression progress
@@ -19,6 +32,8 @@ export async function compressImage(
 	file: File,
 	onProgress?: (progress: CompressionProgress) => void
 ): Promise<Blob> {
+	let hasReceivedProgress = false;
+
 	const makeOptions = (useWebWorker: boolean) => ({
 		maxSizeMB: 2,
 		preserveExif: false,
@@ -26,15 +41,25 @@ export async function compressImage(
 		initialQuality: 0.92,
 		useWebWorker,
 		onProgress: onProgress
-			? (percent: number) => onProgress({ percent, usingMainThread: !useWebWorker })
+			? (percent: number) => {
+					hasReceivedProgress = true;
+					onProgress({ percent, usingMainThread: !useWebWorker });
+				}
 			: undefined
 	});
 
 	// Try with Web Worker first (faster, non-blocking)
+	// Use timeout because on some older iOS devices, Web Workers silently hang
 	try {
-		return await imageCompression(file, makeOptions(true));
+		const webWorkerPromise = imageCompression(file, makeOptions(true));
+		return await withTimeout(
+			webWorkerPromise,
+			WEB_WORKER_TIMEOUT_MS,
+			new Error('Web Worker timeout')
+		);
 	} catch (error) {
-		console.warn('[Photo] Web Worker compression failed, falling back to main thread:', error);
+		const reason = hasReceivedProgress ? 'failed' : 'timed out or not supported';
+		console.warn(`[Photo] Web Worker compression ${reason}, falling back to main thread:`, error);
 	}
 
 	// Reset progress for fallback attempt
