@@ -127,9 +127,11 @@ class AdminAuth {
 				refreshToken
 			});
 
-			if (result && result.token) {
-				storeTokens(result.token, result.refreshToken);
-				this.client.setAuth(async () => result.token);
+			const tokens = result?.tokens;
+			if (tokens?.token) {
+				storeTokens(tokens.token, tokens.refreshToken);
+				const token = tokens.token;
+				this.client.setAuth(async () => token);
 
 				// Re-check the user
 				const user = await this.client.query(api.users.currentUser, {});
@@ -161,20 +163,16 @@ class AdminAuth {
 
 			console.log('[AdminAuth] signIn result:', JSON.stringify(result, null, 2));
 
-			if (result && result.tokens && result.tokens.token) {
-				// Store tokens (tokens are nested under 'tokens' property)
-				storeTokens(result.tokens.token, result.tokens.refreshToken);
+			const tokens = result?.tokens;
+			if (tokens?.token) {
+				// Store tokens
+				storeTokens(tokens.token, tokens.refreshToken);
 
 				// Set auth on client
-				this.client.setAuth(async () => result.tokens.token);
+				const token = tokens.token;
+				this.client.setAuth(async () => token);
 
 				// Refresh auth state
-				await this.checkAuth();
-				return { success: true };
-			} else if (result && result.token) {
-				// Alternative: tokens directly on result
-				storeTokens(result.token, result.refreshToken);
-				this.client.setAuth(async () => result.token);
 				await this.checkAuth();
 				return { success: true };
 			} else {
@@ -204,21 +202,17 @@ class AdminAuth {
 
 			console.log('[AdminAuth] signUp result:', JSON.stringify(result, null, 2));
 
-			if (result && result.tokens && result.tokens.token) {
+			const tokens = result?.tokens;
+			if (tokens?.token) {
 				// Store tokens (tokens are nested under 'tokens' property)
-				storeTokens(result.tokens.token, result.tokens.refreshToken);
+				storeTokens(tokens.token, tokens.refreshToken);
 
 				// Set auth on client
-				this.client.setAuth(async () => result.tokens.token);
+				const token = tokens.token;
+				this.client.setAuth(async () => token);
 
 				// First user automatically becomes admin via auth callback
 				// Refresh auth state
-				await this.checkAuth();
-				return { success: true };
-			} else if (result && result.token) {
-				// Alternative: tokens directly on result
-				storeTokens(result.token, result.refreshToken);
-				this.client.setAuth(async () => result.token);
 				await this.checkAuth();
 				return { success: true };
 			} else {
@@ -245,7 +239,8 @@ class AdminAuth {
 		} finally {
 			clearTokens();
 			if (this.client) {
-				this.client.setAuth(null);
+				// Clear auth by providing a fetcher that returns null
+				this.client.setAuth(async () => null);
 			}
 			this.state = 'unauthenticated';
 			this.userId = null;
