@@ -9,6 +9,7 @@ export interface MasterChore {
 	animalCategory: string;
 	sortOrder: number;
 	isActive: boolean;
+	requiresPhoto?: boolean;
 	createdBy?: Id<'users'>;
 	createdAt: number;
 	updatedAt: number;

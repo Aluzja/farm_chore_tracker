@@ -26,6 +26,7 @@
 	let formText = $state('');
 	let formTimeSlot = $state<TimeSlot>('morning');
 	let formCategory = $state('');
+	let formRequiresPhoto = $state(false);
 	let isSubmitting = $state(false);
 	let formError = $state<string | null>(null);
 
@@ -34,6 +35,7 @@
 	let editText = $state('');
 	let editTimeSlot = $state<TimeSlot>('morning');
 	let editCategory = $state('');
+	let editRequiresPhoto = $state(false);
 
 	// Category suggestions
 	const categorySuggestions = ['Chickens', 'Goats', 'Pigs', 'Garden', 'General'];
@@ -49,12 +51,14 @@
 			await client.mutation(api.masterChores.create, {
 				text: formText.trim(),
 				timeSlot: formTimeSlot,
-				animalCategory: formCategory.trim()
+				animalCategory: formCategory.trim(),
+				requiresPhoto: formRequiresPhoto
 			});
 			// Clear form
 			formText = '';
 			formCategory = '';
 			formTimeSlot = 'morning';
+			formRequiresPhoto = false;
 		} catch (error) {
 			formError = error instanceof Error ? error.message : 'Failed to create chore';
 		} finally {
@@ -67,6 +71,7 @@
 		editText = chore.text;
 		editTimeSlot = chore.timeSlot as TimeSlot;
 		editCategory = chore.animalCategory;
+		editRequiresPhoto = chore.requiresPhoto ?? false;
 	}
 
 	function cancelEdit() {
@@ -74,6 +79,7 @@
 		editText = '';
 		editTimeSlot = 'morning';
 		editCategory = '';
+		editRequiresPhoto = false;
 	}
 
 	async function handleUpdate(e: SubmitEvent) {
@@ -88,7 +94,8 @@
 				id: editingChore._id,
 				text: editText.trim(),
 				timeSlot: editTimeSlot,
-				animalCategory: editCategory.trim()
+				animalCategory: editCategory.trim(),
+				requiresPhoto: editRequiresPhoto
 			});
 			cancelEdit();
 		} catch (error) {
@@ -186,6 +193,16 @@
 						</datalist>
 					</div>
 
+					<div class="form-group form-group-checkbox">
+						<label class="checkbox-label">
+							<input
+								type="checkbox"
+								bind:checked={formRequiresPhoto}
+							/>
+							<span>Requires Photo</span>
+						</label>
+					</div>
+
 					<div class="form-group form-group-button">
 						<button type="submit" class="btn btn-primary" disabled={isSubmitting || !formText.trim() || !formCategory.trim()}>
 							{isSubmitting ? 'Adding...' : 'Add Chore'}
@@ -243,6 +260,16 @@
 							</datalist>
 						</div>
 
+						<div class="form-group form-group-checkbox">
+							<label class="checkbox-label">
+								<input
+									type="checkbox"
+									bind:checked={editRequiresPhoto}
+								/>
+								<span>Requires Photo</span>
+							</label>
+						</div>
+
 						<div class="modal-actions">
 							<button type="button" class="btn btn-secondary" onclick={cancelEdit}>
 								Cancel
@@ -274,7 +301,17 @@
 							{#each group.chores as chore (chore._id)}
 								<li class="chore-item">
 									<div class="chore-info">
-										<span class="chore-text">{chore.text}</span>
+										<div class="chore-text-row">
+											<span class="chore-text">{chore.text}</span>
+											{#if chore.requiresPhoto}
+												<span class="photo-badge" title="Requires photo">
+													<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+														<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+														<circle cx="12" cy="13" r="4"></circle>
+													</svg>
+												</span>
+											{/if}
+										</div>
 										<span class="chore-category">{chore.animalCategory}</span>
 									</div>
 									<div class="chore-actions">
@@ -423,6 +460,29 @@
 		align-self: flex-end;
 	}
 
+	.form-group-checkbox {
+		flex: 0;
+		min-width: auto;
+		justify-content: center;
+		align-self: center;
+	}
+
+	.checkbox-label {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		cursor: pointer;
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: #374151;
+	}
+
+	.checkbox-label input[type="checkbox"] {
+		width: 1rem;
+		height: 1rem;
+		cursor: pointer;
+	}
+
 	.form-group label {
 		font-size: 0.875rem;
 		font-weight: 500;
@@ -566,9 +626,25 @@
 		gap: 0.25rem;
 	}
 
+	.chore-text-row {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
 	.chore-text {
 		font-size: 0.9375rem;
 		color: #111827;
+	}
+
+	.photo-badge {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.125rem 0.25rem;
+		background-color: #dbeafe;
+		color: #2563eb;
+		border-radius: 0.25rem;
 	}
 
 	.chore-category {
