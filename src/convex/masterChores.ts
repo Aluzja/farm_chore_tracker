@@ -26,6 +26,7 @@ export const create = mutation({
     timeSlot: v.string(),
     animalCategory: v.string(),
     sortOrder: v.optional(v.number()),
+    requiresPhoto: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -54,6 +55,7 @@ export const create = mutation({
       animalCategory: args.animalCategory,
       sortOrder,
       isActive: true,
+      requiresPhoto: args.requiresPhoto,
       createdBy: userId,
       createdAt: now,
       updatedAt: now,
@@ -70,6 +72,7 @@ export const update = mutation({
     animalCategory: v.optional(v.string()),
     sortOrder: v.optional(v.number()),
     isActive: v.optional(v.boolean()),
+    requiresPhoto: v.optional(v.boolean()),
   },
   handler: async (ctx, { id, ...updates }) => {
     const userId = await getAuthUserId(ctx);
@@ -88,6 +91,7 @@ export const update = mutation({
     if (updates.animalCategory !== undefined) patch.animalCategory = updates.animalCategory;
     if (updates.sortOrder !== undefined) patch.sortOrder = updates.sortOrder;
     if (updates.isActive !== undefined) patch.isActive = updates.isActive;
+    if (updates.requiresPhoto !== undefined) patch.requiresPhoto = updates.requiresPhoto;
 
     await ctx.db.patch(id, patch);
   },
