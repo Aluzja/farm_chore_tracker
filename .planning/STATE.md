@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-01)
 ## Current Position
 
 Phase: 5 of 6 (Photo Verification)
-Plan: 1 of 4 in current phase
+Plan: 2 of 4 in current phase
 Status: In progress
-Last activity: 2026-02-03 - Completed 05-01-PLAN.md (Photo Capture Infrastructure)
+Last activity: 2026-02-02 - Completed 05-02-PLAN.md (Photo Storage API)
 
-Progress: [█████████████░░] 81%
+Progress: [██████████████░] 88%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13
-- Average duration: 4.3 min
-- Total execution time: 0.93 hours
+- Total plans completed: 14
+- Average duration: 4.1 min
+- Total execution time: 0.98 hours
 
 **By Phase:**
 
@@ -31,10 +31,10 @@ Progress: [█████████████░░] 81%
 | 02-data-layer | 2 | 7 min | 3.5 min |
 | 03-auth-and-access | 3 | 21 min | 7 min |
 | 04-core-chore-workflow | 4 | 13 min | 3.25 min |
-| 05-photo-verification | 1 | 2 min | 2 min |
+| 05-photo-verification | 2 | 5 min | 2.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-01 (3 min), 04-02 (4 min), 04-03 (4 min), 04-04 (2 min), 05-01 (2 min)
+- Last 5 plans: 04-02 (4 min), 04-03 (4 min), 04-04 (2 min), 05-01 (2 min), 05-02 (3 min)
 - Trend: stable/improving
 
 *Updated after each plan completion*
@@ -46,6 +46,8 @@ Progress: [█████████████░░] 81%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- 05-02: requiresPhoto optional on master, required on daily (explicit state on clone)
+- 05-02: Photo metadata (capturedAt, capturedBy) captured at attachment time
 - 05-01: Camera access via file input with capture=environment (simpler than getUserMedia)
 - 05-01: Strip EXIF metadata on compression for privacy (preserveExif: false)
 - 05-01: Store Blob directly in IndexedDB (not base64) for efficiency
@@ -95,9 +97,9 @@ From research (to address during implementation):
 
 ## Session Continuity
 
-Last session: 2026-02-03
-Stopped at: Completed 05-01-PLAN.md (Photo Capture Infrastructure)
-Resume file: .planning/phases/05-photo-verification/05-02-PLAN.md
+Last session: 2026-02-02
+Stopped at: Completed 05-02-PLAN.md (Photo Storage API)
+Resume file: .planning/phases/05-photo-verification/05-03-PLAN.md
 
 ## Phase 4 Plans Summary
 
@@ -142,12 +144,14 @@ Key technical decisions:
 | Wave | Plan | Description | Autonomous | Status |
 |------|------|-------------|------------|--------|
 | 1 | 05-01 | Photo Capture Infrastructure | Autonomous | Complete |
-| 2 | 05-02 | Photo Queue Operations | Autonomous | Pending |
-| 3 | 05-03 | Photo Capture UI | Autonomous | Pending |
-| 3 | 05-04 | Convex Upload Integration | Autonomous | Pending |
+| 1 | 05-02 | Photo Storage API | Autonomous | Complete |
+| 2 | 05-03 | Camera Capture UI | Autonomous | Pending |
+| 2 | 05-04 | Photo Display and Upload | Autonomous | Pending |
 
 Key technical decisions:
 - browser-image-compression for ~1MB JPEG output with EXIF stripping
 - HTML5 file input with capture=environment for camera access
 - IndexedDB version 3 with photoQueue store
 - PhotoQueueEntry Zod schema with uploadStatus enum for retry management
+- Convex file storage via _storage table references
+- Photos API with generateUploadUrl, attachPhotoToChore, getPhotoUrl, getPhotoUrlByChore
