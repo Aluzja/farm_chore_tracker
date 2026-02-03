@@ -44,8 +44,8 @@
 
 			if (result.success) {
 				// Full page reload to reinitialize Convex client with auth token
-				// Redirect to Today view (main app) as the default admin landing page
-				window.location.href = resolve('/');
+				// Redirect to admin chores page
+				window.location.href = resolve('/admin/chores');
 				return;
 			} else {
 				error = result.error ?? 'Authentication failed';
