@@ -7,6 +7,7 @@
 	import { browser } from '$app/environment';
 	import AdminNav from '$lib/components/AdminNav.svelte';
 	import Dropdown from '$lib/components/Dropdown.svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	// Get Convex client for mutations
 	const client = browser ? useConvexClient() : null;
@@ -53,7 +54,7 @@
 			collapsedSlots.add(timeSlot);
 		}
 		// Trigger reactivity
-		collapsedSlots = new Set(collapsedSlots);
+		collapsedSlots = new SvelteSet(collapsedSlots);
 	}
 
 	function isSlotCollapsed(timeSlot: string): boolean {
@@ -89,6 +90,7 @@
 		{ value: 'Chickens', label: 'Chickens' },
 		{ value: 'Ducks', label: 'Ducks' },
 		{ value: 'Geese', label: 'Geese' },
+		{ value: 'Cats', label: 'Cats' },
 		{ value: 'Garden', label: 'Garden' }
 	];
 

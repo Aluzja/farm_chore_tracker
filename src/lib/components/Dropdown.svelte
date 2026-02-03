@@ -90,7 +90,7 @@
 		isOpen = true;
 	}
 
-	function handleBlur(e: FocusEvent) {
+	function handleBlur() {
 		// Delay to allow click on option
 		setTimeout(() => {
 			if (!containerRef?.contains(document.activeElement)) {

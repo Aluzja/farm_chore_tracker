@@ -11,6 +11,7 @@
 	import PhotoThumbnail from '$lib/components/PhotoThumbnail.svelte';
 	import SyncStatusBadge from '$lib/components/SyncStatusBadge.svelte';
 	import type { DailyChore } from '$lib/db/schema';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	// Track collapsed state for each time slot
 	let collapsedSlots = $state<Set<string>>(new Set());
@@ -22,7 +23,7 @@
 			collapsedSlots.add(timeSlot);
 		}
 		// Trigger reactivity
-		collapsedSlots = new Set(collapsedSlots);
+		collapsedSlots = new SvelteSet(collapsedSlots);
 	}
 
 	function isSlotCollapsed(timeSlot: string): boolean {
