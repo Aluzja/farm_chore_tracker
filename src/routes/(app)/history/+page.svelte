@@ -155,8 +155,10 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 2.5rem;
-		height: 2.5rem;
+		width: 48px;
+		height: 48px;
+		min-width: 48px;
+		min-height: 48px;
 		background: none;
 		border: none;
 		border-radius: 0.5rem;
@@ -174,13 +176,13 @@
 	}
 
 	.header-spacer {
-		width: 2.5rem;
+		width: 48px;
 	}
 
 	.history-content {
 		max-width: 600px;
 		margin: 0 auto;
-		padding-bottom: 2rem;
+		padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
 	}
 
 	.loading-state,
@@ -247,13 +249,13 @@
 
 	.chore-card {
 		display: flex;
-		align-items: flex-start;
+		align-items: center;
 		justify-content: space-between;
 		gap: 0.75rem;
 		background: white;
 		padding: 1rem;
 		border-bottom: 1px solid #e5e7eb;
-		min-height: 3.5rem; /* 56px touch-friendly height */
+		min-height: 56px;
 	}
 
 	.chore-card:first-child {

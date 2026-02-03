@@ -157,8 +157,9 @@
 		max-width: 600px;
 		margin: 0 auto;
 		padding: 1rem;
-		padding-bottom: 4rem;
+		padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
 		font-family: system-ui, -apple-system, sans-serif;
+		-webkit-overflow-scrolling: touch;
 	}
 
 	.header {
@@ -204,7 +205,8 @@
 		color: #dc2626;
 		background: none;
 		border: none;
-		padding: 0.25rem 0.5rem;
+		padding: 0.75rem 0.5rem;
+		min-height: 44px;
 		cursor: pointer;
 		text-decoration: underline;
 	}
@@ -214,7 +216,7 @@
 	}
 
 	.progress-bar-container {
-		height: 0.5rem;
+		height: 0.625rem;
 		background: #e5e7eb;
 		border-radius: 9999px;
 		overflow: hidden;
@@ -344,9 +346,10 @@
 
 	.chore-item {
 		display: flex;
-		align-items: flex-start;
+		align-items: center;
 		gap: 0.75rem;
-		padding: 1rem;
+		padding: 0.75rem 1rem;
+		min-height: 56px;
 		border-bottom: 1px solid #f3f4f6;
 		transition: background-color 0.15s;
 	}
@@ -365,8 +368,10 @@
 
 	.toggle-button {
 		flex-shrink: 0;
-		width: 2rem;
-		height: 2rem;
+		width: 48px;
+		height: 48px;
+		min-width: 48px;
+		min-height: 48px;
 		border-radius: 50%;
 		border: 2px solid #d1d5db;
 		background: white;
@@ -375,6 +380,8 @@
 		align-items: center;
 		justify-content: center;
 		transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+		/* Larger touch target for mobile - toggle button positioned on right via flex order */
+		order: 1;
 	}
 
 	.toggle-button:hover {
@@ -387,8 +394,8 @@
 	}
 
 	.check-icon {
-		width: 1rem;
-		height: 1rem;
+		width: 1.25rem;
+		height: 1.25rem;
 		color: white;
 		animation: fadeIn 0.15s ease-out;
 	}
@@ -407,12 +414,15 @@
 	.chore-content {
 		flex: 1;
 		min-width: 0;
+		/* Content appears before toggle button (left side) for thumb-friendly layout */
+		order: 0;
 	}
 
 	.chore-text {
 		display: block;
 		color: #111827;
 		line-height: 1.4;
+		font-size: 1rem;
 	}
 
 	.chore-item.completed .chore-text {
@@ -459,8 +469,8 @@
 	}
 
 	.camera-icon {
-		width: 1rem;
-		height: 1rem;
+		width: 1.25rem;
+		height: 1.25rem;
 		color: #6b7280;
 	}
 
@@ -472,5 +482,14 @@
 		background: #dbeafe;
 		color: #1d4ed8;
 		margin-left: 0.5rem;
+	}
+
+	/* Photo thumbnail and sync badge ordering for thumb-friendly layout */
+	.chore-item :global(.photo-thumbnail) {
+		order: 2;
+	}
+
+	.chore-item :global(.sync-badge) {
+		order: 3;
 	}
 </style>
