@@ -9,8 +9,9 @@
 	import { syncEngine } from '$lib/sync/engine.svelte';
 	import { connectionStatus } from '$lib/sync/status.svelte';
 
-	// Get chore ID from query params
+	// Get chore ID and replace flag from query params
 	const choreId = $page.url.searchParams.get('choreId');
+	const isReplaceMode = $page.url.searchParams.get('replace') === 'true';
 
 	let previewUrl = $state<string | null>(null);
 	let capturedBlob = $state<Blob | null>(null);
@@ -75,8 +76,10 @@
 				uploadStatus: 'pending'
 			});
 
-			// Mark chore as complete
-			await dailyChoreStore.toggleComplete(choreId, user);
+			// Mark chore as complete (skip if replacing - already complete)
+			if (!isReplaceMode) {
+				await dailyChoreStore.toggleComplete(choreId, user);
+			}
 
 			// Trigger sync if online - IMPORTANT: call processPhotoQueue() specifically
 			// to ensure photo uploads are triggered immediately, not just mutation sync
@@ -116,7 +119,7 @@
 				<line x1="6" y1="6" x2="18" y2="18"></line>
 			</svg>
 		</button>
-		<h1 class="capture-title">{chore?.text || 'Capture Photo'}</h1>
+		<h1 class="capture-title">{isReplaceMode ? 'Replace Photo' : (chore?.text || 'Capture Photo')}</h1>
 	</header>
 
 	{#if error}

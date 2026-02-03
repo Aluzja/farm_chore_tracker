@@ -39,6 +39,11 @@
 		goto(resolve('/'));
 	}
 
+	function handleReplace() {
+		// Navigate to photo capture with replace flag
+		goto(resolve(`/photo-capture?choreId=${choreId}&replace=true`));
+	}
+
 	function formatDateTime(timestamp: number | undefined): string {
 		if (!timestamp) return '';
 		return new Date(timestamp).toLocaleString();
@@ -95,14 +100,23 @@
 	{/if}
 
 	<footer class="view-footer">
-		<button class="download-button" onclick={handleDownload} disabled={!photoUrl}>
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-				<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-				<polyline points="7 10 12 15 17 10"></polyline>
-				<line x1="12" y1="15" x2="12" y2="3"></line>
-			</svg>
-			Download Photo
-		</button>
+		<div class="footer-buttons">
+			<button class="replace-button" onclick={handleReplace}>
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+					<circle cx="12" cy="13" r="4"></circle>
+				</svg>
+				Replace Photo
+			</button>
+			<button class="download-button" onclick={handleDownload} disabled={!photoUrl}>
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+					<polyline points="7 10 12 15 17 10"></polyline>
+					<line x1="12" y1="15" x2="12" y2="3"></line>
+				</svg>
+				Download
+			</button>
+		</div>
 	</footer>
 </main>
 
@@ -239,8 +253,14 @@
 		background: rgba(0, 0, 0, 0.8);
 	}
 
+	.footer-buttons {
+		display: flex;
+		gap: 0.75rem;
+	}
+
+	.replace-button,
 	.download-button {
-		width: 100%;
+		flex: 1;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -248,11 +268,18 @@
 		padding: 1rem;
 		border: none;
 		border-radius: 0.75rem;
-		background: #3b82f6;
 		color: white;
-		font-size: 1rem;
+		font-size: 0.9rem;
 		font-weight: 600;
 		cursor: pointer;
+	}
+
+	.replace-button {
+		background: #10b981;
+	}
+
+	.download-button {
+		background: #3b82f6;
 	}
 
 	.download-button:disabled {
@@ -260,6 +287,7 @@
 		cursor: not-allowed;
 	}
 
+	.replace-button svg,
 	.download-button svg {
 		width: 1.25rem;
 		height: 1.25rem;
