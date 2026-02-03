@@ -135,6 +135,32 @@ export const resetTodaysList = mutation({
   },
 });
 
+// Get completed chores from past N days for history view
+export const getHistory = query({
+  args: { daysBack: v.optional(v.number()) },
+  handler: async (ctx, { daysBack = 7 }) => {
+    const today = new Date();
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - daysBack);
+    const startDateStr = startDate.toISOString().split("T")[0];
+
+    // Get completed chores from startDate onwards
+    const chores = await ctx.db
+      .query("dailyChores")
+      .withIndex("by_date", (q) => q.gte("date", startDateStr))
+      .filter((q) => q.eq(q.field("isCompleted"), true))
+      .collect();
+
+    // Sort by date descending, then by completedAt descending
+    return chores.sort((a, b) => {
+      if (a.date !== b.date) return b.date.localeCompare(a.date);
+      const aTime = a.completedAt ?? "";
+      const bTime = b.completedAt ?? "";
+      return bTime.localeCompare(aTime);
+    });
+  },
+});
+
 // Add ad-hoc chore for today only
 // Idempotent via clientId check
 export const addAdHoc = mutation({
