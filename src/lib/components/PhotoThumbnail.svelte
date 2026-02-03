@@ -12,6 +12,9 @@
 
 	const { choreId, storageId }: Props = $props();
 
+	// Track when the actual image element has loaded
+	let imageLoaded = $state(false);
+
 	// Make query reactive to storageId changes (e.g., when photo is replaced)
 	const photoUrlQuery = $derived(
 		useQuery(api.photos.getPhotoUrl, {
@@ -23,19 +26,38 @@
 	const photoUrl = $derived(
 		photoUrlQuery.data ? `${photoUrlQuery.data}${photoUrlQuery.data.includes('?') ? '&' : '?'}v=${storageId}` : null
 	);
-	const isLoading = $derived(photoUrlQuery.isLoading);
+
+	// Show loading until both query completes AND image loads
+	const isLoading = $derived(photoUrlQuery.isLoading || (photoUrl && !imageLoaded));
+
+	// Reset imageLoaded when URL changes
+	$effect(() => {
+		if (photoUrl) {
+			imageLoaded = false;
+		}
+	});
 
 	function handleClick() {
 		goto(resolve(`/photo-view/${choreId}`));
+	}
+
+	function handleImageLoad() {
+		imageLoaded = true;
 	}
 </script>
 
 <button class="thumbnail" onclick={handleClick} aria-label="View photo">
 	{#if isLoading}
 		<span class="thumbnail-loading"></span>
-	{:else if photoUrl}
-		<img src={photoUrl} alt="Completion photo" />
-	{:else}
+	{/if}
+	{#if photoUrl}
+		<img
+			src={photoUrl}
+			alt="Completion photo"
+			onload={handleImageLoad}
+			class:hidden={!imageLoaded}
+		/>
+	{:else if !isLoading}
 		<span class="thumbnail-placeholder">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 				<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -70,6 +92,10 @@
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
+	}
+
+	.thumbnail img.hidden {
+		display: none;
 	}
 
 	.thumbnail-loading {
