@@ -1,5 +1,13 @@
 import { openDB, type IDBPDatabase, type DBSchema } from 'idb';
-import { DB_NAME, DB_VERSION, STORES, type Chore, type DailyChore, type Mutation } from './schema';
+import {
+	DB_NAME,
+	DB_VERSION,
+	STORES,
+	type Chore,
+	type DailyChore,
+	type Mutation,
+	type PhotoQueueEntry
+} from './schema';
 
 interface KitchenSinkDB extends DBSchema {
 	chores: {
@@ -25,6 +33,14 @@ interface KitchenSinkDB extends DBSchema {
 			'by-created-at': number;
 		};
 	};
+	photoQueue: {
+		key: string;
+		value: PhotoQueueEntry;
+		indexes: {
+			'by-upload-status': string;
+			'by-captured-at': number;
+		};
+	};
 }
 
 let dbPromise: Promise<IDBPDatabase<KitchenSinkDB>> | null = null;
@@ -47,6 +63,12 @@ export function getDB(): Promise<IDBPDatabase<KitchenSinkDB>> {
 					const dailyStore = db.createObjectStore(STORES.dailyChores, { keyPath: '_id' });
 					dailyStore.createIndex('by-date', 'date');
 					dailyStore.createIndex('by-sync-status', 'syncStatus');
+				}
+				// Version 3: Add photoQueue store
+				if (oldVersion < 3) {
+					const photoStore = db.createObjectStore(STORES.photoQueue, { keyPath: 'id' });
+					photoStore.createIndex('by-upload-status', 'uploadStatus');
+					photoStore.createIndex('by-captured-at', 'capturedAt');
 				}
 			},
 			blocked() {
