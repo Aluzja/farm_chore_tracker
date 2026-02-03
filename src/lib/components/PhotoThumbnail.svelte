@@ -4,6 +4,7 @@
 	import { useQuery } from 'convex-svelte';
 	import { api } from '../../convex/_generated/api';
 	import type { Id } from '../../convex/_generated/dataModel';
+	import { getOrCacheImage } from '$lib/db/imageCache';
 
 	interface Props {
 		choreId: string;
@@ -12,30 +13,32 @@
 
 	const { choreId, storageId }: Props = $props();
 
-	// Make query reactive to storageId changes (e.g., when photo is replaced)
+	// Query for the remote URL
 	const photoUrlQuery = $derived(
 		useQuery(api.photos.getPhotoUrl, {
 			storageId: storageId as Id<'_storage'>
 		})
 	);
 
-	// Add cache-busting param using storageId to prevent browser caching old images
-	const photoUrl = $derived(
-		photoUrlQuery.data ? `${photoUrlQuery.data}${photoUrlQuery.data.includes('?') ? '&' : '?'}v=${storageId}` : null
-	);
-
-	// Preload image and return promise that resolves when loaded
-	function preloadImage(url: string): Promise<string> {
-		return new Promise((resolve, reject) => {
-			const img = new Image();
-			img.onload = () => resolve(url);
-			img.onerror = () => reject(new Error('Failed to load image'));
-			img.src = url;
-		});
+	// Create a promise that loads the image (from cache or network)
+	async function loadImage(remoteUrl: string): Promise<string> {
+		const blobUrl = await getOrCacheImage(storageId, remoteUrl);
+		if (!blobUrl) {
+			throw new Error('Failed to load image');
+		}
+		return blobUrl;
 	}
 
-	// Create promise that reacts to URL changes - {#await} will show loading while image loads
-	const imagePromise = $derived(photoUrl ? preloadImage(photoUrl) : null);
+	// Derive the image promise - only create when we have data
+	const imagePromise = $derived.by(() => {
+		if (photoUrlQuery.error) {
+			return Promise.reject(new Error('Query failed'));
+		}
+		if (photoUrlQuery.data) {
+			return loadImage(photoUrlQuery.data);
+		}
+		return null;
+	});
 
 	function handleClick() {
 		goto(resolve(`/photo-view/${choreId}`));
@@ -43,9 +46,7 @@
 </script>
 
 <button class="thumbnail" onclick={handleClick} aria-label="View photo">
-	{#if photoUrlQuery.isLoading}
-		<span class="thumbnail-loading"></span>
-	{:else if imagePromise}
+	{#if imagePromise}
 		{#await imagePromise}
 			<span class="thumbnail-loading"></span>
 		{:then url}
@@ -60,13 +61,7 @@
 			</span>
 		{/await}
 	{:else}
-		<span class="thumbnail-placeholder">
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-				<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-				<circle cx="8.5" cy="8.5" r="1.5"></circle>
-				<polyline points="21 15 16 10 5 21"></polyline>
-			</svg>
-		</span>
+		<span class="thumbnail-loading"></span>
 	{/if}
 </button>
 

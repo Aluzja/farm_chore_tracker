@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const DB_NAME = 'kitchen-sink-farm';
-export const DB_VERSION = 3;
+export const DB_VERSION = 4;
 
 // Chore schema - mirrors Convex but adds sync metadata
 export const ChoreSchema = z.object({
@@ -67,9 +67,21 @@ export const PhotoQueueEntrySchema = z.object({
 
 export type PhotoQueueEntry = z.infer<typeof PhotoQueueEntrySchema>;
 
+// Cached image entry for offline viewing of uploaded photos
+export const ImageCacheEntrySchema = z.object({
+	storageId: z.string(), // Convex storage ID (used as key)
+	blob: z.instanceof(Blob), // Image data
+	mimeType: z.string(),
+	cachedAt: z.number(), // Timestamp when cached
+	size: z.number() // Blob size in bytes
+});
+
+export type ImageCacheEntry = z.infer<typeof ImageCacheEntrySchema>;
+
 export const STORES = {
 	chores: 'chores',
 	dailyChores: 'dailyChores',
 	mutationQueue: 'mutationQueue',
-	photoQueue: 'photoQueue'
+	photoQueue: 'photoQueue',
+	imageCache: 'imageCache'
 } as const;

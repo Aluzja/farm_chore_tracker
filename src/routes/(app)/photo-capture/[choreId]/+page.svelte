@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -104,10 +105,8 @@
 	}
 
 	// Auto-trigger capture on mount
-	$effect(() => {
-		if (!previewUrl && !isCapturing && !error) {
-			handleCapture();
-		}
+	onMount(() => {
+		handleCapture();
 	});
 </script>
 

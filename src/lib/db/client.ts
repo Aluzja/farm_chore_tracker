@@ -6,7 +6,8 @@ import {
 	type Chore,
 	type DailyChore,
 	type Mutation,
-	type PhotoQueueEntry
+	type PhotoQueueEntry,
+	type ImageCacheEntry
 } from './schema';
 
 interface KitchenSinkDB extends DBSchema {
@@ -41,6 +42,13 @@ interface KitchenSinkDB extends DBSchema {
 			'by-captured-at': number;
 		};
 	};
+	imageCache: {
+		key: string;
+		value: ImageCacheEntry;
+		indexes: {
+			'by-cached-at': number;
+		};
+	};
 }
 
 let dbPromise: Promise<IDBPDatabase<KitchenSinkDB>> | null = null;
@@ -69,6 +77,11 @@ export function getDB(): Promise<IDBPDatabase<KitchenSinkDB>> {
 					const photoStore = db.createObjectStore(STORES.photoQueue, { keyPath: 'id' });
 					photoStore.createIndex('by-upload-status', 'uploadStatus');
 					photoStore.createIndex('by-captured-at', 'capturedAt');
+				}
+				// Version 4: Add imageCache store
+				if (oldVersion < 4) {
+					const cacheStore = db.createObjectStore(STORES.imageCache, { keyPath: 'storageId' });
+					cacheStore.createIndex('by-cached-at', 'cachedAt');
 				}
 			},
 			blocked() {

@@ -5,6 +5,7 @@
 	import { useQuery } from 'convex-svelte';
 	import { api } from '../../../../convex/_generated/api';
 	import { dailyChoreStore } from '$lib/stores/dailyChores.svelte';
+	import { getOrCacheImage } from '$lib/db/imageCache';
 	import type { Id } from '../../../../convex/_generated/dataModel';
 
 	const choreId = $derived(page.params.id ?? '');
@@ -12,28 +13,48 @@
 	// Find the chore
 	const chore = $derived(dailyChoreStore.items.find((c) => c._id === choreId));
 
-	// Use Convex query to get photo URL reactively
-	// Only query when we have a valid photoStorageId
+	// Use Convex query to get photo URL
 	const photoUrlQuery = $derived(
 		chore?.photoStorageId
 			? useQuery(api.photos.getPhotoUrl, { storageId: chore.photoStorageId as Id<'_storage'> })
 			: null
 	);
 
-	// Add cache-busting param to prevent browser caching old images after replacement
-	const photoUrl = $derived(
-		photoUrlQuery?.data && chore?.photoStorageId
-			? `${photoUrlQuery.data}${photoUrlQuery.data.includes('?') ? '&' : '?'}v=${chore.photoStorageId}`
-			: null
-	);
-	const isLoading = $derived(photoUrlQuery?.isLoading ?? !chore?.photoStorageId);
-	const queryError = $derived(photoUrlQuery?.error?.message ?? null);
+	// Create a promise that loads the image (from cache or network)
+	async function loadImage(storageId: string, remoteUrl: string): Promise<string> {
+		const blobUrl = await getOrCacheImage(storageId, remoteUrl);
+		if (!blobUrl) {
+			throw new Error('Failed to load image');
+		}
+		return blobUrl;
+	}
+
+	// Derive the image promise - only create when we have data
+	const imagePromise = $derived.by(() => {
+		const storageId = chore?.photoStorageId;
+		if (!storageId) return null;
+
+		if (photoUrlQuery?.error) {
+			return Promise.reject(new Error(photoUrlQuery.error.message));
+		}
+		if (photoUrlQuery?.data) {
+			return loadImage(storageId, photoUrlQuery.data);
+		}
+		return null;
+	});
+
+	// Track loaded URL for download functionality
+	let loadedImageUrl = $state<string | null>(null);
+
+	function handleImageLoad(url: string) {
+		loadedImageUrl = url;
+	}
 
 	function handleDownload() {
-		if (!photoUrl) return;
+		if (!loadedImageUrl) return;
 
 		const link = document.createElement('a');
-		link.href = photoUrl;
+		link.href = loadedImageUrl;
 		link.download = `chore-${choreId}-${Date.now()}.jpg`;
 		document.body.appendChild(link);
 		link.click();
@@ -45,7 +66,6 @@
 	}
 
 	function handleReplace() {
-		// Navigate to photo capture replace route
 		goto(resolve('/(app)/photo-capture/[choreId]/replace', { choreId }));
 	}
 
@@ -67,21 +87,33 @@
 	</header>
 
 	<div class="photo-container">
-		{#if queryError}
-			<div class="error-state">
-				<p>Failed to load photo</p>
-				<p class="error-detail">{queryError}</p>
+		{#if !chore?.photoStorageId}
+			<div class="empty-state">
+				<p>No photo available</p>
 			</div>
-		{:else if isLoading}
+		{:else if imagePromise}
+			{#await imagePromise}
+				<div class="loading-state">
+					<div class="spinner"></div>
+					<p>Loading photo...</p>
+				</div>
+			{:then url}
+				<img
+					src={url}
+					alt="Chore completion"
+					class="photo-image"
+					onload={() => handleImageLoad(url)}
+				/>
+			{:catch error}
+				<div class="error-state">
+					<p>Failed to load photo</p>
+					<p class="error-detail">{error.message}</p>
+				</div>
+			{/await}
+		{:else}
 			<div class="loading-state">
 				<div class="spinner"></div>
 				<p>Loading photo...</p>
-			</div>
-		{:else if photoUrl}
-			<img src={photoUrl} alt="Chore completion" class="photo-image" />
-		{:else}
-			<div class="empty-state">
-				<p>No photo available</p>
 			</div>
 		{/if}
 	</div>
@@ -115,7 +147,7 @@
 				</svg>
 				Replace Photo
 			</button>
-			<button class="download-button" onclick={handleDownload} disabled={!photoUrl}>
+			<button class="download-button" onclick={handleDownload} disabled={!loadedImageUrl}>
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
 					<polyline points="7 10 12 15 17 10"></polyline>
