@@ -41,6 +41,8 @@ export const DailyChoreSchema = z.object({
 	completedAt: z.iso.datetime().optional(),
 	completedBy: z.string().optional(),
 	isAdHoc: z.boolean(),
+	requiresPhoto: z.boolean(),
+	photoStorageId: z.string().optional(), // Convex file storage ID
 	syncStatus: z.enum(['pending', 'synced', 'failed']),
 	lastModified: z.number()
 });

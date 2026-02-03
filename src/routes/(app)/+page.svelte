@@ -1,9 +1,13 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { dailyChoreStore } from '$lib/stores/dailyChores.svelte';
 	import { syncEngine } from '$lib/sync/engine.svelte';
 	import { connectionStatus } from '$lib/sync/status.svelte';
 	import { formatTimeSlot } from '$lib/utils/date';
 	import { getCurrentUser } from '$lib/auth/user-context.svelte';
+	import PhotoThumbnail from '$lib/components/PhotoThumbnail.svelte';
+	import type { DailyChore } from '$lib/db/schema';
 
 	function formatCompletionTime(isoString: string | undefined): string {
 		if (!isoString) return '';
@@ -15,8 +19,14 @@
 		}
 	}
 
-	async function handleToggle(id: string) {
-		await dailyChoreStore.toggleComplete(id, getCurrentUser());
+	async function handleChoreAction(chore: DailyChore) {
+		if (chore.requiresPhoto && !chore.isCompleted) {
+			// Must take photo - navigate to capture page
+			await goto(resolve(`/photo-capture?choreId=${chore._id}`));
+		} else {
+			// Normal toggle (or undo for completed chores)
+			await dailyChoreStore.toggleComplete(chore._id, getCurrentUser());
+		}
 	}
 </script>
 
@@ -30,6 +40,14 @@
 			{#if syncEngine.pendingCount > 0}
 				<div class="sync-indicator">
 					{syncEngine.isSyncing ? 'Syncing...' : `${syncEngine.pendingCount} pending`}
+				</div>
+			{/if}
+			{#if syncEngine.pendingPhotoCount > 0}
+				<div class="photo-upload-indicator">
+					{#if syncEngine.currentPhotoUpload}
+						<span class="upload-spinner"></span>
+					{/if}
+					{syncEngine.currentPhotoUpload ? 'Uploading photo...' : `${syncEngine.pendingPhotoCount} photos`}
 				</div>
 			{/if}
 		</div>
@@ -72,18 +90,28 @@
 										<button
 											class="toggle-button"
 											class:checked={chore.isCompleted}
-											onclick={() => handleToggle(chore._id)}
-											aria-label={chore.isCompleted ? 'Mark incomplete' : 'Mark complete'}
+											onclick={() => handleChoreAction(chore)}
+											aria-label={chore.isCompleted ? 'Mark incomplete' : (chore.requiresPhoto ? 'Take photo to complete' : 'Mark complete')}
 										>
 											{#if chore.isCompleted}
 												<svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
 													<polyline points="20 6 9 17 4 12"></polyline>
 												</svg>
+											{:else if chore.requiresPhoto}
+												<svg class="camera-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+													<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+													<circle cx="12" cy="13" r="4"></circle>
+												</svg>
 											{/if}
 										</button>
 
 										<div class="chore-content">
-											<span class="chore-text">{chore.text}</span>
+											<span class="chore-text">
+												{chore.text}
+												{#if chore.requiresPhoto && !chore.isCompleted}
+													<span class="badge photo-required" title="Photo required">Photo</span>
+												{/if}
+											</span>
 
 											{#if chore.isAdHoc}
 												<span class="badge adhoc">Today only</span>
@@ -95,6 +123,10 @@
 												</div>
 											{/if}
 										</div>
+
+										{#if chore.isCompleted && chore.photoStorageId}
+											<PhotoThumbnail choreId={chore._id} storageId={chore.photoStorageId} />
+										{/if}
 
 										{#if chore.syncStatus === 'pending'}
 											<span class="sync-status pending" title="Pending sync">...</span>
@@ -390,5 +422,38 @@
 		color: #dc2626;
 		font-weight: 600;
 		opacity: 1;
+	}
+
+	.photo-upload-indicator {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		font-size: 0.75rem;
+		color: #3b82f6;
+	}
+
+	.upload-spinner {
+		width: 0.75rem;
+		height: 0.75rem;
+		border: 1.5px solid #bfdbfe;
+		border-top-color: #3b82f6;
+		border-radius: 50%;
+		animation: spin 1s linear infinite;
+	}
+
+	.camera-icon {
+		width: 1rem;
+		height: 1rem;
+		color: #6b7280;
+	}
+
+	.toggle-button:hover .camera-icon {
+		color: #3b82f6;
+	}
+
+	.badge.photo-required {
+		background: #dbeafe;
+		color: #1d4ed8;
+		margin-left: 0.5rem;
 	}
 </style>

@@ -98,6 +98,8 @@ class DailyChoreStore {
 			completedAt?: string;
 			completedBy?: string;
 			isAdHoc: boolean;
+			requiresPhoto: boolean;
+			photoStorageId?: string;
 			lastModified: number;
 		}>
 	): Promise<void> {
@@ -124,6 +126,8 @@ class DailyChoreStore {
 					completedAt: sc.completedAt,
 					completedBy: sc.completedBy,
 					isAdHoc: sc.isAdHoc,
+					requiresPhoto: sc.requiresPhoto,
+					photoStorageId: sc.photoStorageId,
 					syncStatus: 'synced' as const,
 					lastModified: sc.lastModified
 				});
@@ -228,6 +232,7 @@ class DailyChoreStore {
 			sortOrder: maxOrder + 1,
 			isCompleted: false,
 			isAdHoc: true,
+			requiresPhoto: false, // Ad-hoc chores don't require photos
 			syncStatus: 'pending',
 			lastModified: now
 		};
