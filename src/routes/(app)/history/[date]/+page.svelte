@@ -1,4 +1,5 @@
 <script lang="ts">
+	/* eslint-disable svelte/prefer-svelte-reactivity */
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';

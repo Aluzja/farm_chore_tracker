@@ -1,3 +1,4 @@
+/* eslint-disable svelte/prefer-svelte-reactivity */
 import { browser } from '$app/environment';
 import { getDailyChoresByDate, putDailyChore, putDailyChores } from '$lib/db/operations';
 import { enqueueMutation } from '$lib/sync/queue';

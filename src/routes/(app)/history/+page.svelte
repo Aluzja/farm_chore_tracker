@@ -1,4 +1,5 @@
 <script lang="ts">
+	/* eslint-disable svelte/prefer-svelte-reactivity */
 	import { resolve } from '$app/paths';
 	import { useQuery } from 'convex-svelte';
 	import { api } from '../../../convex/_generated/api';

@@ -1,11 +1,6 @@
+/* eslint-disable svelte/prefer-svelte-reactivity */
 import { browser } from '$app/environment';
-import {
-	getAllChores,
-	putChore,
-	putChores,
-	deleteChore,
-	getChore
-} from '$lib/db/operations';
+import { getAllChores, putChore, putChores, deleteChore } from '$lib/db/operations';
 import { enqueueMutation } from '$lib/sync/queue';
 import type { Chore } from '$lib/db/schema';
 

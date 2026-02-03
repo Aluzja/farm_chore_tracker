@@ -51,6 +51,7 @@
 </script>
 
 <svelte:head>
+	<!-- eslint-disable-next-line svelte/no-at-html-tags -- webManifestLink is a static trusted string -->
 	{@html webManifestLink}
 	<link rel="icon" href={favicon} />
 </svelte:head>
