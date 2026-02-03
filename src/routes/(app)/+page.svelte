@@ -125,7 +125,9 @@
 										</div>
 
 										{#if chore.isCompleted && chore.photoStorageId}
-											<PhotoThumbnail choreId={chore._id} storageId={chore.photoStorageId} />
+											{#key chore.photoStorageId}
+												<PhotoThumbnail choreId={chore._id} storageId={chore.photoStorageId} />
+											{/key}
 										{/if}
 
 										{#if chore.syncStatus === 'pending'}

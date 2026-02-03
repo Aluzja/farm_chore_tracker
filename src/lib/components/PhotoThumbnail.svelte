@@ -12,9 +12,12 @@
 
 	const { choreId, storageId }: Props = $props();
 
-	const photoUrlQuery = useQuery(api.photos.getPhotoUrl, {
-		storageId: storageId as Id<'_storage'>
-	});
+	// Make query reactive to storageId changes (e.g., when photo is replaced)
+	const photoUrlQuery = $derived(
+		useQuery(api.photos.getPhotoUrl, {
+			storageId: storageId as Id<'_storage'>
+		})
+	);
 
 	const photoUrl = $derived(photoUrlQuery.data ?? null);
 	const isLoading = $derived(photoUrlQuery.isLoading);
