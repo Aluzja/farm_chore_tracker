@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-01)
 
 **Core value:** Multiple people can efficiently coordinate completing daily farm chores without stepping on each other's toes, with photo verification where needed.
-**Current focus:** Phase 5 - Photo Verification (in progress)
+**Current focus:** Phase 6 - Polish and History (in progress)
 
 ## Current Position
 
-Phase: 5 of 6 (Photo Verification)
-Plan: 4 of 4 in current phase
-Status: Phase complete
-Last activity: 2026-02-02 - Completed 05-04-PLAN.md (Worker UI Integration)
+Phase: 6 of 6 (Polish and History)
+Plan: 2 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-02 - Completed 06-02-PLAN.md (History View)
 
-Progress: [████████████████] 94%
+Progress: [██████████████████] 85%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 16
+- Total plans completed: 17
 - Average duration: 4 min
-- Total execution time: 1.4 hours
+- Total execution time: 1.5 hours
 
 **By Phase:**
 
@@ -32,10 +32,11 @@ Progress: [████████████████] 94%
 | 03-auth-and-access | 3 | 21 min | 7 min |
 | 04-core-chore-workflow | 4 | 13 min | 3.25 min |
 | 05-photo-verification | 4 | 32 min | 8 min |
+| 06-polish-and-history | 1 | 5 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-04 (2 min), 05-01 (2 min), 05-02 (3 min), 05-03 (2 min), 05-04 (25 min)
-- Trend: stable with checkpoint verification in 05-04
+- Last 5 plans: 05-01 (2 min), 05-02 (3 min), 05-03 (2 min), 05-04 (25 min), 06-02 (5 min)
+- Trend: stable execution time
 
 *Updated after each plan completion*
 
@@ -46,6 +47,9 @@ Progress: [████████████████] 94%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- 06-02: getHistory uses by_date index with gte for efficient date range queries
+- 06-02: Client-side date sorting since Convex filter limits index usage
+- 06-02: Sticky date headers at top:3.5rem to clear main header
 - 05-04: Photo capture page auto-triggers camera on mount via $effect for seamless UX
 - 05-04: PhotoThumbnail component encapsulates Convex query for reactive photo URL fetching
 - 05-04: Navigate to photo-capture (not toggle) for requiresPhoto chores to enforce capture
@@ -105,8 +109,8 @@ From research (to address during implementation):
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 05-04-PLAN.md (Worker UI Integration) - Phase 5 complete
-Resume file: None (ready for Phase 6 planning)
+Stopped at: Completed 06-02-PLAN.md (History View)
+Resume file: None (ready for 06-03)
 
 ## Phase 4 Plans Summary
 
@@ -145,6 +149,20 @@ Key technical decisions:
 - Access key validate query is public for worker authentication
 - AdminAuth class uses Svelte 5 $state runes for reactive state
 - convex-svelte mutation pattern: useConvexClient().mutation() (no useMutation export)
+
+## Phase 6 Plans Summary
+
+| Wave | Plan | Description | Autonomous | Status |
+|------|------|-------------|------------|--------|
+| 1 | 06-01 | Badge notifications | Autonomous | Pending |
+| 1 | 06-02 | History view | Autonomous | Complete |
+| 2 | 06-03 | PWA enhancements | Autonomous | Pending |
+
+Key technical decisions:
+- getHistory query with by_date index and gte filter
+- Date grouping with $derived.by for reactive computed state
+- Sticky headers pattern for scroll context
+- Mobile-first layout with max-width container for desktop
 
 ## Phase 5 Plans Summary
 
