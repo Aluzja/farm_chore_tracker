@@ -5,6 +5,7 @@
 	import { masterChoreStore, type MasterChore } from '$lib/stores/masterChores.svelte';
 	import { browser } from '$app/environment';
 	import AdminNav from '$lib/components/AdminNav.svelte';
+	import Dropdown from '$lib/components/Dropdown.svelte';
 
 	// Get Convex client for mutations
 	const client = browser ? useConvexClient() : null;
@@ -30,6 +31,9 @@
 	let isSubmitting = $state(false);
 	let formError = $state<string | null>(null);
 
+	// Add modal state
+	let showAddModal = $state(false);
+
 	// Edit state
 	let editingChore = $state<MasterChore | null>(null);
 	let editText = $state('');
@@ -38,8 +42,37 @@
 	let editCategory = $state('');
 	let editRequiresPhoto = $state(false);
 
-	// Category suggestions
-	const categorySuggestions = ['Chickens', 'Goats', 'Pigs', 'Garden', 'General'];
+	function openAddModal() {
+		showAddModal = true;
+	}
+
+	function closeAddModal() {
+		showAddModal = false;
+		// Reset form
+		formText = '';
+		formDescription = '';
+		formCategory = '';
+		formTimeSlot = 'morning';
+		formRequiresPhoto = false;
+		formTodayOnly = false;
+		formError = null;
+	}
+
+	// Dropdown options
+	const timeSlotOptions = [
+		{ value: 'morning', label: 'Morning' },
+		{ value: 'afternoon', label: 'Afternoon' },
+		{ value: 'evening', label: 'Evening' }
+	];
+
+	const categoryOptions = [
+		{ value: 'General', label: 'General' },
+		{ value: 'Sheep', label: 'Sheep' },
+		{ value: 'Chickens', label: 'Chickens' },
+		{ value: 'Ducks', label: 'Ducks' },
+		{ value: 'Geese', label: 'Geese' },
+		{ value: 'Garden', label: 'Garden' }
+	];
 
 	async function handleCreate(e: SubmitEvent) {
 		e.preventDefault();
@@ -68,13 +101,8 @@
 					requiresPhoto: formRequiresPhoto
 				});
 			}
-			// Clear form
-			formText = '';
-			formDescription = '';
-			formCategory = '';
-			formTimeSlot = 'morning';
-			formRequiresPhoto = false;
-			formTodayOnly = false;
+			// Close modal and reset form
+			closeAddModal();
 		} catch (error) {
 			formError = error instanceof Error ? error.message : 'Failed to create chore';
 		} finally {
@@ -146,120 +174,149 @@
 	<AdminNav />
 
 	<main class="main">
-		<!-- Add Chore Form -->
-		<section class="card">
-			<h2 class="card-title">Add New Chore</h2>
-			<form onsubmit={handleCreate} class="form">
-				<div class="form-row">
-					<div class="form-group form-group-large">
-						<label for="chore-text">Chore name</label>
-						<input
-							id="chore-text"
-							type="text"
-							bind:value={formText}
-							placeholder="e.g., Chicken Food"
-							required
-						/>
-					</div>
-				</div>
-
-				<div class="form-group">
-					<label for="chore-description">Details (optional)</label>
-					<input
-						id="chore-description"
-						type="text"
-						bind:value={formDescription}
-						placeholder="e.g., 2 scoops of feed per coop"
-					/>
-				</div>
-
-				<div class="form-row">
-					<div class="form-group">
-						<label for="time-slot">Time of day</label>
-						<select id="time-slot" bind:value={formTimeSlot}>
-							<option value="morning">Morning</option>
-							<option value="afternoon">Afternoon</option>
-							<option value="evening">Evening</option>
-						</select>
-					</div>
-
-					<div class="form-group">
-						<label for="category">Animal/Area</label>
-						<input
-							id="category"
-							type="text"
-							bind:value={formCategory}
-							placeholder="e.g., Chickens"
-							list="category-suggestions"
-							required
-						/>
-						<datalist id="category-suggestions">
-							{#each categorySuggestions as suggestion (suggestion)}
-								<option value={suggestion}></option>
-							{/each}
-						</datalist>
-					</div>
-				</div>
-
-				<div class="toggle-row">
-					<label class="photo-toggle">
-						<span class="toggle-track" class:active={formRequiresPhoto}>
-							<span class="toggle-thumb"></span>
-						</span>
-						<input type="checkbox" bind:checked={formRequiresPhoto} class="sr-only" />
-						<span class="toggle-label">
-							<svg
-								class="toggle-icon"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-							>
-								<path
-									d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
-								></path>
-								<circle cx="12" cy="13" r="4"></circle>
-							</svg>
-							Require photo
-						</span>
-					</label>
-
-					<label class="photo-toggle today-only-toggle" class:active={formTodayOnly}>
-						<span class="toggle-track" class:active={formTodayOnly}>
-							<span class="toggle-thumb"></span>
-						</span>
-						<input type="checkbox" bind:checked={formTodayOnly} class="sr-only" />
-						<span class="toggle-label">
-							<svg
-								class="toggle-icon"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-							>
-								<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-								<line x1="16" y1="2" x2="16" y2="6"></line>
-								<line x1="8" y1="2" x2="8" y2="6"></line>
-								<line x1="3" y1="10" x2="21" y2="10"></line>
-							</svg>
-							Today only
-						</span>
-					</label>
-				</div>
-
-				<button
-					type="submit"
-					class="btn btn-primary btn-submit"
-					disabled={isSubmitting || !formText.trim() || !formCategory.trim()}
+		<!-- Page Header with Add Button -->
+		<div class="page-header">
+			<h1 class="page-title">Master Chores</h1>
+			<button class="btn btn-primary btn-add" onclick={openAddModal}>
+				<svg
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
 				>
-					{isSubmitting ? 'Adding...' : formTodayOnly ? 'Add to Today' : 'Add Chore'}
-				</button>
+					<line x1="12" y1="5" x2="12" y2="19"></line>
+					<line x1="5" y1="12" x2="19" y2="12"></line>
+				</svg>
+				Add Chore
+			</button>
+		</div>
 
-				{#if formError}
-					<p class="error-message">{formError}</p>
-				{/if}
-			</form>
-		</section>
+		<!-- Add Chore Modal -->
+		{#if showAddModal}
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<div class="modal-overlay" onclick={closeAddModal} role="presentation">
+				<!-- svelte-ignore a11y_click_events_have_key_events -->
+				<!-- svelte-ignore a11y_interactive_supports_focus -->
+				<div
+					class="modal"
+					onclick={(e) => e.stopPropagation()}
+					role="dialog"
+					aria-labelledby="add-title"
+					aria-modal="true"
+				>
+					<h2 id="add-title" class="modal-title">Add New Chore</h2>
+					<form onsubmit={handleCreate} class="form">
+						<div class="form-group">
+							<label for="chore-text">Chore name</label>
+							<input
+								id="chore-text"
+								type="text"
+								bind:value={formText}
+								placeholder="e.g., Chicken Food"
+								required
+							/>
+						</div>
+
+						<div class="form-group">
+							<label for="chore-description">Details (optional)</label>
+							<input
+								id="chore-description"
+								type="text"
+								bind:value={formDescription}
+								placeholder="e.g., 2 scoops of feed per coop"
+							/>
+						</div>
+
+						<div class="form-group">
+							<label for="time-slot">Time of day</label>
+							<Dropdown
+								id="time-slot"
+								bind:value={formTimeSlot}
+								options={timeSlotOptions}
+								placeholder="Select time..."
+							/>
+						</div>
+
+						<div class="form-group">
+							<label for="category">Animal/Area</label>
+							<Dropdown
+								id="category"
+								bind:value={formCategory}
+								options={categoryOptions}
+								placeholder="e.g., Chickens"
+								allowCustom={true}
+								required={true}
+							/>
+						</div>
+
+						<div class="toggle-row">
+							<label class="photo-toggle">
+								<span class="toggle-track" class:active={formRequiresPhoto}>
+									<span class="toggle-thumb"></span>
+								</span>
+								<input type="checkbox" bind:checked={formRequiresPhoto} class="sr-only" />
+								<span class="toggle-label">
+									<svg
+										class="toggle-icon"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path
+											d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+										></path>
+										<circle cx="12" cy="13" r="4"></circle>
+									</svg>
+									Require photo
+								</span>
+							</label>
+
+							<label class="photo-toggle today-only-toggle" class:active={formTodayOnly}>
+								<span class="toggle-track" class:active={formTodayOnly}>
+									<span class="toggle-thumb"></span>
+								</span>
+								<input type="checkbox" bind:checked={formTodayOnly} class="sr-only" />
+								<span class="toggle-label">
+									<svg
+										class="toggle-icon"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+										<line x1="16" y1="2" x2="16" y2="6"></line>
+										<line x1="8" y1="2" x2="8" y2="6"></line>
+										<line x1="3" y1="10" x2="21" y2="10"></line>
+									</svg>
+									Today only
+								</span>
+							</label>
+						</div>
+
+						{#if formError}
+							<p class="error-message">{formError}</p>
+						{/if}
+
+						<div class="modal-actions">
+							<button type="button" class="btn btn-secondary" onclick={closeAddModal}>
+								Cancel
+							</button>
+							<button
+								type="submit"
+								class="btn btn-primary"
+								disabled={isSubmitting || !formText.trim() || !formCategory.trim()}
+							>
+								{isSubmitting ? 'Adding...' : formTodayOnly ? 'Add to Today' : 'Add Chore'}
+							</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		{/if}
 
 		<!-- Edit Modal -->
 		{#if editingChore}
@@ -293,27 +350,24 @@
 
 						<div class="form-group">
 							<label for="edit-time-slot">Time of day</label>
-							<select id="edit-time-slot" bind:value={editTimeSlot}>
-								<option value="morning">Morning</option>
-								<option value="afternoon">Afternoon</option>
-								<option value="evening">Evening</option>
-							</select>
+							<Dropdown
+								id="edit-time-slot"
+								bind:value={editTimeSlot}
+								options={timeSlotOptions}
+								placeholder="Select time..."
+							/>
 						</div>
 
 						<div class="form-group">
 							<label for="edit-category">Animal/Area</label>
-							<input
+							<Dropdown
 								id="edit-category"
-								type="text"
 								bind:value={editCategory}
-								list="edit-category-suggestions"
-								required
+								options={categoryOptions}
+								placeholder="e.g., Chickens"
+								allowCustom={true}
+								required={true}
 							/>
-							<datalist id="edit-category-suggestions">
-								{#each categorySuggestions as suggestion (suggestion)}
-									<option value={suggestion}></option>
-								{/each}
-							</datalist>
 						</div>
 
 						<label class="photo-toggle">
@@ -361,7 +415,7 @@
 				<div class="error">Failed to load chores</div>
 			{:else if masterChoreStore.grouped.length === 0}
 				<div class="empty-state">
-					<p>No chores yet. Add your first chore above to get started.</p>
+					<p>No chores yet. Click "Add Chore" to get started.</p>
 				</div>
 			{:else}
 				{#each masterChoreStore.grouped as group (group.timeSlot)}
@@ -456,28 +510,46 @@
 <style>
 	.page {
 		min-height: 100vh;
+		height: 100vh;
+		display: flex;
+		flex-direction: column;
 		background-color: #f9fafb;
+		overflow: hidden;
 	}
 
 	.main {
+		flex: 1;
 		max-width: 56rem;
+		width: 100%;
 		margin: 0 auto;
-		padding: 2rem 1rem;
+		padding: 1.5rem 1rem;
+		overflow-y: auto;
 	}
 
-	.card {
-		background-color: white;
-		border-radius: 0.5rem;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-		padding: 1.5rem;
+	.page-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
 		margin-bottom: 1.5rem;
 	}
 
-	.card-title {
-		font-size: 1.125rem;
-		font-weight: 500;
+	.page-title {
+		font-size: 1.5rem;
+		font-weight: 600;
 		color: #111827;
-		margin: 0 0 1rem 0;
+		margin: 0;
+	}
+
+	.btn-add {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.625rem 1rem;
+	}
+
+	.btn-add svg {
+		width: 1.125rem;
+		height: 1.125rem;
 	}
 
 	.form {
@@ -498,16 +570,6 @@
 		gap: 0.25rem;
 		min-width: 150px;
 		flex: 1;
-	}
-
-	.form-group-large {
-		flex: 2;
-		min-width: 250px;
-	}
-
-	.btn-submit {
-		width: 100%;
-		margin-top: 1rem;
 	}
 
 	.toggle-row {
@@ -621,16 +683,23 @@
 		color: #374151;
 	}
 
-	.form-group input,
-	.form-group select {
-		padding: 0.5rem 0.75rem;
+	.form-group input {
+		padding: 0.625rem 0.75rem;
 		border: 1px solid #d1d5db;
-		border-radius: 0.375rem;
-		font-size: 1rem;
+		border-radius: 0.5rem;
+		font-size: 0.9375rem;
+		background-color: white;
+		color: #111827;
+		transition:
+			border-color 0.15s,
+			box-shadow 0.15s;
 	}
 
-	.form-group input:focus,
-	.form-group select:focus {
+	.form-group input:hover {
+		border-color: #9ca3af;
+	}
+
+	.form-group input:focus {
 		outline: none;
 		border-color: #22c55e;
 		box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
@@ -713,7 +782,7 @@
 
 	/* Chores Section */
 	.chores-section {
-		margin-top: 1.5rem;
+		margin-top: 0;
 	}
 
 	.time-slot-group {

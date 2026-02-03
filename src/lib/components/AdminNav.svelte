@@ -56,8 +56,9 @@
 	.admin-header {
 		background-color: white;
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-		position: relative;
-		z-index: 10;
+		position: sticky;
+		top: 0;
+		z-index: 40;
 	}
 
 	.admin-header-content {
