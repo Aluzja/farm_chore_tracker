@@ -72,20 +72,20 @@ From PROJECT.md - explicitly excluded:
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | PWA-01 | Phase 1 | Complete |
-| PWA-02 | Phase 2 | Pending |
+| PWA-02 | Phase 2 | Complete |
 | DATA-01 | Phase 1 | Complete |
-| AUTH-01 | Phase 3 | Pending |
-| AUTH-02 | Phase 3 | Pending |
-| AUTH-03 | Phase 3 | Pending |
-| CHORE-01 | Phase 4 | Pending |
-| CHORE-02 | Phase 4 | Pending |
-| CHORE-03 | Phase 4 | Pending |
-| CHORE-04 | Phase 4 | Pending |
-| CHORE-05 | Phase 4 + 5 | Pending |
+| AUTH-01 | Phase 3 | Complete |
+| AUTH-02 | Phase 3 | Complete |
+| AUTH-03 | Phase 3 | Complete |
+| CHORE-01 | Phase 4 | Complete |
+| CHORE-02 | Phase 4 | Complete |
+| CHORE-03 | Phase 4 | Complete |
+| CHORE-04 | Phase 4 | Complete |
+| CHORE-05 | Phase 4 + 5 | In Progress |
 | CHORE-06 | Phase 5 | Pending |
-| CHORE-07 | Phase 4 | Pending |
-| CHORE-08 | Phase 4 | Pending |
-| CHORE-09 | Phase 4 | Pending |
+| CHORE-07 | Phase 4 | Complete |
+| CHORE-08 | Phase 4 | Complete |
+| CHORE-09 | Phase 4 | Complete |
 | HIST-01 | Phase 6 | Pending |
 | UX-01 | Phase 6 | Pending |
 

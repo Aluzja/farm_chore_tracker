@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation** - PWA shell, Convex integration, service worker with correct exclusions
 - [x] **Phase 2: Data Layer** - Three-layer offline-first architecture with IndexedDB and sync engine
 - [x] **Phase 3: Auth and Access** - Admin authentication and URL key-based user access
-- [ ] **Phase 4: Core Chore Workflow** - Master list, daily clone, completion, real-time sync
+- [x] **Phase 4: Core Chore Workflow** - Master list, daily clone, completion, real-time sync
 - [ ] **Phase 5: Photo Verification** - Camera capture, offline queue, Convex file storage
 - [ ] **Phase 6: Polish and History** - Sync indicators, 7-day history, UX refinement
 
@@ -87,10 +87,10 @@ Plans:
 **Plans**: 4 plans (3 waves)
 
 Plans:
-- [ ] 04-01-PLAN.md — Schema extension (masterChores + dailyChores) and Convex API
-- [ ] 04-02-PLAN.md — Admin master chore list management UI
-- [ ] 04-03-PLAN.md — Daily list generation, grouping display, and completion sync
-- [ ] 04-04-PLAN.md — Ad-hoc chore addition and user identity flow
+- [x] 04-01-PLAN.md — Schema extension (masterChores + dailyChores) and Convex API
+- [x] 04-02-PLAN.md — Admin master chore list management UI
+- [x] 04-03-PLAN.md — Daily list generation, grouping display, and completion sync
+- [x] 04-04-PLAN.md — Ad-hoc chore addition and user identity flow
 
 ### Phase 5: Photo Verification
 **Goal**: Users can attach photos to chore completions; photos persist offline and upload when connected
@@ -137,7 +137,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 1. Foundation | 3/3 | ✓ Complete | 2026-02-01 |
 | 2. Data Layer | 3/3 | ✓ Complete | 2026-02-02 |
 | 3. Auth and Access | 4/4 | ✓ Complete | 2026-02-02 |
-| 4. Core Chore Workflow | 0/4 | Not started | - |
+| 4. Core Chore Workflow | 4/4 | ✓ Complete | 2026-02-02 |
 | 5. Photo Verification | 0/3 | Not started | - |
 | 6. Polish and History | 0/3 | Not started | - |
 
