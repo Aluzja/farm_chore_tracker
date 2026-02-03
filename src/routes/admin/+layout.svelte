@@ -19,8 +19,8 @@
 			return;
 		}
 
-		// Pass client to adminAuth
-		adminAuth.setClient(client);
+		// Pass client to adminAuth and wait for auth to be set
+		await adminAuth.setClient(client);
 
 		// Check authentication
 		await adminAuth.checkAuth();

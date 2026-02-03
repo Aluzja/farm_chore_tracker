@@ -54,13 +54,15 @@ class AdminAuth {
 	}
 
 	// Set the Convex client and configure auth
-	setClient(convexClient: ConvexClient): void {
+	async setClient(convexClient: ConvexClient): Promise<void> {
 		this.client = convexClient;
 
-		// Set up auth token provider
+		// Set up auth token provider and wait for auth to be established
 		const token = getStoredToken();
 		if (token && this.client) {
-			this.client.setAuth(async () => token);
+			console.log('[AdminAuth] setClient: setting auth with token...');
+			await this.client.setAuth(async () => token);
+			console.log('[AdminAuth] setClient: auth set complete');
 		}
 	}
 
