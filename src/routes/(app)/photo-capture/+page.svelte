@@ -63,10 +63,10 @@
 			const user = getCurrentUser();
 			const capturedAt = Date.now();
 
-			// Queue photo for upload - use chore.clientId for Convex lookup
+			// Queue photo for upload - local _id equals Convex clientId
 			await enqueuePhoto({
 				id: crypto.randomUUID(),
-				dailyChoreClientId: chore.clientId,
+				dailyChoreClientId: chore._id,
 				blob: capturedBlob,
 				mimeType: 'image/jpeg',
 				originalSize,
