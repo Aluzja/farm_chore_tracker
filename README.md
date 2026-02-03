@@ -23,6 +23,7 @@ A Progressive Web App for coordinating daily farm chores across multiple team me
 
 ## Tech Stack
 
+- **Runtime:** Bun
 - **Frontend:** SvelteKit 2 + Svelte 5 with TypeScript
 - **Backend:** Convex (real-time serverless database)
 - **Authentication:** @convex-dev/auth (email/password for admin, URL keys for workers)
@@ -33,8 +34,7 @@ A Progressive Web App for coordinating daily farm chores across multiple team me
 
 ### Prerequisites
 
-- Node.js 18+
-- npm or pnpm
+- [Bun](https://bun.sh) 1.0+
 - A Convex account (free at [convex.dev](https://convex.dev))
 
 ### Installation
@@ -47,18 +47,18 @@ A Progressive Web App for coordinating daily farm chores across multiple team me
 
 2. Install dependencies:
    ```sh
-   npm install
+   bun install
    ```
 
 3. Set up Convex:
    ```sh
-   npx convex dev
+   bunx convex dev
    ```
    This will prompt you to create a new Convex project or link to an existing one.
 
 4. Start the development server:
    ```sh
-   npm run dev
+   bun run dev
    ```
 
 5. Open [http://localhost:5173](http://localhost:5173) in your browser.
@@ -74,19 +74,19 @@ A Progressive Web App for coordinating daily farm chores across multiple team me
 
 ```sh
 # Start dev server
-npm run dev
+bun run dev
 
 # Run type checking
-npm run check
+bun run check
 
 # Run linting
-npm run lint
+bun run lint
 
 # Build for production
-npm run build
+bun run build
 
 # Preview production build
-npm run preview
+bun run preview
 ```
 
 ## How It Works
