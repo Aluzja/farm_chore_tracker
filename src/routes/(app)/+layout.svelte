@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { browser } from '$app/environment';
 	import { resolve } from '$app/paths';
 	import { useQuery, useConvexClient } from 'convex-svelte';
@@ -93,10 +93,10 @@
 
 	onMount(async () => {
 		// Check for key in URL first
-		const urlKey = extractKeyFromUrl($page.url);
+		const urlKey = extractKeyFromUrl(page.url);
 		if (urlKey) {
 			// Clean URL immediately (remove ?key= from address bar)
-			const cleanUrl = new URL($page.url);
+			const cleanUrl = new URL(page.url);
 			cleanUrl.searchParams.delete('key');
 			window.history.replaceState({}, '', cleanUrl.toString());
 

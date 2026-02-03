@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { useQuery, useConvexClient } from 'convex-svelte';
 	import { api } from '../../../convex/_generated/api';
-	import { resolve } from '$app/paths';
 	import type { Id } from '../../../convex/_generated/dataModel';
 	import AdminNav from '$lib/components/AdminNav.svelte';
 
@@ -166,6 +165,7 @@
 								onclick={() => handleRevoke(key.id, key.displayName)}
 								class="btn-revoke"
 								title="Revoke access"
+								aria-label="Revoke access"
 							>
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 									<circle cx="12" cy="12" r="10"></circle>
@@ -528,22 +528,6 @@
 
 	.empty-state.error {
 		color: #dc2626;
-	}
-
-	/* Back Link */
-	.back-link {
-		margin-top: 1.5rem;
-		text-align: center;
-	}
-
-	.back-link a {
-		font-size: 0.875rem;
-		color: #6b7280;
-		text-decoration: none;
-	}
-
-	.back-link a:hover {
-		color: #111827;
 	}
 
 	/* Responsive */

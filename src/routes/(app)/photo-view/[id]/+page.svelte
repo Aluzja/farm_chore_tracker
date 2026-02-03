@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { useQuery } from 'convex-svelte';
@@ -7,7 +7,7 @@
 	import { dailyChoreStore } from '$lib/stores/dailyChores.svelte';
 	import type { Id } from '../../../../convex/_generated/dataModel';
 
-	const choreId = $page.params.id;
+	const choreId = $derived(page.params.id ?? '');
 
 	// Find the chore
 	const chore = $derived(dailyChoreStore.items.find((c) => c._id === choreId));
@@ -45,8 +45,8 @@
 	}
 
 	function handleReplace() {
-		// Navigate to photo capture with replace flag
-		goto(resolve(`/photo-capture?choreId=${choreId}&replace=true`));
+		// Navigate to photo capture replace route
+		goto(resolve('/(app)/photo-capture/[choreId]/replace', { choreId }));
 	}
 
 	function formatDateTime(timestamp: number | undefined): string {
@@ -108,7 +108,9 @@
 		<div class="footer-buttons">
 			<button class="replace-button" onclick={handleReplace}>
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-					<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+					<path
+						d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+					></path>
 					<circle cx="12" cy="13" r="4"></circle>
 				</svg>
 				Replace Photo
@@ -133,7 +135,10 @@
 		flex-direction: column;
 		background: #000;
 		color: white;
-		font-family: system-ui, -apple-system, sans-serif;
+		font-family:
+			system-ui,
+			-apple-system,
+			sans-serif;
 	}
 
 	.view-header {

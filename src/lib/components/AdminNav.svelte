@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { adminAuth } from '$lib/auth/admin.svelte';
 	import { goto } from '$app/navigation';
 
@@ -29,7 +29,7 @@
 					<a
 						href={resolve(href)}
 						class="admin-nav-link"
-						class:active={isActive(href, $page.url.pathname)}>{label}</a
+						class:active={isActive(href, page.url.pathname)}>{label}</a
 					>
 				{/each}
 			</nav>

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { capturePhoto } from '$lib/photo/capture';
@@ -9,9 +9,8 @@
 	import { syncEngine } from '$lib/sync/engine.svelte';
 	import { connectionStatus } from '$lib/sync/status.svelte';
 
-	// Get chore ID and replace flag from query params
-	const choreId = $page.url.searchParams.get('choreId');
-	const isReplaceMode = $page.url.searchParams.get('replace') === 'true';
+	// Get chore ID from route param (this route is for replace mode)
+	const choreId = $derived(page.params.choreId);
 
 	let previewUrl = $state<string | null>(null);
 	let capturedBlob = $state<Blob | null>(null);
@@ -76,13 +75,8 @@
 				uploadStatus: 'pending'
 			});
 
-			// Mark chore as complete (skip if replacing - already complete)
-			if (!isReplaceMode) {
-				await dailyChoreStore.toggleComplete(choreId, user);
-			}
-
-			// Trigger sync if online - IMPORTANT: call processPhotoQueue() specifically
-			// to ensure photo uploads are triggered immediately, not just mutation sync
+			// Skip marking complete - already complete in replace mode
+			// Trigger sync if online
 			if (connectionStatus.isOnline) {
 				syncEngine.processQueue();
 				syncEngine.processPhotoQueue();
@@ -113,13 +107,18 @@
 
 <main class="capture-container">
 	<header class="capture-header">
-		<button class="cancel-button" onclick={handleCancel} disabled={isSubmitting}>
+		<button
+			class="cancel-button"
+			onclick={handleCancel}
+			disabled={isSubmitting}
+			aria-label="Cancel"
+		>
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 				<line x1="18" y1="6" x2="6" y2="18"></line>
 				<line x1="6" y1="6" x2="18" y2="18"></line>
 			</svg>
 		</button>
-		<h1 class="capture-title">{isReplaceMode ? 'Replace Photo' : (chore?.text || 'Capture Photo')}</h1>
+		<h1 class="capture-title">Replace Photo</h1>
 	</header>
 
 	{#if error}
@@ -134,7 +133,7 @@
 		</div>
 	{:else if previewUrl}
 		<div class="preview-container">
-			<img src={previewUrl} alt="Captured photo preview" class="preview-image" />
+			<img src={previewUrl} alt="Captured preview" class="preview-image" />
 		</div>
 
 		<div class="button-row">
@@ -172,7 +171,10 @@
 		flex-direction: column;
 		background: #000;
 		color: white;
-		font-family: system-ui, -apple-system, sans-serif;
+		font-family:
+			system-ui,
+			-apple-system,
+			sans-serif;
 	}
 
 	.capture-header {

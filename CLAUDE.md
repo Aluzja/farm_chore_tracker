@@ -99,6 +99,24 @@ Example: `AdminNav.svelte` provides consistent admin navigation across all admin
 - Use `$props()` for configuration when needed
 - If you find yourself copying styles or markup between files, consider extracting a component
 
+## Svelte 5 Page State
+
+**Use `page` from `$app/state` instead of `$app/stores`:**
+
+```svelte
+<script>
+  // OLD (deprecated):
+  // import { page } from '$app/stores';
+  // const id = $page.params.id;
+
+  // NEW (Svelte 5):
+  import { page } from '$app/state';
+  const id = $derived(page.params.id);
+</script>
+```
+
+**Why:** `$app/stores` is deprecated in Svelte 5. The new `$app/state` export provides reactive state that works with runes.
+
 ## Tech Stack
 
 - SvelteKit 2.x with Svelte 5 (runes: $state, $derived, $effect, $props)

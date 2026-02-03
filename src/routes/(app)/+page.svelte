@@ -25,7 +25,7 @@
 	async function handleChoreAction(chore: DailyChore) {
 		if (chore.requiresPhoto && !chore.isCompleted) {
 			// Must take photo - navigate to capture page
-			await goto(resolve(`/photo-capture?choreId=${chore._id}`));
+			await goto(resolve('/(app)/photo-capture/[choreId]', { choreId: chore._id }));
 		} else {
 			// Normal toggle (or undo for completed chores)
 			await dailyChoreStore.toggleComplete(chore._id, getCurrentUser());

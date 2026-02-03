@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { useQuery, useConvexClient } from 'convex-svelte';
 	import { api } from '../../../convex/_generated/api';
-	import { resolve } from '$app/paths';
 	import type { Id } from '../../../convex/_generated/dataModel';
 	import { masterChoreStore, type MasterChore } from '$lib/stores/masterChores.svelte';
 	import { browser } from '$app/environment';
@@ -116,15 +115,6 @@
 			alert('Failed to delete chore');
 		}
 	}
-
-	function formatTimeSlot(slot: string): string {
-		const labels: Record<string, string> = {
-			morning: 'Morning',
-			afternoon: 'Afternoon',
-			evening: 'Evening'
-		};
-		return labels[slot] || slot;
-	}
 </script>
 
 <svelte:head>
@@ -173,7 +163,7 @@
 							required
 						/>
 						<datalist id="category-suggestions">
-							{#each categorySuggestions as suggestion}
+							{#each categorySuggestions as suggestion (suggestion)}
 								<option value={suggestion}></option>
 							{/each}
 						</datalist>
@@ -255,7 +245,7 @@
 								required
 							/>
 							<datalist id="edit-category-suggestions">
-								{#each categorySuggestions as suggestion}
+								{#each categorySuggestions as suggestion (suggestion)}
 									<option value={suggestion}></option>
 								{/each}
 							</datalist>
@@ -309,7 +299,7 @@
 					<p>No chores yet. Add your first chore above to get started.</p>
 				</div>
 			{:else}
-				{#each masterChoreStore.grouped as group}
+				{#each masterChoreStore.grouped as group (group.timeSlot)}
 					<div class="time-slot-group">
 						<h3 class="time-slot-header time-slot-{group.timeSlot}">{group.label}</h3>
 						<ul class="chore-list">
@@ -762,16 +752,6 @@
 	.back-link {
 		margin-top: 1.5rem;
 		text-align: center;
-	}
-
-	.back-link a {
-		font-size: 0.875rem;
-		color: #6b7280;
-		text-decoration: none;
-	}
-
-	.back-link a:hover {
-		color: #111827;
 	}
 
 	/* Responsive */

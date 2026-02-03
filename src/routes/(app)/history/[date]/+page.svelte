@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { useQuery } from 'convex-svelte';
@@ -7,7 +7,7 @@
 	import AdminNav from '$lib/components/AdminNav.svelte';
 	import PhotoThumbnail from '$lib/components/PhotoThumbnail.svelte';
 
-	const dateParam = $derived($page.params.date);
+	const dateParam = $derived(page.params.date);
 
 	const history = useQuery(api.dailyChores.getHistory, { daysBack: 7 });
 
@@ -92,7 +92,7 @@
 		</button>
 
 		<header class="day-header">
-			<h1 class="title">{formatDisplayDate(dateParam)}</h1>
+			<h1 class="title">{formatDisplayDate(dateParam ?? '')}</h1>
 			<div class="summary">
 				<span class="summary-text">{stats.completed} of {stats.total} completed</span>
 				<span class="summary-percent">{stats.percentage}%</span>
