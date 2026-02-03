@@ -143,8 +143,8 @@ class AdminAuth {
 				const refreshed = await this.refreshToken();
 				console.log('[AdminAuth] checkAuth: refresh result:', refreshed);
 				if (!refreshed) {
-					console.log('[AdminAuth] checkAuth: refresh failed, clearing tokens');
-					clearTokens();
+					console.log('[AdminAuth] checkAuth: refresh failed, NOT clearing tokens (debug)');
+					// clearTokens(); // TEMPORARILY DISABLED FOR DEBUGGING
 					this.state = 'unauthenticated';
 					this.userId = null;
 					this.isAdmin = false;
