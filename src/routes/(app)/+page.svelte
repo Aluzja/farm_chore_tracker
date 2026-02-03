@@ -156,6 +156,10 @@
 													{/if}
 												</span>
 
+												{#if chore.description}
+													<span class="chore-description">{chore.description}</span>
+												{/if}
+
 												{#if chore.isAdHoc}
 													<span class="badge adhoc">Today only</span>
 												{/if}
@@ -480,8 +484,20 @@
 		font-size: 1rem;
 	}
 
+	.chore-description {
+		display: block;
+		font-size: 0.8125rem;
+		color: #6b7280;
+		line-height: 1.3;
+		margin-top: 0.125rem;
+	}
+
 	.chore-item.completed .chore-text {
 		color: #6b7280;
+	}
+
+	.chore-item.completed .chore-description {
+		color: #9ca3af;
 	}
 
 	.badge {

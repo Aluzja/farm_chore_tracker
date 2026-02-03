@@ -16,7 +16,6 @@
 	"devDependencies": {
 		"@eslint/compat": "^1.2.5",
 		"@eslint/js": "^9.22.0",
-		"@sveltejs/adapter-auto": "^6.0.0",
 		"@sveltejs/kit": "^2.22.0",
 		"@sveltejs/vite-plugin-svelte": "^6.0.0",
 		"@types/node": "^22",
@@ -37,6 +36,7 @@
 	"dependencies": {
 		"@auth/core": "0.37.0",
 		"@convex-dev/auth": "^0.0.90",
+		"@sveltejs/adapter-cloudflare": "^7.2.6",
 		"browser-image-compression": "^2.0.2",
 		"convex": "1.31.7",
 		"convex-svelte": "0.0.12",

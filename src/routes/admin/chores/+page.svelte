@@ -22,6 +22,7 @@
 	// Form state
 	type TimeSlot = 'morning' | 'afternoon' | 'evening';
 	let formText = $state('');
+	let formDescription = $state('');
 	let formTimeSlot = $state<TimeSlot>('morning');
 	let formCategory = $state('');
 	let formRequiresPhoto = $state(false);
@@ -31,6 +32,7 @@
 	// Edit state
 	let editingChore = $state<MasterChore | null>(null);
 	let editText = $state('');
+	let editDescription = $state('');
 	let editTimeSlot = $state<TimeSlot>('morning');
 	let editCategory = $state('');
 	let editRequiresPhoto = $state(false);
@@ -48,12 +50,14 @@
 		try {
 			await client.mutation(api.masterChores.create, {
 				text: formText.trim(),
+				description: formDescription.trim() || undefined,
 				timeSlot: formTimeSlot,
 				animalCategory: formCategory.trim(),
 				requiresPhoto: formRequiresPhoto
 			});
 			// Clear form
 			formText = '';
+			formDescription = '';
 			formCategory = '';
 			formTimeSlot = 'morning';
 			formRequiresPhoto = false;
@@ -67,6 +71,7 @@
 	function startEdit(chore: MasterChore) {
 		editingChore = chore;
 		editText = chore.text;
+		editDescription = chore.description ?? '';
 		editTimeSlot = chore.timeSlot as TimeSlot;
 		editCategory = chore.animalCategory;
 		editRequiresPhoto = chore.requiresPhoto ?? false;
@@ -75,6 +80,7 @@
 	function cancelEdit() {
 		editingChore = null;
 		editText = '';
+		editDescription = '';
 		editTimeSlot = 'morning';
 		editCategory = '';
 		editRequiresPhoto = false;
@@ -92,6 +98,7 @@
 			await client.mutation(api.masterChores.update, {
 				id: editingChore._id,
 				text: editText.trim(),
+				description: editDescription.trim() || undefined,
 				timeSlot: editTimeSlot,
 				animalCategory: editCategory.trim(),
 				requiresPhoto: editRequiresPhoto
@@ -131,15 +138,25 @@
 			<form onsubmit={handleCreate} class="form">
 				<div class="form-row">
 					<div class="form-group form-group-large">
-						<label for="chore-text">Chore description</label>
+						<label for="chore-text">Chore name</label>
 						<input
 							id="chore-text"
 							type="text"
 							bind:value={formText}
-							placeholder="e.g., Collect eggs from coop"
+							placeholder="e.g., Chicken Food"
 							required
 						/>
 					</div>
+				</div>
+
+				<div class="form-group">
+					<label for="chore-description">Details (optional)</label>
+					<input
+						id="chore-description"
+						type="text"
+						bind:value={formDescription}
+						placeholder="e.g., 2 scoops of feed per coop"
+					/>
 				</div>
 
 				<div class="form-row">
@@ -222,8 +239,18 @@
 					<h2 id="edit-title" class="modal-title">Edit Chore</h2>
 					<form onsubmit={handleUpdate} class="form">
 						<div class="form-group">
-							<label for="edit-text">Chore description</label>
+							<label for="edit-text">Chore name</label>
 							<input id="edit-text" type="text" bind:value={editText} required />
+						</div>
+
+						<div class="form-group">
+							<label for="edit-description">Details (optional)</label>
+							<input
+								id="edit-description"
+								type="text"
+								bind:value={editDescription}
+								placeholder="e.g., 2 scoops of feed per coop"
+							/>
 						</div>
 
 						<div class="form-group">
@@ -329,6 +356,9 @@
 												</span>
 											{/if}
 										</div>
+										{#if chore.description}
+											<span class="chore-description">{chore.description}</span>
+										{/if}
 										<span class="chore-category">{chore.animalCategory}</span>
 									</div>
 									<div class="chore-actions">
@@ -691,6 +721,12 @@
 	.chore-text {
 		font-size: 0.9375rem;
 		color: #111827;
+	}
+
+	.chore-description {
+		font-size: 0.8125rem;
+		color: #6b7280;
+		font-style: italic;
 	}
 
 	.photo-badge {

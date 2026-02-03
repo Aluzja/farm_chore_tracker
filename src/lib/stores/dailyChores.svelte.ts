@@ -92,6 +92,7 @@ class DailyChoreStore {
 			date: string;
 			masterChoreId?: string;
 			text: string;
+			description?: string;
 			timeSlot: string;
 			animalCategory: string;
 			sortOrder: number;
@@ -120,6 +121,7 @@ class DailyChoreStore {
 					date: sc.date,
 					masterChoreId: sc.masterChoreId,
 					text: sc.text,
+					description: sc.description,
 					timeSlot: sc.timeSlot,
 					animalCategory: sc.animalCategory,
 					sortOrder: sc.sortOrder,

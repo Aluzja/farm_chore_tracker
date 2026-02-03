@@ -34,6 +34,7 @@ export const DailyChoreSchema = z.object({
 	date: z.string(),
 	masterChoreId: z.string().optional(),
 	text: z.string().min(1),
+	description: z.string().optional(),
 	timeSlot: z.string(),
 	animalCategory: z.string(),
 	sortOrder: z.number(),

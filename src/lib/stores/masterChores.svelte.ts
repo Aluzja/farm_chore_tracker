@@ -5,6 +5,7 @@ type TimeSlot = 'morning' | 'afternoon' | 'evening';
 export interface MasterChore {
 	_id: Id<'masterChores'>;
 	text: string;
+	description?: string;
 	timeSlot: string;
 	animalCategory: string;
 	sortOrder: number;
