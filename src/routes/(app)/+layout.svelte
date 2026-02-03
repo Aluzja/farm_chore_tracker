@@ -192,11 +192,19 @@
 		</div>
 	</div>
 {:else if hasAccess}
-	{#if userName}
-		<div class="user-badge">
-			{userName}
-		</div>
-	{/if}
+	<div class="app-nav">
+		<a href={resolve('/history')} class="nav-link" aria-label="View history">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<circle cx="12" cy="12" r="10"></circle>
+				<polyline points="12 6 12 12 16 14"></polyline>
+			</svg>
+		</a>
+		{#if userName}
+			<div class="user-badge">
+				{userName}
+			</div>
+		{/if}
+	</div>
 	{@render children?.()}
 {:else}
 	<div class="error-container">
@@ -251,17 +259,47 @@
 		color: #6b7280;
 	}
 
-	.user-badge {
+	.app-nav {
 		position: fixed;
 		top: 0.5rem;
 		right: 0.5rem;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		z-index: 50;
+	}
+
+	.nav-link {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 2rem;
+		background: rgba(255, 255, 255, 0.9);
+		border-radius: 0.375rem;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+		color: #6b7280;
+		text-decoration: none;
+		transition: color 0.15s, background-color 0.15s;
+	}
+
+	.nav-link:hover {
+		color: #2563eb;
+		background: white;
+	}
+
+	.nav-link svg {
+		width: 1.25rem;
+		height: 1.25rem;
+	}
+
+	.user-badge {
 		font-size: 0.75rem;
 		color: #6b7280;
 		background: rgba(255, 255, 255, 0.9);
 		padding: 0.25rem 0.5rem;
 		border-radius: 0.25rem;
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-		z-index: 50;
 	}
 
 	.error-container {
