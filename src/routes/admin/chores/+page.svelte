@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { useQuery, useConvexClient } from 'convex-svelte';
+	import { slide } from 'svelte/transition';
 	import { api } from '../../../convex/_generated/api';
 	import type { Id } from '../../../convex/_generated/dataModel';
 	import { masterChoreStore, type MasterChore } from '$lib/stores/masterChores.svelte';
@@ -41,6 +42,23 @@
 	let editTimeSlot = $state<TimeSlot>('morning');
 	let editCategory = $state('');
 	let editRequiresPhoto = $state(false);
+
+	// Collapsed state for time slot panels
+	let collapsedSlots = $state<Set<string>>(new Set());
+
+	function toggleSlotCollapse(timeSlot: string) {
+		if (collapsedSlots.has(timeSlot)) {
+			collapsedSlots.delete(timeSlot);
+		} else {
+			collapsedSlots.add(timeSlot);
+		}
+		// Trigger reactivity
+		collapsedSlots = new Set(collapsedSlots);
+	}
+
+	function isSlotCollapsed(timeSlot: string): boolean {
+		return collapsedSlots.has(timeSlot);
+	}
 
 	function openAddModal() {
 		showAddModal = true;
@@ -419,87 +437,111 @@
 				</div>
 			{:else}
 				{#each masterChoreStore.grouped as group (group.timeSlot)}
-					<div class="time-slot-group">
-						<h3 class="time-slot-header time-slot-{group.timeSlot}">{group.label}</h3>
-						<ul class="chore-list">
-							{#each group.chores as chore (chore._id)}
-								<li class="chore-item">
-									<div class="chore-info">
-										<div class="chore-text-row">
-											<span class="chore-text">{chore.text}</span>
-											{#if chore.requiresPhoto}
-												<span class="photo-badge" title="Requires photo">
-													<svg
-														xmlns="http://www.w3.org/2000/svg"
-														width="14"
-														height="14"
-														viewBox="0 0 24 24"
-														fill="none"
-														stroke="currentColor"
-														stroke-width="2"
-														stroke-linecap="round"
-														stroke-linejoin="round"
-													>
-														<path
-															d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
-														></path>
-														<circle cx="12" cy="13" r="4"></circle>
-													</svg>
-												</span>
+					{@const isCollapsed = isSlotCollapsed(group.timeSlot)}
+					<div class="time-slot-group" class:collapsed={isCollapsed}>
+						<button
+							class="time-slot-header time-slot-{group.timeSlot}"
+							onclick={() => toggleSlotCollapse(group.timeSlot)}
+							aria-expanded={!isCollapsed}
+						>
+							<span class="time-slot-title">{group.label}</span>
+							<span class="time-slot-count"
+								>{group.chores.length} chore{group.chores.length !== 1 ? 's' : ''}</span
+							>
+							<svg
+								class="chevron"
+								class:rotated={isCollapsed}
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+							>
+								<polyline points="6 9 12 15 18 9"></polyline>
+							</svg>
+						</button>
+
+						{#if !isCollapsed}
+							<ul class="chore-list" transition:slide={{ duration: 200 }}>
+								{#each group.chores as chore (chore._id)}
+									<li class="chore-item">
+										<div class="chore-info">
+											<div class="chore-text-row">
+												<span class="chore-text">{chore.text}</span>
+												{#if chore.requiresPhoto}
+													<span class="photo-badge" title="Requires photo">
+														<svg
+															xmlns="http://www.w3.org/2000/svg"
+															width="14"
+															height="14"
+															viewBox="0 0 24 24"
+															fill="none"
+															stroke="currentColor"
+															stroke-width="2"
+															stroke-linecap="round"
+															stroke-linejoin="round"
+														>
+															<path
+																d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+															></path>
+															<circle cx="12" cy="13" r="4"></circle>
+														</svg>
+													</span>
+												{/if}
+											</div>
+											{#if chore.description}
+												<span class="chore-description">{chore.description}</span>
 											{/if}
+											<span class="chore-category">{chore.animalCategory}</span>
 										</div>
-										{#if chore.description}
-											<span class="chore-description">{chore.description}</span>
-										{/if}
-										<span class="chore-category">{chore.animalCategory}</span>
-									</div>
-									<div class="chore-actions">
-										<button
-											class="btn-icon"
-											onclick={() => startEdit(chore)}
-											aria-label="Edit chore"
-										>
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												width="18"
-												height="18"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												stroke-width="2"
-												stroke-linecap="round"
-												stroke-linejoin="round"
+										<div class="chore-actions">
+											<button
+												class="btn-icon"
+												onclick={() => startEdit(chore)}
+												aria-label="Edit chore"
 											>
-												<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-												<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-											</svg>
-										</button>
-										<button
-											class="btn-icon btn-danger"
-											onclick={() => handleDelete(chore._id, chore.text)}
-											aria-label="Delete chore"
-										>
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												width="18"
-												height="18"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												stroke-width="2"
-												stroke-linecap="round"
-												stroke-linejoin="round"
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													width="18"
+													height="18"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													stroke-linecap="round"
+													stroke-linejoin="round"
+												>
+													<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+													></path>
+													<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+												</svg>
+											</button>
+											<button
+												class="btn-icon btn-danger"
+												onclick={() => handleDelete(chore._id, chore.text)}
+												aria-label="Delete chore"
 											>
-												<polyline points="3 6 5 6 21 6"></polyline>
-												<path
-													d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
-												></path>
-											</svg>
-										</button>
-									</div>
-								</li>
-							{/each}
-						</ul>
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													width="18"
+													height="18"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													stroke-linecap="round"
+													stroke-linejoin="round"
+												>
+													<polyline points="3 6 5 6 21 6"></polyline>
+													<path
+														d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+													></path>
+												</svg>
+											</button>
+										</div>
+									</li>
+								{/each}
+							</ul>
+						{/if}
 					</div>
 				{/each}
 			{/if}
@@ -794,12 +836,44 @@
 	}
 
 	.time-slot-header {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		width: 100%;
 		font-size: 1rem;
 		font-weight: 600;
 		color: white;
 		padding: 0.75rem 1rem;
 		margin: 0;
-		border-bottom: 1px solid #e5e7eb;
+		border: none;
+		cursor: pointer;
+		text-align: left;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.time-slot-header:active {
+		filter: brightness(0.95);
+	}
+
+	.time-slot-title {
+		flex: 1;
+	}
+
+	.time-slot-count {
+		font-size: 0.875rem;
+		font-weight: 500;
+		opacity: 0.9;
+	}
+
+	.chevron {
+		width: 1.25rem;
+		height: 1.25rem;
+		transition: transform 0.2s ease;
+		flex-shrink: 0;
+	}
+
+	.chevron.rotated {
+		transform: rotate(-90deg);
 	}
 
 	.time-slot-morning {
@@ -812,6 +886,10 @@
 
 	.time-slot-evening {
 		background-color: #8b5cf6;
+	}
+
+	.time-slot-group.collapsed {
+		border-radius: 0.5rem;
 	}
 
 	.chore-list {
