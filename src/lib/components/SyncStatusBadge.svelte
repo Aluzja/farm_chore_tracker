@@ -38,16 +38,20 @@
 		flex-shrink: 0;
 	}
 
-	/* Pending: Pulsing amber dot */
+	/* Pending: Pulsing amber dot with delay to avoid flash on quick syncs */
 	.sync-indicator--pending .sync-dot {
 		width: 0.625rem;
 		height: 0.625rem;
 		border-radius: 50%;
 		background: #f59e0b;
-		animation: pulse 1.5s ease-in-out infinite;
+		/* Start hidden, then fade in after 500ms delay */
+		opacity: 0;
+		animation: delayedPulse 1.5s ease-in-out infinite;
+		animation-delay: 500ms;
+		animation-fill-mode: backwards;
 	}
 
-	@keyframes pulse {
+	@keyframes delayedPulse {
 		0%, 100% {
 			opacity: 1;
 			transform: scale(1);

@@ -382,6 +382,16 @@
 		transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 		/* Larger touch target for mobile - toggle button positioned on right via flex order */
 		order: 1;
+		/* Remove browser tap highlight (the blue square) on mobile */
+		-webkit-tap-highlight-color: transparent;
+		/* Remove default outline, replaced with custom focus ring below */
+		outline: none;
+	}
+
+	/* Custom focus ring that follows the round button shape */
+	.toggle-button:focus-visible {
+		box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.4);
+		border-color: #22c55e;
 	}
 
 	.toggle-button:hover {
