@@ -1,5 +1,6 @@
 import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
+import { getAuthUserId } from '@convex-dev/auth/server';
 
 // Get today's date string in consistent format
 function getTodayDate(): string {
@@ -166,6 +167,7 @@ export const addAdHoc = mutation({
 	args: {
 		clientId: v.string(),
 		text: v.string(),
+		description: v.optional(v.string()),
 		timeSlot: v.string(),
 		animalCategory: v.string(),
 		createdBy: v.optional(v.string()),
@@ -194,6 +196,7 @@ export const addAdHoc = mutation({
 			masterChoreId: undefined, // No master reference for ad-hoc
 			clientId: args.clientId,
 			text: args.text,
+			description: args.description,
 			timeSlot: args.timeSlot,
 			animalCategory: args.animalCategory,
 			sortOrder: maxOrder + 1,
@@ -201,6 +204,51 @@ export const addAdHoc = mutation({
 			isAdHoc: true,
 			requiresPhoto: false, // Ad-hoc chores don't require photo proof
 			lastModified: args.lastModified
+		});
+	}
+});
+
+// Add ad-hoc chore for today only (admin only)
+// This is a server-side mutation for admin use, generates its own clientId
+export const addAdHocAdmin = mutation({
+	args: {
+		text: v.string(),
+		description: v.optional(v.string()),
+		timeSlot: v.string(),
+		animalCategory: v.string(),
+		requiresPhoto: v.optional(v.boolean())
+	},
+	handler: async (ctx, args) => {
+		const userId = await getAuthUserId(ctx);
+		if (!userId) throw new Error('Not authenticated');
+
+		const user = await ctx.db.get(userId);
+		if (!user?.isAdmin) throw new Error('Admin required');
+
+		const today = getTodayDate();
+		const now = Date.now();
+		const clientId = crypto.randomUUID();
+
+		// Get max sortOrder for this time slot today
+		const slotChores = await ctx.db
+			.query('dailyChores')
+			.withIndex('by_date_time_slot', (q) => q.eq('date', today).eq('timeSlot', args.timeSlot))
+			.collect();
+		const maxOrder = slotChores.length > 0 ? Math.max(...slotChores.map((c) => c.sortOrder)) : 0;
+
+		return await ctx.db.insert('dailyChores', {
+			date: today,
+			masterChoreId: undefined,
+			clientId,
+			text: args.text,
+			description: args.description,
+			timeSlot: args.timeSlot,
+			animalCategory: args.animalCategory,
+			sortOrder: maxOrder + 1,
+			isCompleted: false,
+			isAdHoc: true,
+			requiresPhoto: args.requiresPhoto ?? false,
+			lastModified: now
 		});
 	}
 });

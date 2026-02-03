@@ -26,6 +26,7 @@
 	let formTimeSlot = $state<TimeSlot>('morning');
 	let formCategory = $state('');
 	let formRequiresPhoto = $state(false);
+	let formTodayOnly = $state(false);
 	let isSubmitting = $state(false);
 	let formError = $state<string | null>(null);
 
@@ -48,19 +49,32 @@
 		formError = null;
 
 		try {
-			await client.mutation(api.masterChores.create, {
-				text: formText.trim(),
-				description: formDescription.trim() || undefined,
-				timeSlot: formTimeSlot,
-				animalCategory: formCategory.trim(),
-				requiresPhoto: formRequiresPhoto
-			});
+			if (formTodayOnly) {
+				// Add as ad-hoc chore for today only
+				await client.mutation(api.dailyChores.addAdHocAdmin, {
+					text: formText.trim(),
+					description: formDescription.trim() || undefined,
+					timeSlot: formTimeSlot,
+					animalCategory: formCategory.trim(),
+					requiresPhoto: formRequiresPhoto
+				});
+			} else {
+				// Add to master chore list
+				await client.mutation(api.masterChores.create, {
+					text: formText.trim(),
+					description: formDescription.trim() || undefined,
+					timeSlot: formTimeSlot,
+					animalCategory: formCategory.trim(),
+					requiresPhoto: formRequiresPhoto
+				});
+			}
 			// Clear form
 			formText = '';
 			formDescription = '';
 			formCategory = '';
 			formTimeSlot = 'morning';
 			formRequiresPhoto = false;
+			formTodayOnly = false;
 		} catch (error) {
 			formError = error instanceof Error ? error.message : 'Failed to create chore';
 		} finally {
@@ -187,34 +201,58 @@
 					</div>
 				</div>
 
-				<label class="photo-toggle">
-					<span class="toggle-track" class:active={formRequiresPhoto}>
-						<span class="toggle-thumb"></span>
-					</span>
-					<input type="checkbox" bind:checked={formRequiresPhoto} class="sr-only" />
-					<span class="toggle-label">
-						<svg
-							class="toggle-icon"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-						>
-							<path
-								d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
-							></path>
-							<circle cx="12" cy="13" r="4"></circle>
-						</svg>
-						Require photo for completion
-					</span>
-				</label>
+				<div class="toggle-row">
+					<label class="photo-toggle">
+						<span class="toggle-track" class:active={formRequiresPhoto}>
+							<span class="toggle-thumb"></span>
+						</span>
+						<input type="checkbox" bind:checked={formRequiresPhoto} class="sr-only" />
+						<span class="toggle-label">
+							<svg
+								class="toggle-icon"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+							>
+								<path
+									d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+								></path>
+								<circle cx="12" cy="13" r="4"></circle>
+							</svg>
+							Require photo
+						</span>
+					</label>
+
+					<label class="photo-toggle today-only-toggle" class:active={formTodayOnly}>
+						<span class="toggle-track" class:active={formTodayOnly}>
+							<span class="toggle-thumb"></span>
+						</span>
+						<input type="checkbox" bind:checked={formTodayOnly} class="sr-only" />
+						<span class="toggle-label">
+							<svg
+								class="toggle-icon"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+							>
+								<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+								<line x1="16" y1="2" x2="16" y2="6"></line>
+								<line x1="8" y1="2" x2="8" y2="6"></line>
+								<line x1="3" y1="10" x2="21" y2="10"></line>
+							</svg>
+							Today only
+						</span>
+					</label>
+				</div>
 
 				<button
 					type="submit"
 					class="btn btn-primary btn-submit"
 					disabled={isSubmitting || !formText.trim() || !formCategory.trim()}
 				>
-					{isSubmitting ? 'Adding...' : 'Add Chore'}
+					{isSubmitting ? 'Adding...' : formTodayOnly ? 'Add to Today' : 'Add Chore'}
 				</button>
 
 				{#if formError}
@@ -472,6 +510,12 @@
 		margin-top: 1rem;
 	}
 
+	.toggle-row {
+		display: flex;
+		gap: 1rem;
+		flex-wrap: wrap;
+	}
+
 	.photo-toggle {
 		display: flex;
 		align-items: center;
@@ -495,6 +539,19 @@
 	.photo-toggle:has(input:checked) {
 		border-color: #22c55e;
 		background: #f0fdf4;
+	}
+
+	.today-only-toggle:has(input:checked) {
+		border-color: #f59e0b;
+		background: #fffbeb;
+	}
+
+	.today-only-toggle:has(input:checked) .toggle-track.active {
+		background: #f59e0b;
+	}
+
+	.today-only-toggle:has(input:checked) .toggle-icon {
+		color: #f59e0b;
 	}
 
 	.sr-only {
