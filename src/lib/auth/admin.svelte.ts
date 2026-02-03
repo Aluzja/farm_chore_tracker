@@ -61,7 +61,33 @@ class AdminAuth {
 		const token = getStoredToken();
 		if (token && this.client) {
 			console.log('[AdminAuth] setClient: setting auth with token...');
-			await this.client.setAuth(async () => token);
+
+			// Create a promise that resolves when auth state changes
+			await new Promise<void>((resolve) => {
+				let resolved = false;
+				this.client!.setAuth(
+					async () => token,
+					(isAuthenticated) => {
+						console.log(
+							'[AdminAuth] setClient: auth state changed, isAuthenticated:',
+							isAuthenticated
+						);
+						if (!resolved) {
+							resolved = true;
+							resolve();
+						}
+					}
+				);
+				// Also resolve after a timeout in case onChange doesn't fire
+				setTimeout(() => {
+					if (!resolved) {
+						console.log('[AdminAuth] setClient: auth timeout, resolving anyway');
+						resolved = true;
+						resolve();
+					}
+				}, 2000);
+			});
+
 			console.log('[AdminAuth] setClient: auth set complete');
 		}
 	}
