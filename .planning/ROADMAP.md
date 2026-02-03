@@ -103,12 +103,13 @@ Plans:
   4. Admin can configure which chores require photo proof
   5. Required-photo chores cannot be completed without photo
   6. Completed chore photos are viewable in the UI
-**Plans**: TBD
+**Plans**: 4 plans (3 waves)
 
 Plans:
-- [ ] 05-01: Camera capture and image compression
-- [ ] 05-02: Photo offline queue and Convex file upload
-- [ ] 05-03: Per-chore photo requirement configuration
+- [ ] 05-01-PLAN.md — Photo capture module and IndexedDB schema extension
+- [ ] 05-02-PLAN.md — Convex schema and photo storage API
+- [ ] 05-03-PLAN.md — Photo upload queue and sync engine integration
+- [ ] 05-04-PLAN.md — Worker UI integration with capture flow and photo viewing
 
 ### Phase 6: Polish and History
 **Goal**: Users have visibility into sync status and can review past 7 days of completions
@@ -138,7 +139,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 2. Data Layer | 3/3 | ✓ Complete | 2026-02-02 |
 | 3. Auth and Access | 4/4 | ✓ Complete | 2026-02-02 |
 | 4. Core Chore Workflow | 4/4 | ✓ Complete | 2026-02-02 |
-| 5. Photo Verification | 0/3 | Not started | - |
+| 5. Photo Verification | 0/4 | Planned | - |
 | 6. Polish and History | 0/3 | Not started | - |
 
 ## Requirement Coverage
