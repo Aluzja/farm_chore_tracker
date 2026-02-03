@@ -78,7 +78,7 @@
 				<p>Loading photo...</p>
 			</div>
 		{:else if photoUrl}
-			<img src={photoUrl} alt="Chore completion photo" class="photo-image" />
+			<img src={photoUrl} alt="Chore completion" class="photo-image" />
 		{:else}
 			<div class="empty-state">
 				<p>No photo available</p>
