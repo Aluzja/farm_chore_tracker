@@ -203,6 +203,58 @@ class DailyChoreStore {
 			this.items[index] = { ...this.items[index], syncStatus: 'synced' };
 		}
 	}
+
+	// Add ad-hoc chore for today only
+	async addAdHoc(
+		text: string,
+		timeSlot: 'morning' | 'afternoon' | 'evening',
+		animalCategory: string,
+		createdBy: string
+	): Promise<string> {
+		const now = Date.now();
+		const clientId = crypto.randomUUID();
+
+		// Calculate sortOrder (max + 1 for this time slot)
+		const slotChores = this.items.filter((c) => c.timeSlot === timeSlot);
+		const maxOrder = slotChores.length > 0 ? Math.max(...slotChores.map((c) => c.sortOrder)) : 0;
+
+		const newChore: DailyChore = {
+			_id: clientId,
+			date: this.currentDate,
+			masterChoreId: undefined,
+			text,
+			timeSlot,
+			animalCategory: animalCategory || 'General',
+			sortOrder: maxOrder + 1,
+			isCompleted: false,
+			isAdHoc: true,
+			syncStatus: 'pending',
+			lastModified: now
+		};
+
+		// Optimistic update
+		this.items = [...this.items, newChore];
+
+		// Persist to IndexedDB
+		await putDailyChore(newChore);
+
+		// Queue for sync
+		await enqueueMutation('create', 'dailyChores', {
+			clientId: newChore._id,
+			text: newChore.text,
+			timeSlot: newChore.timeSlot,
+			animalCategory: newChore.animalCategory,
+			createdBy,
+			lastModified: newChore.lastModified
+		});
+
+		return clientId;
+	}
+
+	// Confirm delete (for future delete feature)
+	confirmDelete(id: string): void {
+		this.pendingDeletes.delete(id);
+	}
 }
 
 export const dailyChoreStore = new DailyChoreStore();
