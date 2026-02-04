@@ -10,6 +10,7 @@
 
 import type * as accessKeys from "../accessKeys.js";
 import type * as auth from "../auth.js";
+import type * as authCheck from "../authCheck.js";
 import type * as chores from "../chores.js";
 import type * as dailyChores from "../dailyChores.js";
 import type * as http from "../http.js";
@@ -27,6 +28,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   accessKeys: typeof accessKeys;
   auth: typeof auth;
+  authCheck: typeof authCheck;
   chores: typeof chores;
   dailyChores: typeof dailyChores;
   http: typeof http;

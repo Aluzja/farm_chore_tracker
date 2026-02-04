@@ -1,64 +1,74 @@
-import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { mutation, query } from './_generated/server';
+import { v } from 'convex/values';
+import { requireAuth, checkAuth } from './authCheck';
 
 // Generate a short-lived URL for uploading a photo
 export const generateUploadUrl = mutation({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.storage.generateUploadUrl();
-  },
+	args: { accessKey: v.optional(v.string()) },
+	handler: async (ctx, { accessKey }) => {
+		await requireAuth(ctx, accessKey);
+		return await ctx.storage.generateUploadUrl();
+	}
 });
 
 // Attach uploaded photo to a daily chore
 export const attachPhotoToChore = mutation({
-  args: {
-    dailyChoreClientId: v.string(),
-    storageId: v.id("_storage"),
-    capturedAt: v.number(),
-    capturedBy: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const chore = await ctx.db
-      .query("dailyChores")
-      .withIndex("by_client_id", (q) => q.eq("clientId", args.dailyChoreClientId))
-      .first();
+	args: {
+		dailyChoreClientId: v.string(),
+		storageId: v.id('_storage'),
+		capturedAt: v.number(),
+		capturedBy: v.string(),
+		accessKey: v.optional(v.string())
+	},
+	handler: async (ctx, { accessKey, ...args }) => {
+		await requireAuth(ctx, accessKey);
 
-    if (!chore) {
-      throw new Error(`Daily chore not found: ${args.dailyChoreClientId}`);
-    }
+		const chore = await ctx.db
+			.query('dailyChores')
+			.withIndex('by_client_id', (q) => q.eq('clientId', args.dailyChoreClientId))
+			.first();
 
-    await ctx.db.patch(chore._id, {
-      photoStorageId: args.storageId,
-      photoCapturedAt: args.capturedAt,
-      photoCapturedBy: args.capturedBy,
-      lastModified: Date.now(), // Trigger store merge on real-time update
-    });
+		if (!chore) {
+			throw new Error(`Daily chore not found: ${args.dailyChoreClientId}`);
+		}
 
-    return { success: true };
-  },
+		await ctx.db.patch(chore._id, {
+			photoStorageId: args.storageId,
+			photoCapturedAt: args.capturedAt,
+			photoCapturedBy: args.capturedBy,
+			lastModified: Date.now()
+		});
+
+		return { success: true };
+	}
 });
 
 // Get the serving URL for a photo
 export const getPhotoUrl = query({
-  args: { storageId: v.id("_storage") },
-  handler: async (ctx, { storageId }) => {
-    return await ctx.storage.getUrl(storageId);
-  },
+	args: { storageId: v.id('_storage'), accessKey: v.optional(v.string()) },
+	handler: async (ctx, { storageId, accessKey }) => {
+		const authorized = await checkAuth(ctx, accessKey);
+		if (!authorized) return null;
+		return await ctx.storage.getUrl(storageId);
+	}
 });
 
 // Get photo URL for a specific daily chore
 export const getPhotoUrlByChore = query({
-  args: { dailyChoreClientId: v.string() },
-  handler: async (ctx, { dailyChoreClientId }) => {
-    const chore = await ctx.db
-      .query("dailyChores")
-      .withIndex("by_client_id", (q) => q.eq("clientId", dailyChoreClientId))
-      .first();
+	args: { dailyChoreClientId: v.string(), accessKey: v.optional(v.string()) },
+	handler: async (ctx, { dailyChoreClientId, accessKey }) => {
+		const authorized = await checkAuth(ctx, accessKey);
+		if (!authorized) return null;
 
-    if (!chore?.photoStorageId) {
-      return null;
-    }
+		const chore = await ctx.db
+			.query('dailyChores')
+			.withIndex('by_client_id', (q) => q.eq('clientId', dailyChoreClientId))
+			.first();
 
-    return await ctx.storage.getUrl(chore.photoStorageId);
-  },
+		if (!chore?.photoStorageId) {
+			return null;
+		}
+
+		return await ctx.storage.getUrl(chore.photoStorageId);
+	}
 });

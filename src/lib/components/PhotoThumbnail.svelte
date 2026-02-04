@@ -5,6 +5,7 @@
 	import { api } from '../../convex/_generated/api';
 	import type { Id } from '../../convex/_generated/dataModel';
 	import { getOrCacheImage } from '$lib/db/imageCache';
+	import { getStoredAccessKey } from '$lib/auth/access-key';
 
 	interface Props {
 		choreId: string;
@@ -16,7 +17,8 @@
 	// Query for the remote URL
 	const photoUrlQuery = $derived(
 		useQuery(api.photos.getPhotoUrl, {
-			storageId: storageId as Id<'_storage'>
+			storageId: storageId as Id<'_storage'>,
+			accessKey: getStoredAccessKey() ?? undefined
 		})
 	);
 

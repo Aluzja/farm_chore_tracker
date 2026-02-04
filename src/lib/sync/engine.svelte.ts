@@ -1,6 +1,7 @@
 import { browser } from '$app/environment';
 import type { ConvexClient } from 'convex/browser';
 import { api } from '../../convex/_generated/api';
+import { getStoredAccessKey } from '$lib/auth/access-key';
 import { connectionStatus } from './status.svelte';
 import {
 	getPendingMutations,
@@ -19,7 +20,13 @@ import {
 	getFailedPhotoCount
 } from '$lib/photo/queue';
 import { uploadPhoto } from '$lib/photo/upload';
-import { getChore, putChore, getChoresByStatus, getDailyChore, putDailyChore } from '$lib/db/operations';
+import {
+	getChore,
+	putChore,
+	getChoresByStatus,
+	getDailyChore,
+	putDailyChore
+} from '$lib/db/operations';
 import type { Mutation } from '$lib/db/schema';
 
 const MAX_RETRIES = 3;
@@ -173,7 +180,13 @@ class SyncEngine {
 			await markPhotoUploading(photo.id);
 
 			try {
-				await uploadPhoto(client, photo.blob, photo.dailyChoreClientId, photo.capturedAt, photo.capturedBy);
+				await uploadPhoto(
+					client,
+					photo.blob,
+					photo.dailyChoreClientId,
+					photo.capturedAt,
+					photo.capturedBy
+				);
 				await removePhoto(photo.id);
 				this.pendingPhotoCount = Math.max(0, this.pendingPhotoCount - 1);
 			} catch (error) {
@@ -183,7 +196,10 @@ class SyncEngine {
 					this.failedPhotoCount += 1;
 					console.error(`[Sync] Photo ${photo.id} failed after ${MAX_RETRIES} retries`, error);
 				} else {
-					console.warn(`[Sync] Photo ${photo.id} failed, retry ${retryCount}/${MAX_RETRIES}`, error);
+					console.warn(
+						`[Sync] Photo ${photo.id} failed, retry ${retryCount}/${MAX_RETRIES}`,
+						error
+					);
 				}
 			}
 		}
@@ -216,20 +232,21 @@ class SyncEngine {
 		type: Mutation['type'],
 		payload: Record<string, unknown>
 	): Promise<void> {
+		const accessKey = getStoredAccessKey() ?? undefined;
 		switch (type) {
 			case 'create': {
 				const createId = payload.clientId as string;
-				await client.mutation(
-					api.dailyChores.addAdHoc,
-					payload as {
+				await client.mutation(api.dailyChores.addAdHoc, {
+					...(payload as {
 						clientId: string;
 						text: string;
 						timeSlot: string;
 						animalCategory: string;
 						createdBy?: string;
 						lastModified: number;
-					}
-				);
+					}),
+					accessKey
+				});
 				await this.markDailyChoreLocalSynced(createId);
 				const { dailyChoreStore } = await import('$lib/stores/dailyChores.svelte');
 				dailyChoreStore.markSynced(createId);
@@ -237,16 +254,16 @@ class SyncEngine {
 			}
 			case 'update': {
 				const updateId = payload.clientId as string;
-				await client.mutation(
-					api.dailyChores.toggleComplete,
-					payload as {
+				await client.mutation(api.dailyChores.toggleComplete, {
+					...(payload as {
 						clientId: string;
 						isCompleted: boolean;
 						completedAt?: string;
 						completedBy?: string;
 						lastModified: number;
-					}
-				);
+					}),
+					accessKey
+				});
 				await this.markDailyChoreLocalSynced(updateId);
 				const { dailyChoreStore } = await import('$lib/stores/dailyChores.svelte');
 				dailyChoreStore.markSynced(updateId);
@@ -262,16 +279,20 @@ class SyncEngine {
 		type: Mutation['type'],
 		payload: Record<string, unknown>
 	): Promise<void> {
+		const accessKey = getStoredAccessKey() ?? undefined;
 		switch (type) {
 			case 'create': {
 				const createId = payload.clientId as string;
-				await client.mutation(api.chores.create, payload as {
-					clientId: string;
-					text: string;
-					isCompleted: boolean;
-					completedAt?: string;
-					completedBy?: string;
-					lastModified: number;
+				await client.mutation(api.chores.create, {
+					...(payload as {
+						clientId: string;
+						text: string;
+						isCompleted: boolean;
+						completedAt?: string;
+						completedBy?: string;
+						lastModified: number;
+					}),
+					accessKey
 				});
 				// Update local record to synced (both IndexedDB and reactive state)
 				await this.markLocalSynced(createId);
@@ -282,13 +303,16 @@ class SyncEngine {
 
 			case 'update': {
 				const updateId = payload.id as string;
-				await client.mutation(api.chores.update, payload as {
-					id: string; // clientId
-					text?: string;
-					isCompleted?: boolean;
-					completedAt?: string;
-					completedBy?: string;
-					lastModified: number;
+				await client.mutation(api.chores.update, {
+					...(payload as {
+						id: string; // clientId
+						text?: string;
+						isCompleted?: boolean;
+						completedAt?: string;
+						completedBy?: string;
+						lastModified: number;
+					}),
+					accessKey
 				});
 				await this.markLocalSynced(updateId);
 				const { choreStore } = await import('$lib/stores/chores.svelte');
@@ -298,7 +322,7 @@ class SyncEngine {
 
 			case 'delete': {
 				const deleteId = payload.id as string;
-				await client.mutation(api.chores.remove, { id: deleteId });
+				await client.mutation(api.chores.remove, { id: deleteId, accessKey });
 				// Confirm delete to prevent hydration from re-adding
 				const { choreStore } = await import('$lib/stores/chores.svelte');
 				choreStore.confirmDelete(deleteId);

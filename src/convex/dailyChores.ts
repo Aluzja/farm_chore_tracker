@@ -1,6 +1,7 @@
 import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { getAuthUserId } from '@convex-dev/auth/server';
+import { requireAuth, checkAuth } from './authCheck';
 
 // Get today's date string in consistent format
 function getTodayDate(): string {
@@ -10,8 +11,11 @@ function getTodayDate(): string {
 // Get or create daily list for a date
 // Returns chores array if exists, or { needsClone: true, date } if needs cloning
 export const getOrCreateDailyList = query({
-	args: { date: v.optional(v.string()) },
-	handler: async (ctx, { date }) => {
+	args: { date: v.optional(v.string()), accessKey: v.optional(v.string()) },
+	handler: async (ctx, { date, accessKey }) => {
+		const authorized = await checkAuth(ctx, accessKey);
+		if (!authorized) return [];
+
 		const targetDate = date ?? getTodayDate();
 
 		// Check if daily list already exists
@@ -32,8 +36,10 @@ export const getOrCreateDailyList = query({
 // Clone master list to create daily list for a given date
 // Idempotent - safe to call multiple times
 export const cloneMasterToDaily = mutation({
-	args: { date: v.string() },
-	handler: async (ctx, { date }) => {
+	args: { date: v.string(), accessKey: v.optional(v.string()) },
+	handler: async (ctx, { date, accessKey }) => {
+		await requireAuth(ctx, accessKey);
+
 		// Prevent duplicate cloning - check if any daily chores exist for this date
 		const existing = await ctx.db
 			.query('dailyChores')
@@ -90,9 +96,12 @@ export const toggleComplete = mutation({
 		isCompleted: v.boolean(),
 		completedAt: v.optional(v.string()),
 		completedBy: v.optional(v.string()),
-		lastModified: v.number()
+		lastModified: v.number(),
+		accessKey: v.optional(v.string())
 	},
-	handler: async (ctx, { clientId, lastModified, ...updates }) => {
+	handler: async (ctx, { clientId, lastModified, accessKey, ...updates }) => {
+		await requireAuth(ctx, accessKey);
+
 		const existing = await ctx.db
 			.query('dailyChores')
 			.withIndex('by_client_id', (q) => q.eq('clientId', clientId))
@@ -118,8 +127,10 @@ export const toggleComplete = mutation({
 // Reset today's daily list (deletes all daily chores for today)
 // Use this to re-clone from master after adding new master chores
 export const resetTodaysList = mutation({
-	args: {},
-	handler: async (ctx) => {
+	args: { accessKey: v.optional(v.string()) },
+	handler: async (ctx, { accessKey }) => {
+		await requireAuth(ctx, accessKey);
+
 		const today = getTodayDate();
 
 		const todaysChores = await ctx.db
@@ -137,8 +148,11 @@ export const resetTodaysList = mutation({
 
 // Get completed chores from past N days for history view
 export const getHistory = query({
-	args: { daysBack: v.optional(v.number()) },
-	handler: async (ctx, { daysBack = 7 }) => {
+	args: { daysBack: v.optional(v.number()), accessKey: v.optional(v.string()) },
+	handler: async (ctx, { daysBack = 7, accessKey }) => {
+		const authorized = await checkAuth(ctx, accessKey);
+		if (!authorized) return [];
+
 		const today = new Date();
 		const startDate = new Date(today);
 		startDate.setDate(today.getDate() - daysBack);
@@ -171,9 +185,12 @@ export const addAdHoc = mutation({
 		timeSlot: v.string(),
 		animalCategory: v.string(),
 		createdBy: v.optional(v.string()),
-		lastModified: v.number()
+		lastModified: v.number(),
+		accessKey: v.optional(v.string())
 	},
-	handler: async (ctx, args) => {
+	handler: async (ctx, { accessKey, ...args }) => {
+		await requireAuth(ctx, accessKey);
+
 		// Idempotent: check if already exists
 		const existing = await ctx.db
 			.query('dailyChores')

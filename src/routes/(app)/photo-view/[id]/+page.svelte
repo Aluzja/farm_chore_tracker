@@ -6,6 +6,7 @@
 	import { api } from '../../../../convex/_generated/api';
 	import { dailyChoreStore } from '$lib/stores/dailyChores.svelte';
 	import { getOrCacheImage } from '$lib/db/imageCache';
+	import { getStoredAccessKey } from '$lib/auth/access-key';
 	import type { Id } from '../../../../convex/_generated/dataModel';
 
 	const choreId = $derived(page.params.id ?? '');
@@ -16,7 +17,10 @@
 	// Use Convex query to get photo URL
 	const photoUrlQuery = $derived(
 		chore?.photoStorageId
-			? useQuery(api.photos.getPhotoUrl, { storageId: chore.photoStorageId as Id<'_storage'> })
+			? useQuery(api.photos.getPhotoUrl, {
+					storageId: chore.photoStorageId as Id<'_storage'>,
+					accessKey: getStoredAccessKey() ?? undefined
+				})
 			: null
 	);
 

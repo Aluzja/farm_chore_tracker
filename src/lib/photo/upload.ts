@@ -1,6 +1,7 @@
 import type { ConvexClient } from 'convex/browser';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
+import { getStoredAccessKey } from '$lib/auth/access-key';
 
 export interface PhotoUploadResult {
 	storageId: Id<'_storage'>;
@@ -22,8 +23,10 @@ export async function uploadPhoto(
 	capturedAt: number,
 	capturedBy: string
 ): Promise<PhotoUploadResult> {
+	const accessKey = getStoredAccessKey() ?? undefined;
+
 	// Step 1: Get upload URL from Convex
-	const uploadUrl = await client.mutation(api.photos.generateUploadUrl, {});
+	const uploadUrl = await client.mutation(api.photos.generateUploadUrl, { accessKey });
 
 	// Step 2: Upload blob to the URL
 	const response = await fetch(uploadUrl, {
@@ -43,7 +46,8 @@ export async function uploadPhoto(
 		dailyChoreClientId,
 		storageId,
 		capturedAt,
-		capturedBy
+		capturedBy,
+		accessKey
 	});
 
 	return { storageId, success: true };
@@ -56,5 +60,6 @@ export async function getPhotoViewUrl(
 	client: ConvexClient,
 	storageId: Id<'_storage'>
 ): Promise<string | null> {
-	return await client.query(api.photos.getPhotoUrl, { storageId });
+	const accessKey = getStoredAccessKey() ?? undefined;
+	return await client.query(api.photos.getPhotoUrl, { storageId, accessKey });
 }

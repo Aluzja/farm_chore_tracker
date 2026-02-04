@@ -5,12 +5,16 @@
 	import { resolve } from '$app/paths';
 	import { useQuery } from 'convex-svelte';
 	import { api } from '../../../../convex/_generated/api';
+	import { getStoredAccessKey } from '$lib/auth/access-key';
 	import AdminNav from '$lib/components/AdminNav.svelte';
 	import PhotoThumbnail from '$lib/components/PhotoThumbnail.svelte';
 
 	const dateParam = $derived(page.params.date);
 
-	const history = useQuery(api.dailyChores.getHistory, { daysBack: 7 });
+	const history = useQuery(api.dailyChores.getHistory, {
+		daysBack: 7,
+		accessKey: getStoredAccessKey() ?? undefined
+	});
 
 	// Format date for display: "Today", "Yesterday", or "Monday, February 3"
 	function formatDisplayDate(dateStr: string): string {

@@ -35,10 +35,16 @@
 	let keyError = $state<string | null>(null);
 
 	// Server chores subscription (only active when hasAccess and online)
-	const serverChores = browser ? useQuery(api.chores.list, {}) : null;
+	const serverChores = browser
+		? useQuery(api.chores.list, () => ({ accessKey: getStoredAccessKey() ?? undefined }))
+		: null;
 
 	// Daily chores subscription
-	const dailyChoresQuery = browser ? useQuery(api.dailyChores.getOrCreateDailyList, {}) : null;
+	const dailyChoresQuery = browser
+		? useQuery(api.dailyChores.getOrCreateDailyList, () => ({
+				accessKey: getStoredAccessKey() ?? undefined
+			}))
+		: null;
 
 	// Hydrate from server when data arrives (only after access validated)
 	$effect(() => {
@@ -57,7 +63,10 @@
 			const client = getConvexClient();
 			if (client) {
 				const data = dailyChoresQuery.data as { needsClone: boolean; date: string };
-				client.mutation(api.dailyChores.cloneMasterToDaily, { date: data.date });
+				client.mutation(api.dailyChores.cloneMasterToDaily, {
+					date: data.date,
+					accessKey: getStoredAccessKey() ?? undefined
+				});
 			}
 		}
 	});
