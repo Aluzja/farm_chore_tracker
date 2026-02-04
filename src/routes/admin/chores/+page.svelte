@@ -45,8 +45,26 @@
 	let editCategory = $state('');
 	let editRequiresPhoto = $state(false);
 
-	// Collapsed state for time slot panels
-	let collapsedSlots = $state<Set<string>>(new Set());
+	// Collapsed state for time slot panels - persisted to localStorage
+	const STORAGE_KEY = 'ksf-collapsed-master';
+
+	function loadCollapsedSlots(): Set<string> {
+		if (!browser) return new Set();
+		try {
+			const saved = localStorage.getItem(STORAGE_KEY);
+			if (saved) return new SvelteSet(JSON.parse(saved));
+		} catch {}
+		return new SvelteSet();
+	}
+
+	function saveCollapsedSlots(slots: Set<string>) {
+		if (!browser) return;
+		try {
+			localStorage.setItem(STORAGE_KEY, JSON.stringify([...slots]));
+		} catch {}
+	}
+
+	let collapsedSlots = $state<Set<string>>(loadCollapsedSlots());
 
 	function toggleSlotCollapse(timeSlot: string) {
 		if (collapsedSlots.has(timeSlot)) {
@@ -54,8 +72,8 @@
 		} else {
 			collapsedSlots.add(timeSlot);
 		}
-		// Trigger reactivity
 		collapsedSlots = new SvelteSet(collapsedSlots);
+		saveCollapsedSlots(collapsedSlots);
 	}
 
 	function isSlotCollapsed(timeSlot: string): boolean {

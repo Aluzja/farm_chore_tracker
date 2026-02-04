@@ -40,6 +40,18 @@ export function formatTimeSlot(slot: string): string {
 }
 
 /**
+ * Get the day name for the effective "today" date (respecting the 3am rollover).
+ * Returns e.g. "Monday", "Tuesday", etc.
+ */
+export function getTodayDayName(): string {
+	const now = new Date();
+	if (now.getHours() < 3) {
+		now.setDate(now.getDate() - 1);
+	}
+	return now.toLocaleDateString('en-US', { weekday: 'long' });
+}
+
+/**
  * Get time slot from current hour
  */
 export function getCurrentTimeSlot(): 'morning' | 'afternoon' | 'evening' {

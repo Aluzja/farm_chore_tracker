@@ -5,16 +5,35 @@
 	import { dailyChoreStore } from '$lib/stores/dailyChores.svelte';
 	import { syncEngine } from '$lib/sync/engine.svelte';
 	import { connectionStatus } from '$lib/sync/status.svelte';
-	import { formatTimeSlot } from '$lib/utils/date';
+	import { formatTimeSlot, getTodayDayName } from '$lib/utils/date';
 	import { getCurrentUser } from '$lib/auth/user-context.svelte';
 	import AdminNav from '$lib/components/AdminNav.svelte';
 	import PhotoThumbnail from '$lib/components/PhotoThumbnail.svelte';
 	import SyncStatusBadge from '$lib/components/SyncStatusBadge.svelte';
 	import type { DailyChore } from '$lib/db/schema';
+	import { browser } from '$app/environment';
 	import { SvelteSet } from 'svelte/reactivity';
 
-	// Track collapsed state for each time slot
-	let collapsedSlots = $state<Set<string>>(new Set());
+	const STORAGE_KEY = 'ksf-collapsed-daily';
+
+	// Load collapsed state from localStorage
+	function loadCollapsedSlots(): Set<string> {
+		if (!browser) return new Set();
+		try {
+			const saved = localStorage.getItem(STORAGE_KEY);
+			if (saved) return new SvelteSet(JSON.parse(saved));
+		} catch {}
+		return new SvelteSet();
+	}
+
+	function saveCollapsedSlots(slots: Set<string>) {
+		if (!browser) return;
+		try {
+			localStorage.setItem(STORAGE_KEY, JSON.stringify([...slots]));
+		} catch {}
+	}
+
+	let collapsedSlots = $state<Set<string>>(loadCollapsedSlots());
 
 	function toggleSlotCollapse(timeSlot: string) {
 		if (collapsedSlots.has(timeSlot)) {
@@ -22,13 +41,15 @@
 		} else {
 			collapsedSlots.add(timeSlot);
 		}
-		// Trigger reactivity
 		collapsedSlots = new SvelteSet(collapsedSlots);
+		saveCollapsedSlots(collapsedSlots);
 	}
 
 	function isSlotCollapsed(timeSlot: string): boolean {
 		return collapsedSlots.has(timeSlot);
 	}
+
+	const dayName = getTodayDayName();
 
 	// Get completion stats for a time slot
 	function getSlotStats(categories: { chores: DailyChore[] }[]): {
@@ -74,7 +95,7 @@
 <div class="page">
 	<main class="container">
 		<header class="header">
-			<h1 class="title">Today's Chores</h1>
+			<h1 class="title">{dayName}'s Chores</h1>
 			<div class="header-meta">
 				<div class="connection-status" class:online={connectionStatus.isOnline}>
 					{connectionStatus.isOnline ? 'Online' : 'Offline'}
