@@ -280,6 +280,7 @@ class DailyChoreStore {
 			text: newChore.text,
 			timeSlot: newChore.timeSlot,
 			animalCategory: newChore.animalCategory,
+			date: newChore.date,
 			createdBy,
 			lastModified: newChore.lastModified
 		});

@@ -12,6 +12,7 @@
 		getCachedValidation,
 		extractKeyFromUrl
 	} from '$lib/auth/access-key';
+	import { getTodayDateString } from '$lib/utils/date';
 	import { adminAuth } from '$lib/auth/admin.svelte';
 	import { setCurrentUser } from '$lib/auth/user-context.svelte';
 	import { connectionStatus } from '$lib/sync/status.svelte';
@@ -39,9 +40,10 @@
 		? useQuery(api.chores.list, () => ({ accessKey: getStoredAccessKey() ?? undefined }))
 		: null;
 
-	// Daily chores subscription
+	// Daily chores subscription — pass local timezone date so server doesn't use UTC
 	const dailyChoresQuery = browser
 		? useQuery(api.dailyChores.getOrCreateDailyList, () => ({
+				date: getTodayDateString(),
 				accessKey: getStoredAccessKey() ?? undefined
 			}))
 		: null;

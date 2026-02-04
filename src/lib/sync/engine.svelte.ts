@@ -242,6 +242,7 @@ class SyncEngine {
 						text: string;
 						timeSlot: string;
 						animalCategory: string;
+						date: string;
 						createdBy?: string;
 						lastModified: number;
 					}),

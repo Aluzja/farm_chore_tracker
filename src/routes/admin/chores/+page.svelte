@@ -5,6 +5,7 @@
 	import type { Id } from '../../../convex/_generated/dataModel';
 	import { masterChoreStore, type MasterChore } from '$lib/stores/masterChores.svelte';
 	import { browser } from '$app/environment';
+	import { getTodayDateString } from '$lib/utils/date';
 	import AdminNav from '$lib/components/AdminNav.svelte';
 	import Dropdown from '$lib/components/Dropdown.svelte';
 	import { SvelteSet } from 'svelte/reactivity';
@@ -109,6 +110,7 @@
 					description: formDescription.trim() || undefined,
 					timeSlot: formTimeSlot,
 					animalCategory: formCategory.trim(),
+					date: getTodayDateString(),
 					requiresPhoto: formRequiresPhoto
 				});
 			} else {
