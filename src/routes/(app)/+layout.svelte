@@ -12,6 +12,7 @@
 		getCachedValidation,
 		extractKeyFromUrl
 	} from '$lib/auth/access-key';
+	import { getTodayDateString } from '$lib/utils/date';
 	import { adminAuth } from '$lib/auth/admin.svelte';
 	import { setCurrentUser } from '$lib/auth/user-context.svelte';
 	import { connectionStatus } from '$lib/sync/status.svelte';
@@ -37,8 +38,10 @@
 	// Server chores subscription (only active when hasAccess and online)
 	const serverChores = browser ? useQuery(api.chores.list, {}) : null;
 
-	// Daily chores subscription
-	const dailyChoresQuery = browser ? useQuery(api.dailyChores.getOrCreateDailyList, {}) : null;
+	// Daily chores subscription — pass local timezone date so server doesn't use UTC
+	const dailyChoresQuery = browser
+		? useQuery(api.dailyChores.getOrCreateDailyList, () => ({ date: getTodayDateString() }))
+		: null;
 
 	// Hydrate from server when data arrives (only after access validated)
 	$effect(() => {

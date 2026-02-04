@@ -3,11 +3,16 @@
  */
 
 /**
- * Get today's date as ISO string (YYYY-MM-DD)
- * Uses UTC to avoid timezone issues on server
+ * Get today's date as YYYY-MM-DD in the user's local timezone.
+ * This ensures "today" matches what the user sees on their clock,
+ * not UTC (which can be a different date after ~4pm PST).
  */
 export function getTodayDateString(): string {
-	return new Date().toISOString().split('T')[0];
+	const now = new Date();
+	const year = now.getFullYear();
+	const month = String(now.getMonth() + 1).padStart(2, '0');
+	const day = String(now.getDate()).padStart(2, '0');
+	return `${year}-${month}-${day}`;
 }
 
 /**

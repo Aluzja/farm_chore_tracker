@@ -19,7 +19,13 @@ import {
 	getFailedPhotoCount
 } from '$lib/photo/queue';
 import { uploadPhoto } from '$lib/photo/upload';
-import { getChore, putChore, getChoresByStatus, getDailyChore, putDailyChore } from '$lib/db/operations';
+import {
+	getChore,
+	putChore,
+	getChoresByStatus,
+	getDailyChore,
+	putDailyChore
+} from '$lib/db/operations';
 import type { Mutation } from '$lib/db/schema';
 
 const MAX_RETRIES = 3;
@@ -173,7 +179,13 @@ class SyncEngine {
 			await markPhotoUploading(photo.id);
 
 			try {
-				await uploadPhoto(client, photo.blob, photo.dailyChoreClientId, photo.capturedAt, photo.capturedBy);
+				await uploadPhoto(
+					client,
+					photo.blob,
+					photo.dailyChoreClientId,
+					photo.capturedAt,
+					photo.capturedBy
+				);
 				await removePhoto(photo.id);
 				this.pendingPhotoCount = Math.max(0, this.pendingPhotoCount - 1);
 			} catch (error) {
@@ -183,7 +195,10 @@ class SyncEngine {
 					this.failedPhotoCount += 1;
 					console.error(`[Sync] Photo ${photo.id} failed after ${MAX_RETRIES} retries`, error);
 				} else {
-					console.warn(`[Sync] Photo ${photo.id} failed, retry ${retryCount}/${MAX_RETRIES}`, error);
+					console.warn(
+						`[Sync] Photo ${photo.id} failed, retry ${retryCount}/${MAX_RETRIES}`,
+						error
+					);
 				}
 			}
 		}
@@ -226,6 +241,7 @@ class SyncEngine {
 						text: string;
 						timeSlot: string;
 						animalCategory: string;
+						date: string;
 						createdBy?: string;
 						lastModified: number;
 					}
@@ -265,14 +281,17 @@ class SyncEngine {
 		switch (type) {
 			case 'create': {
 				const createId = payload.clientId as string;
-				await client.mutation(api.chores.create, payload as {
-					clientId: string;
-					text: string;
-					isCompleted: boolean;
-					completedAt?: string;
-					completedBy?: string;
-					lastModified: number;
-				});
+				await client.mutation(
+					api.chores.create,
+					payload as {
+						clientId: string;
+						text: string;
+						isCompleted: boolean;
+						completedAt?: string;
+						completedBy?: string;
+						lastModified: number;
+					}
+				);
 				// Update local record to synced (both IndexedDB and reactive state)
 				await this.markLocalSynced(createId);
 				const { choreStore } = await import('$lib/stores/chores.svelte');
@@ -282,14 +301,17 @@ class SyncEngine {
 
 			case 'update': {
 				const updateId = payload.id as string;
-				await client.mutation(api.chores.update, payload as {
-					id: string; // clientId
-					text?: string;
-					isCompleted?: boolean;
-					completedAt?: string;
-					completedBy?: string;
-					lastModified: number;
-				});
+				await client.mutation(
+					api.chores.update,
+					payload as {
+						id: string; // clientId
+						text?: string;
+						isCompleted?: boolean;
+						completedAt?: string;
+						completedBy?: string;
+						lastModified: number;
+					}
+				);
 				await this.markLocalSynced(updateId);
 				const { choreStore } = await import('$lib/stores/chores.svelte');
 				choreStore.markSynced(updateId);

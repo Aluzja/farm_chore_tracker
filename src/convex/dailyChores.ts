@@ -2,17 +2,12 @@ import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { getAuthUserId } from '@convex-dev/auth/server';
 
-// Get today's date string in consistent format
-function getTodayDate(): string {
-	return new Date().toISOString().split('T')[0];
-}
-
 // Get or create daily list for a date
 // Returns chores array if exists, or { needsClone: true, date } if needs cloning
 export const getOrCreateDailyList = query({
-	args: { date: v.optional(v.string()) },
+	args: { date: v.string() },
 	handler: async (ctx, { date }) => {
-		const targetDate = date ?? getTodayDate();
+		const targetDate = date;
 
 		// Check if daily list already exists
 		const existing = await ctx.db
@@ -115,23 +110,21 @@ export const toggleComplete = mutation({
 	}
 });
 
-// Reset today's daily list (deletes all daily chores for today)
+// Reset daily list for a given date (deletes all daily chores for that date)
 // Use this to re-clone from master after adding new master chores
 export const resetTodaysList = mutation({
-	args: {},
-	handler: async (ctx) => {
-		const today = getTodayDate();
-
-		const todaysChores = await ctx.db
+	args: { date: v.string() },
+	handler: async (ctx, { date }) => {
+		const chores = await ctx.db
 			.query('dailyChores')
-			.withIndex('by_date', (q) => q.eq('date', today))
+			.withIndex('by_date', (q) => q.eq('date', date))
 			.collect();
 
-		for (const chore of todaysChores) {
+		for (const chore of chores) {
 			await ctx.db.delete(chore._id);
 		}
 
-		return { deleted: todaysChores.length, date: today };
+		return { deleted: chores.length, date };
 	}
 });
 
@@ -161,7 +154,7 @@ export const getHistory = query({
 	}
 });
 
-// Add ad-hoc chore for today only
+// Add ad-hoc chore for a given date
 // Idempotent via clientId check
 export const addAdHoc = mutation({
 	args: {
@@ -170,6 +163,7 @@ export const addAdHoc = mutation({
 		description: v.optional(v.string()),
 		timeSlot: v.string(),
 		animalCategory: v.string(),
+		date: v.string(),
 		createdBy: v.optional(v.string()),
 		lastModified: v.number()
 	},
@@ -182,18 +176,16 @@ export const addAdHoc = mutation({
 
 		if (existing) return existing._id;
 
-		const today = getTodayDate();
-
-		// Get max sortOrder for this time slot today
+		// Get max sortOrder for this time slot on this date
 		const slotChores = await ctx.db
 			.query('dailyChores')
-			.withIndex('by_date_time_slot', (q) => q.eq('date', today).eq('timeSlot', args.timeSlot))
+			.withIndex('by_date_time_slot', (q) => q.eq('date', args.date).eq('timeSlot', args.timeSlot))
 			.collect();
 		const maxOrder = slotChores.length > 0 ? Math.max(...slotChores.map((c) => c.sortOrder)) : 0;
 
 		return await ctx.db.insert('dailyChores', {
-			date: today,
-			masterChoreId: undefined, // No master reference for ad-hoc
+			date: args.date,
+			masterChoreId: undefined,
 			clientId: args.clientId,
 			text: args.text,
 			description: args.description,
@@ -202,13 +194,13 @@ export const addAdHoc = mutation({
 			sortOrder: maxOrder + 1,
 			isCompleted: false,
 			isAdHoc: true,
-			requiresPhoto: false, // Ad-hoc chores don't require photo proof
+			requiresPhoto: false,
 			lastModified: args.lastModified
 		});
 	}
 });
 
-// Add ad-hoc chore for today only (admin only)
+// Add ad-hoc chore for a given date (admin only)
 // This is a server-side mutation for admin use, generates its own clientId
 export const addAdHocAdmin = mutation({
 	args: {
@@ -216,6 +208,7 @@ export const addAdHocAdmin = mutation({
 		description: v.optional(v.string()),
 		timeSlot: v.string(),
 		animalCategory: v.string(),
+		date: v.string(),
 		requiresPhoto: v.optional(v.boolean())
 	},
 	handler: async (ctx, args) => {
@@ -225,19 +218,18 @@ export const addAdHocAdmin = mutation({
 		const user = await ctx.db.get(userId);
 		if (!user?.isAdmin) throw new Error('Admin required');
 
-		const today = getTodayDate();
 		const now = Date.now();
 		const clientId = crypto.randomUUID();
 
-		// Get max sortOrder for this time slot today
+		// Get max sortOrder for this time slot on this date
 		const slotChores = await ctx.db
 			.query('dailyChores')
-			.withIndex('by_date_time_slot', (q) => q.eq('date', today).eq('timeSlot', args.timeSlot))
+			.withIndex('by_date_time_slot', (q) => q.eq('date', args.date).eq('timeSlot', args.timeSlot))
 			.collect();
 		const maxOrder = slotChores.length > 0 ? Math.max(...slotChores.map((c) => c.sortOrder)) : 0;
 
 		return await ctx.db.insert('dailyChores', {
-			date: today,
+			date: args.date,
 			masterChoreId: undefined,
 			clientId,
 			text: args.text,
