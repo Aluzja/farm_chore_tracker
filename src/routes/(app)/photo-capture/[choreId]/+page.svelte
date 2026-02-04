@@ -24,9 +24,6 @@
 	let compressionProgress = $state(0);
 	let usingMainThread = $state(false);
 
-	// Debug status for troubleshooting
-	let debugStatus = $state('Ready');
-
 	// Reference to file input
 	let fileInput: HTMLInputElement;
 
@@ -36,7 +33,6 @@
 	function handleProgress(progress: CompressionProgress) {
 		compressionProgress = Math.round(progress.percent);
 		usingMainThread = progress.usingMainThread;
-		debugStatus = `Compressing: ${compressionProgress}%${progress.usingMainThread ? ' (main thread)' : ''}`;
 	}
 
 	async function handleFileSelect(event: Event) {
@@ -44,11 +40,9 @@
 		const file = input.files?.[0];
 
 		if (!file) {
-			debugStatus = 'No file selected';
 			return;
 		}
 
-		debugStatus = `File: ${(file.size / 1024 / 1024).toFixed(2)}MB`;
 		isProcessing = true;
 		error = null;
 		compressionProgress = 0;
@@ -56,10 +50,7 @@
 
 		try {
 			originalSize = file.size;
-
-			debugStatus = 'Starting compression...';
 			const compressedBlob = await compressImage(file, handleProgress);
-			debugStatus = `Done: ${(compressedBlob.size / 1024 / 1024).toFixed(2)}MB`;
 
 			// Create preview URL
 			if (previewUrl) {
@@ -68,7 +59,6 @@
 			previewUrl = URL.createObjectURL(compressedBlob);
 			capturedBlob = compressedBlob;
 		} catch (e) {
-			debugStatus = `Error: ${e instanceof Error ? e.message : 'Unknown'}`;
 			error = e instanceof Error ? e.message : 'Failed to process photo';
 		} finally {
 			isProcessing = false;
@@ -83,7 +73,6 @@
 		}
 		previewUrl = null;
 		capturedBlob = null;
-		debugStatus = 'Ready';
 		// Trigger file input
 		fileInput?.click();
 	}
@@ -205,7 +194,6 @@
 			{#if usingMainThread}
 				<p class="progress-hint">This may take a moment on older devices</p>
 			{/if}
-			<p class="debug-status">{debugStatus}</p>
 		</div>
 	{:else if previewUrl}
 		<div class="preview-container">
@@ -251,7 +239,6 @@
 					class="file-input-hidden"
 				/>
 			</label>
-			<p class="debug-status">{debugStatus}</p>
 		</div>
 	{/if}
 </main>
@@ -380,14 +367,6 @@
 		margin: 0;
 		font-size: 0.875rem;
 		color: rgba(255, 255, 255, 0.5);
-	}
-
-	.debug-status {
-		margin: 0;
-		margin-top: 1rem;
-		font-size: 0.75rem;
-		color: rgba(255, 255, 255, 0.4);
-		font-family: monospace;
 	}
 
 	@keyframes spin {
