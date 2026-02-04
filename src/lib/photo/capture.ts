@@ -26,25 +26,47 @@ function shouldSkipWebWorker(): boolean {
 	return false;
 }
 
+// Timeout for compression before giving up and using original
+const COMPRESSION_TIMEOUT_MS = 30000;
+
+/**
+ * Run a promise with a timeout
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+	return Promise.race([
+		promise,
+		new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Compression timeout')), ms))
+	]);
+}
+
 /**
  * Compress an image file to ~2MB JPEG (high quality).
  * Strips EXIF metadata (GPS, timestamps) - app tracks its own metadata.
  *
  * Uses main thread on iOS (Web Workers unreliable), Web Worker elsewhere.
+ * Falls back to original file if compression fails or times out.
  *
  * @param file - Original image file from camera/file input
  * @param onProgress - Optional callback for compression progress
- * @returns Compressed Blob as JPEG
+ * @returns Compressed Blob as JPEG, or original file if compression fails
  */
 export async function compressImage(
 	file: File,
 	onProgress?: (progress: CompressionProgress) => void
 ): Promise<Blob> {
 	const useWebWorker = !shouldSkipWebWorker();
+	const fileSizeMB = file.size / 1024 / 1024;
 
 	console.log(
-		`[Photo] Compressing ${(file.size / 1024 / 1024).toFixed(2)}MB image, useWebWorker: ${useWebWorker}`
+		`[Photo] Compressing ${fileSizeMB.toFixed(2)}MB image, useWebWorker: ${useWebWorker}`
 	);
+
+	// If file is already small enough, skip compression
+	if (fileSizeMB <= 2) {
+		console.log('[Photo] File already under 2MB, skipping compression');
+		onProgress?.({ percent: 100, usingMainThread: true });
+		return file;
+	}
 
 	const options = {
 		maxSizeMB: 2,
@@ -59,7 +81,13 @@ export async function compressImage(
 			: undefined
 	};
 
-	return await imageCompression(file, options);
+	try {
+		return await withTimeout(imageCompression(file, options), COMPRESSION_TIMEOUT_MS);
+	} catch (error) {
+		console.warn('[Photo] Compression failed, using original file:', error);
+		// Return original file as fallback
+		return file;
+	}
 }
 
 /**
