@@ -1,9 +1,8 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { capturePhoto } from '$lib/photo/capture';
+	import { compressImage, type CompressionProgress } from '$lib/photo/capture';
 	import { enqueuePhoto } from '$lib/photo/queue';
 	import { dailyChoreStore } from '$lib/stores/dailyChores.svelte';
 	import { getCurrentUser } from '$lib/auth/user-context.svelte';
@@ -16,41 +15,65 @@
 	let previewUrl = $state<string | null>(null);
 	let capturedBlob = $state<Blob | null>(null);
 	let originalSize = $state(0);
-	let isCapturing = $state(false);
+	let isProcessing = $state(false);
 	let isSubmitting = $state(false);
 	let error = $state<string | null>(null);
+
+	// Compression progress tracking
+	let compressionProgress = $state(0);
+	let usingMainThread = $state(false);
+
+	// Reference to file input
+	let fileInput: HTMLInputElement;
 
 	// Find the chore to display its name
 	const chore = $derived(dailyChoreStore.items.find((c) => c._id === choreId));
 
-	async function handleCapture() {
-		isCapturing = true;
+	function handleProgress(progress: CompressionProgress) {
+		compressionProgress = Math.round(progress.percent);
+		usingMainThread = progress.usingMainThread;
+	}
+
+	async function handleFileSelect(event: Event) {
+		const input = event.target as HTMLInputElement;
+		const file = input.files?.[0];
+
+		if (!file) {
+			return;
+		}
+
+		isProcessing = true;
 		error = null;
+		compressionProgress = 0;
+		usingMainThread = false;
 
 		try {
-			const result = await capturePhoto();
-			if (result) {
-				previewUrl = result.previewUrl;
-				capturedBlob = result.blob;
-				originalSize = result.originalSize;
-			} else {
-				// User cancelled
-				await goto(resolve('/'));
+			originalSize = file.size;
+			const compressedBlob = await compressImage(file, handleProgress);
+
+			// Create preview URL
+			if (previewUrl) {
+				URL.revokeObjectURL(previewUrl);
 			}
+			previewUrl = URL.createObjectURL(compressedBlob);
+			capturedBlob = compressedBlob;
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to capture photo';
+			error = e instanceof Error ? e.message : 'Failed to process photo';
 		} finally {
-			isCapturing = false;
+			isProcessing = false;
+			// Reset input so same file can be selected again
+			input.value = '';
 		}
 	}
 
-	async function handleRetake() {
+	function handleRetake() {
 		if (previewUrl) {
 			URL.revokeObjectURL(previewUrl);
 		}
 		previewUrl = null;
 		capturedBlob = null;
-		await handleCapture();
+		// Trigger file input
+		fileInput?.click();
 	}
 
 	async function handleAccept() {
@@ -97,11 +120,6 @@
 		}
 		goto(resolve('/'));
 	}
-
-	// Auto-trigger capture on mount
-	onMount(() => {
-		handleCapture();
-	});
 </script>
 
 <main class="capture-container">
@@ -120,15 +138,55 @@
 		<h1 class="capture-title">Replace Photo</h1>
 	</header>
 
+	<!-- Hidden file input - real DOM element for iOS compatibility -->
+	<input
+		bind:this={fileInput}
+		type="file"
+		accept="image/*"
+		capture="environment"
+		onchange={handleFileSelect}
+		class="file-input-hidden"
+	/>
+
 	{#if error}
 		<div class="error-container">
 			<p class="error-message">{error}</p>
-			<button class="retry-button" onclick={handleCapture}>Try Again</button>
+			<label class="retry-button">
+				Take Photo
+				<input
+					type="file"
+					accept="image/*"
+					capture="environment"
+					onchange={handleFileSelect}
+					class="file-input-hidden"
+				/>
+			</label>
 		</div>
-	{:else if isCapturing}
+	{:else if isProcessing}
 		<div class="loading-container">
-			<div class="spinner"></div>
-			<p>Opening camera...</p>
+			<div class="progress-ring-container">
+				<svg class="progress-ring" viewBox="0 0 100 100">
+					<circle class="progress-ring-bg" cx="50" cy="50" r="45" />
+					<circle
+						class="progress-ring-fill"
+						cx="50"
+						cy="50"
+						r="45"
+						style="stroke-dashoffset: {283 - (283 * compressionProgress) / 100}"
+					/>
+				</svg>
+				<span class="progress-percent">{compressionProgress}%</span>
+			</div>
+			<p class="progress-label">
+				{#if usingMainThread}
+					Processing (compatibility mode)...
+				{:else}
+					Processing...
+				{/if}
+			</p>
+			{#if usingMainThread}
+				<p class="progress-hint">This may take a moment on older devices</p>
+			{/if}
 		</div>
 	{:else if previewUrl}
 		<div class="preview-container">
@@ -156,8 +214,24 @@
 			</button>
 		</div>
 	{:else}
-		<div class="loading-container">
-			<p>Ready to capture</p>
+		<div class="ready-container">
+			<!-- Use label wrapping input for better iOS compatibility -->
+			<label class="capture-button">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<path
+						d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+					></path>
+					<circle cx="12" cy="13" r="4"></circle>
+				</svg>
+				Take Photo
+				<input
+					type="file"
+					accept="image/*"
+					capture="environment"
+					onchange={handleFileSelect}
+					class="file-input-hidden"
+				/>
+			</label>
 		</div>
 	{/if}
 </main>
@@ -217,6 +291,18 @@
 		text-overflow: ellipsis;
 	}
 
+	.file-input-hidden {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
 	.loading-container {
 		flex: 1;
 		display: flex;
@@ -227,13 +313,53 @@
 		color: rgba(255, 255, 255, 0.7);
 	}
 
-	.spinner {
-		width: 2.5rem;
-		height: 2.5rem;
-		border: 3px solid rgba(255, 255, 255, 0.2);
-		border-top-color: white;
-		border-radius: 50%;
-		animation: spin 1s linear infinite;
+	.progress-ring-container {
+		position: relative;
+		width: 6rem;
+		height: 6rem;
+	}
+
+	.progress-ring {
+		width: 100%;
+		height: 100%;
+		transform: rotate(-90deg);
+	}
+
+	.progress-ring-bg {
+		fill: none;
+		stroke: rgba(255, 255, 255, 0.2);
+		stroke-width: 6;
+	}
+
+	.progress-ring-fill {
+		fill: none;
+		stroke: #22c55e;
+		stroke-width: 6;
+		stroke-linecap: round;
+		stroke-dasharray: 283;
+		transition: stroke-dashoffset 0.2s ease;
+	}
+
+	.progress-percent {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 1.25rem;
+		font-weight: 600;
+		color: white;
+	}
+
+	.progress-label {
+		margin: 0;
+		font-size: 1rem;
+	}
+
+	.progress-hint {
+		margin: 0;
+		font-size: 0.875rem;
+		color: rgba(255, 255, 255, 0.5);
 	}
 
 	@keyframes spin {
@@ -333,5 +459,43 @@
 		border-top-color: white;
 		border-radius: 50%;
 		animation: spin 1s linear infinite;
+	}
+
+	.ready-container {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 1.5rem;
+		padding: 2rem;
+	}
+
+	.capture-button {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 1rem;
+		width: 10rem;
+		height: 10rem;
+		border-radius: 50%;
+		border: 3px solid rgba(255, 255, 255, 0.3);
+		background: rgba(255, 255, 255, 0.1);
+		color: white;
+		font-size: 1.1rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.capture-button:active {
+		transform: scale(0.95);
+		background: rgba(255, 255, 255, 0.2);
+	}
+
+	.capture-button svg {
+		width: 3rem;
+		height: 3rem;
 	}
 </style>
