@@ -25,12 +25,16 @@
 	let compressionProgress = $state(0);
 	let usingMainThread = $state(false);
 
+	// Debug status for troubleshooting
+	let debugStatus = $state('Ready');
+
 	// Find the chore to display its name
 	const chore = $derived(dailyChoreStore.items.find((c) => c._id === choreId));
 
 	function handleProgress(progress: CompressionProgress) {
 		compressionProgress = Math.round(progress.percent);
 		usingMainThread = progress.usingMainThread;
+		debugStatus = `Compressing: ${compressionProgress}%${progress.usingMainThread ? ' (main thread)' : ''}`;
 	}
 
 	async function handleCapture() {
@@ -39,18 +43,23 @@
 		error = null;
 		compressionProgress = 0;
 		usingMainThread = false;
+		debugStatus = 'Opening camera...';
 
 		try {
+			debugStatus = 'Waiting for photo...';
 			const result = await capturePhoto(handleProgress);
 			if (result) {
+				debugStatus = 'Photo captured!';
 				previewUrl = result.previewUrl;
 				capturedBlob = result.blob;
 				originalSize = result.originalSize;
 			} else {
+				debugStatus = 'Cancelled';
 				// User cancelled - stay on page so they can try again
 				// (iOS Safari requires user gesture for file input)
 			}
 		} catch (e) {
+			debugStatus = `Error: ${e instanceof Error ? e.message : 'Unknown'}`;
 			error = e instanceof Error ? e.message : 'Failed to capture photo';
 		} finally {
 			isCapturing = false;
@@ -169,6 +178,7 @@
 			{#if usingMainThread}
 				<p class="progress-hint">This may take a moment on older devices</p>
 			{/if}
+			<p class="debug-status">{debugStatus}</p>
 		</div>
 	{:else if previewUrl}
 		<div class="preview-container">
@@ -325,6 +335,14 @@
 		margin: 0;
 		font-size: 0.875rem;
 		color: rgba(255, 255, 255, 0.5);
+	}
+
+	.debug-status {
+		margin: 0;
+		margin-top: 1rem;
+		font-size: 0.75rem;
+		color: rgba(255, 255, 255, 0.4);
+		font-family: monospace;
 	}
 
 	@keyframes spin {
