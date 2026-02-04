@@ -10,7 +10,7 @@
 	let password = $state('');
 	let isSubmitting = $state(false);
 	let error = $state<string | null>(null);
-	let mode = $state<'signIn' | 'signUp'>('signIn');
+	let mode: 'signIn' = 'signIn';
 
 	// Get Convex client at component level
 	const client = browser ? useConvexClient() : null;
@@ -35,12 +35,7 @@
 		error = null;
 
 		try {
-			let result;
-			if (mode === 'signIn') {
-				result = await adminAuth.signIn(email, password);
-			} else {
-				result = await adminAuth.signUp(email, password);
-			}
+			const result = await adminAuth.signIn(email, password);
 
 			if (result.success) {
 				// Full page reload to reinitialize Convex client with auth token
@@ -56,11 +51,6 @@
 			isSubmitting = false;
 		}
 	}
-
-	function toggleMode() {
-		mode = mode === 'signIn' ? 'signUp' : 'signIn';
-		error = null;
-	}
 </script>
 
 <svelte:head>
@@ -71,7 +61,7 @@
 	<div class="login-container">
 		<div class="login-header">
 			<h1>Kitchen Sink Farm</h1>
-			<p>Admin {mode === 'signIn' ? 'Login' : 'Sign Up'}</p>
+			<p>Admin Login</p>
 		</div>
 
 		<form onsubmit={handleSubmit} class="login-card">
@@ -100,31 +90,15 @@
 					type="password"
 					bind:value={password}
 					required
-					autocomplete={mode === 'signIn' ? 'current-password' : 'new-password'}
+					autocomplete="current-password"
 					minlength="8"
 					placeholder="********"
 				/>
 			</div>
 
 			<button type="submit" class="btn-primary" disabled={isSubmitting}>
-				{#if isSubmitting}
-					{mode === 'signIn' ? 'Signing in...' : 'Creating account...'}
-				{:else}
-					{mode === 'signIn' ? 'Sign In' : 'Create Account'}
-				{/if}
+				{isSubmitting ? 'Signing in...' : 'Sign In'}
 			</button>
-
-			<div class="mode-toggle">
-				<button type="button" onclick={toggleMode} class="btn-link">
-					{mode === 'signIn'
-						? "Don't have an account? Sign up"
-						: 'Already have an account? Sign in'}
-				</button>
-			</div>
-
-			{#if mode === 'signUp'}
-				<p class="signup-hint">First account created will be the admin.</p>
-			{/if}
 		</form>
 
 		<div class="back-link">
@@ -238,32 +212,6 @@
 	.btn-primary:disabled {
 		background-color: #86efac;
 		cursor: not-allowed;
-	}
-
-	.mode-toggle {
-		margin-top: 1rem;
-		text-align: center;
-	}
-
-	.btn-link {
-		background: none;
-		border: none;
-		color: #22c55e;
-		font-size: 0.875rem;
-		cursor: pointer;
-		padding: 0;
-	}
-
-	.btn-link:hover {
-		color: #16a34a;
-		text-decoration: underline;
-	}
-
-	.signup-hint {
-		margin-top: 1rem;
-		font-size: 0.75rem;
-		color: #6b7280;
-		text-align: center;
 	}
 
 	.back-link {
