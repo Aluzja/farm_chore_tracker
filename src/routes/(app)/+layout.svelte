@@ -60,16 +60,35 @@
 		}
 	});
 
-	// Hydrate daily chores when data arrives
+	// Hydrate daily chores when data arrives from Convex subscription
 	$effect(() => {
+		if (browser && hasAccess && dailyChoresQuery?.data && Array.isArray(dailyChoresQuery.data)) {
+			dailyChoreStore.hydrateFromServer(dailyChoresQuery.data);
+		}
+	});
+
+	// Stop loading spinner if server query resolved with no data (empty list or needsClone)
+	// or if we're offline and won't get server data
+	$effect(() => {
+		if (!browser || !hasAccess) return;
+
+		// Query resolved but not as an array (e.g. needsClone) — stop loading, clone will trigger re-query
+		if (dailyChoresQuery?.data && !Array.isArray(dailyChoresQuery.data)) {
+			dailyChoreStore.isLoading = false;
+		}
+
+		// Query finished with empty array — genuinely no chores today
 		if (
-			browser &&
-			hasAccess &&
 			dailyChoresQuery?.data &&
 			Array.isArray(dailyChoresQuery.data) &&
-			connectionStatus.isOnline
+			dailyChoresQuery.data.length === 0
 		) {
-			dailyChoreStore.hydrateFromServer(dailyChoresQuery.data);
+			dailyChoreStore.isLoading = false;
+		}
+
+		// Offline with no cached data — stop loading so user sees offline state
+		if (!connectionStatus.isOnline && !dailyChoreStore.serverHydrated) {
+			dailyChoreStore.isLoading = false;
 		}
 	});
 
@@ -86,6 +105,16 @@
 
 		// Load local data first (instant)
 		await dailyChoreStore.load();
+
+		// Safety timeout: if server hasn't responded after 5s, stop loading
+		// so user sees whatever we have (or the empty state) rather than an infinite spinner
+		if (dailyChoreStore.isLoading) {
+			setTimeout(() => {
+				if (dailyChoreStore.isLoading) {
+					dailyChoreStore.isLoading = false;
+				}
+			}, 5000);
+		}
 
 		// Initialize sync engine (will process queue if online)
 		await syncEngine.init();

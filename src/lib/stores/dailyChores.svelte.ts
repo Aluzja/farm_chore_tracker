@@ -23,6 +23,9 @@ class DailyChoreStore {
 	error = $state<Error | null>(null);
 	currentDate = $state(getTodayDateString());
 
+	// Whether we've received at least one server hydration
+	serverHydrated = $state(false);
+
 	// Track pending deletes to prevent hydration conflicts
 	private pendingDeletes = new Set<string>();
 
@@ -76,11 +79,16 @@ class DailyChoreStore {
 			this.currentDate = getTodayDateString();
 			const chores = await getDailyChoresByDate(this.currentDate);
 			this.items = chores;
+			// If we got local data, stop loading immediately so we show it.
+			// If local cache is empty, keep isLoading true until server hydrates
+			// (prevents flash of "No chores for today" before server data arrives).
+			if (chores.length > 0) {
+				this.isLoading = false;
+			}
 		} catch (e) {
 			this.error = e instanceof Error ? e : new Error(String(e));
-			console.error('[DailyChoreStore] Load error:', e);
-		} finally {
 			this.isLoading = false;
+			console.error('[DailyChoreStore] Load error:', e);
 		}
 	}
 
@@ -160,6 +168,9 @@ class DailyChoreStore {
 					hasChanges = true;
 				}
 			}
+
+			this.serverHydrated = true;
+			this.isLoading = false;
 
 			if (!hasChanges) return;
 
