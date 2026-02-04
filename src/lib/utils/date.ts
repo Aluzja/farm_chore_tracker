@@ -3,12 +3,17 @@
  */
 
 /**
- * Get today's date as YYYY-MM-DD in the user's local timezone.
- * This ensures "today" matches what the user sees on their clock,
- * not UTC (which can be a different date after ~4pm PST).
+ * Get the "effective today" date as YYYY-MM-DD in the user's local timezone.
+ * The day doesn't roll over at midnight — hours between 12am and 3am are
+ * still treated as the previous day, so late-night chore activity stays
+ * on the correct daily list.
  */
 export function getTodayDateString(): string {
 	const now = new Date();
+	// Before 3am, treat it as still the previous day
+	if (now.getHours() < 3) {
+		now.setDate(now.getDate() - 1);
+	}
 	const year = now.getFullYear();
 	const month = String(now.getMonth() + 1).padStart(2, '0');
 	const day = String(now.getDate()).padStart(2, '0');
