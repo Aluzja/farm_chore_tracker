@@ -59,6 +59,11 @@
 	let copiedUrl = $state(false);
 	let copiedKey = $state(false);
 
+	// Track which key is expanded to show details
+	let expandedKeyId = $state<Id<'accessKeys'> | null>(null);
+	// Track copied state per key
+	let copiedKeyId = $state<Id<'accessKeys'> | null>(null);
+
 	function copyUrl() {
 		if (createdKey) {
 			navigator.clipboard.writeText(`${window.location.origin}/?key=${createdKey}`);
@@ -77,6 +82,22 @@
 
 	function dismissCreatedKey() {
 		createdKey = null;
+	}
+
+	function toggleKeyExpanded(id: Id<'accessKeys'>) {
+		expandedKeyId = expandedKeyId === id ? null : id;
+	}
+
+	function copyExistingKey(key: string, id: Id<'accessKeys'>) {
+		navigator.clipboard.writeText(key);
+		copiedKeyId = id;
+		setTimeout(() => (copiedKeyId = null), 2000);
+	}
+
+	function copyExistingUrl(key: string, id: Id<'accessKeys'>) {
+		navigator.clipboard.writeText(`${window.location.origin}/?key=${key}`);
+		copiedKeyId = id;
+		setTimeout(() => (copiedKeyId = null), 2000);
 	}
 
 	// Format date for display
@@ -181,27 +202,63 @@
 			{:else}
 				<ul class="keys-list">
 					{#each activeKeys as key (key.id)}
-						<li class="key-item">
-							<span class="key-name">{key.displayName}</span>
-							<span class="key-meta">
-								{formatDate(key.createdAt)}
-								{#if key.lastUsedAt}
-									<span class="separator">&bull;</span>
-									used {formatDate(key.lastUsedAt)}
-								{/if}
-							</span>
-							<button
-								onclick={() => handleRevoke(key.id, key.displayName)}
-								class="btn-revoke"
-								title="Revoke access"
-								aria-label="Revoke access"
-							>
-								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-									<circle cx="12" cy="12" r="10"></circle>
-									<line x1="15" y1="9" x2="9" y2="15"></line>
-									<line x1="9" y1="9" x2="15" y2="15"></line>
-								</svg>
-							</button>
+						<li class="key-item-wrapper">
+							<div class="key-item">
+								<button
+									class="key-name-btn"
+									onclick={() => toggleKeyExpanded(key.id)}
+									title="Show key details"
+								>
+									<span class="key-name">{key.displayName}</span>
+									<svg
+										class="expand-icon"
+										class:expanded={expandedKeyId === key.id}
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<polyline points="6 9 12 15 18 9"></polyline>
+									</svg>
+								</button>
+								<span class="key-meta">
+									{formatDate(key.createdAt)}
+									{#if key.lastUsedAt}
+										<span class="separator">&bull;</span>
+										used {formatDate(key.lastUsedAt)}
+									{/if}
+								</span>
+								<button
+									onclick={() => handleRevoke(key.id, key.displayName)}
+									class="btn-revoke"
+									title="Revoke access"
+									aria-label="Revoke access"
+								>
+									<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<circle cx="12" cy="12" r="10"></circle>
+										<line x1="15" y1="9" x2="9" y2="15"></line>
+										<line x1="9" y1="9" x2="15" y2="15"></line>
+									</svg>
+								</button>
+							</div>
+							{#if expandedKeyId === key.id}
+								<div class="key-details">
+									<div class="key-detail-row">
+										<span class="key-detail-label">Key:</span>
+										<code class="key-value">{key.key}</code>
+										<button class="btn-copy-small" onclick={() => copyExistingKey(key.key, key.id)}>
+											{copiedKeyId === key.id ? 'Copied!' : 'Copy'}
+										</button>
+									</div>
+									<div class="key-detail-row">
+										<span class="key-detail-label">URL:</span>
+										<code class="key-value key-url">{window.location.origin}/?key={key.key}</code>
+										<button class="btn-copy-small" onclick={() => copyExistingUrl(key.key, key.id)}>
+											{copiedKeyId === key.id ? 'Copied!' : 'Copy'}
+										</button>
+									</div>
+								</div>
+							{/if}
 						</li>
 					{/each}
 				</ul>
@@ -446,22 +503,108 @@
 		margin: 0;
 	}
 
+	.key-item-wrapper {
+		border-bottom: 1px solid #e5e7eb;
+	}
+
+	.key-item-wrapper:last-child {
+		border-bottom: none;
+	}
+
 	.key-item {
 		display: flex;
 		align-items: center;
 		gap: 1rem;
 		padding: 0.75rem 1.5rem;
-		border-bottom: 1px solid #e5e7eb;
 	}
 
-	.key-item:last-child {
-		border-bottom: none;
+	.key-name-btn {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		background: none;
+		border: none;
+		padding: 0;
+		cursor: pointer;
+		text-align: left;
+	}
+
+	.key-name-btn:hover .key-name {
+		color: #22c55e;
+	}
+
+	.expand-icon {
+		width: 1rem;
+		height: 1rem;
+		color: #9ca3af;
+		transition: transform 0.2s;
+	}
+
+	.expand-icon.expanded {
+		transform: rotate(180deg);
 	}
 
 	.key-name {
 		font-weight: 500;
 		color: #111827;
 		white-space: nowrap;
+		transition: color 0.15s;
+	}
+
+	.key-details {
+		padding: 0.75rem 1.5rem;
+		padding-top: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		background: #f9fafb;
+		border-top: 1px solid #e5e7eb;
+	}
+
+	.key-detail-row {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+
+	.key-detail-label {
+		font-size: 0.75rem;
+		font-weight: 500;
+		color: #6b7280;
+		min-width: 2.5rem;
+	}
+
+	.key-value {
+		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+		font-size: 0.8125rem;
+		background: white;
+		padding: 0.25rem 0.5rem;
+		border: 1px solid #e5e7eb;
+		border-radius: 0.25rem;
+		color: #111827;
+	}
+
+	.key-url {
+		word-break: break-all;
+		flex: 1;
+		min-width: 0;
+	}
+
+	.btn-copy-small {
+		font-size: 0.75rem;
+		padding: 0.25rem 0.5rem;
+		background: #22c55e;
+		color: white;
+		border: none;
+		border-radius: 0.25rem;
+		cursor: pointer;
+		white-space: nowrap;
+		min-width: 3.5rem;
+	}
+
+	.btn-copy-small:hover {
+		background: #16a34a;
 	}
 
 	.key-meta {
