@@ -3,7 +3,6 @@ import {
 	DB_NAME,
 	DB_VERSION,
 	STORES,
-	type Chore,
 	type DailyChore,
 	type Mutation,
 	type PhotoQueueEntry,
@@ -13,7 +12,7 @@ import {
 interface KitchenSinkDB extends DBSchema {
 	chores: {
 		key: string;
-		value: Chore;
+		value: { _id: string; [key: string]: unknown };
 		indexes: {
 			'by-sync-status': string;
 			'by-last-modified': number;

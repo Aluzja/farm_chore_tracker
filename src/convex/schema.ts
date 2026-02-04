@@ -26,18 +26,6 @@ export default defineSchema({
 		.index('by_key', ['key'])
 		.index('by_created_by', ['createdBy']),
 
-	// Chores table - main entity for farm chore tracking (deprecated - migrate to masterChores/dailyChores)
-	chores: defineTable({
-		clientId: v.string(), // Client-generated UUID for offline-first idempotency
-		text: v.string(),
-		isCompleted: v.boolean(),
-		completedAt: v.optional(v.string()),
-		completedBy: v.optional(v.string()),
-		lastModified: v.number()
-	})
-		.index('by_last_modified', ['lastModified'])
-		.index('by_client_id', ['clientId']),
-
 	// Master chore templates (admin-managed)
 	masterChores: defineTable({
 		text: v.string(), // Chore name (e.g., "Chicken Food")
@@ -76,11 +64,5 @@ export default defineSchema({
 	})
 		.index('by_date', ['date'])
 		.index('by_date_time_slot', ['date', 'timeSlot'])
-		.index('by_client_id', ['clientId']),
-
-	// Keep tasks for backwards compatibility during transition
-	tasks: defineTable({
-		text: v.string(),
-		isCompleted: v.boolean()
-	})
+		.index('by_client_id', ['clientId'])
 });

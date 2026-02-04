@@ -20,13 +20,7 @@ import {
 	getFailedPhotoCount
 } from '$lib/photo/queue';
 import { uploadPhoto } from '$lib/photo/upload';
-import {
-	getChore,
-	putChore,
-	getChoresByStatus,
-	getDailyChore,
-	putDailyChore
-} from '$lib/db/operations';
+import { getDailyChore, getDailyChoresByStatus, putDailyChore } from '$lib/db/operations';
 import type { Mutation } from '$lib/db/schema';
 
 const MAX_RETRIES = 3;
@@ -80,7 +74,7 @@ class SyncEngine {
 
 		// Initial mutation queue counts
 		this.pendingCount = await getQueueLength();
-		this.failedCount = (await getChoresByStatus('failed')).length;
+		this.failedCount = (await getDailyChoresByStatus('failed')).length;
 
 		// Initial photo queue counts
 		this.pendingPhotoCount = await getPendingPhotoCount();
@@ -219,9 +213,6 @@ class SyncEngine {
 			case 'dailyChores':
 				await this.applyDailyChoresMutation(client, type, payload);
 				break;
-			case 'chores':
-				await this.applyChoresMutation(client, type, payload);
-				break;
 			default:
 				throw new Error(`Unknown table: ${table}`);
 		}
@@ -272,73 +263,6 @@ class SyncEngine {
 			}
 			default:
 				throw new Error(`Unsupported dailyChores mutation type: ${type}`);
-		}
-	}
-
-	private async applyChoresMutation(
-		client: ConvexClient,
-		type: Mutation['type'],
-		payload: Record<string, unknown>
-	): Promise<void> {
-		const accessKey = getStoredAccessKey() ?? undefined;
-		switch (type) {
-			case 'create': {
-				const createId = payload.clientId as string;
-				await client.mutation(api.chores.create, {
-					...(payload as {
-						clientId: string;
-						text: string;
-						isCompleted: boolean;
-						completedAt?: string;
-						completedBy?: string;
-						lastModified: number;
-					}),
-					accessKey
-				});
-				// Update local record to synced (both IndexedDB and reactive state)
-				await this.markLocalSynced(createId);
-				const { choreStore } = await import('$lib/stores/chores.svelte');
-				choreStore.markSynced(createId);
-				break;
-			}
-
-			case 'update': {
-				const updateId = payload.id as string;
-				await client.mutation(api.chores.update, {
-					...(payload as {
-						id: string; // clientId
-						text?: string;
-						isCompleted?: boolean;
-						completedAt?: string;
-						completedBy?: string;
-						lastModified: number;
-					}),
-					accessKey
-				});
-				await this.markLocalSynced(updateId);
-				const { choreStore } = await import('$lib/stores/chores.svelte');
-				choreStore.markSynced(updateId);
-				break;
-			}
-
-			case 'delete': {
-				const deleteId = payload.id as string;
-				await client.mutation(api.chores.remove, { id: deleteId, accessKey });
-				// Confirm delete to prevent hydration from re-adding
-				const { choreStore } = await import('$lib/stores/chores.svelte');
-				choreStore.confirmDelete(deleteId);
-				break;
-			}
-
-			default:
-				throw new Error(`Unknown mutation type: ${type}`);
-		}
-	}
-
-	private async markLocalSynced(id: string): Promise<void> {
-		const chore = await getChore(id);
-		if (chore) {
-			await putChore({ ...chore, syncStatus: 'synced' });
 		}
 	}
 
