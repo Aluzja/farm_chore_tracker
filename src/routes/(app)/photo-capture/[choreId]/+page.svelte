@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { capturePhoto, type CompressionProgress } from '$lib/photo/capture';
+	import { compressImage, type CompressionProgress } from '$lib/photo/capture';
 	import { enqueuePhoto } from '$lib/photo/queue';
 	import { dailyChoreStore } from '$lib/stores/dailyChores.svelte';
 	import { getCurrentUser } from '$lib/auth/user-context.svelte';
@@ -16,10 +16,9 @@
 	let previewUrl = $state<string | null>(null);
 	let capturedBlob = $state<Blob | null>(null);
 	let originalSize = $state(0);
-	let isCapturing = $state(false);
+	let isProcessing = $state(false);
 	let isSubmitting = $state(false);
 	let error = $state<string | null>(null);
-	let hasAttemptedCapture = $state(false);
 
 	// Compression progress tracking
 	let compressionProgress = $state(0);
@@ -27,6 +26,9 @@
 
 	// Debug status for troubleshooting
 	let debugStatus = $state('Ready');
+
+	// Reference to file input
+	let fileInput: HTMLInputElement;
 
 	// Find the chore to display its name
 	const chore = $derived(dailyChoreStore.items.find((c) => c._id === choreId));
@@ -37,42 +39,53 @@
 		debugStatus = `Compressing: ${compressionProgress}%${progress.usingMainThread ? ' (main thread)' : ''}`;
 	}
 
-	async function handleCapture() {
-		isCapturing = true;
-		hasAttemptedCapture = true;
+	async function handleFileSelect(event: Event) {
+		const input = event.target as HTMLInputElement;
+		const file = input.files?.[0];
+
+		if (!file) {
+			debugStatus = 'No file selected';
+			return;
+		}
+
+		debugStatus = `File: ${(file.size / 1024 / 1024).toFixed(2)}MB`;
+		isProcessing = true;
 		error = null;
 		compressionProgress = 0;
 		usingMainThread = false;
-		debugStatus = 'Opening camera...';
 
 		try {
-			debugStatus = 'Waiting for photo...';
-			const result = await capturePhoto(handleProgress);
-			if (result) {
-				debugStatus = 'Photo captured!';
-				previewUrl = result.previewUrl;
-				capturedBlob = result.blob;
-				originalSize = result.originalSize;
-			} else {
-				debugStatus = 'Cancelled';
-				// User cancelled - stay on page so they can try again
-				// (iOS Safari requires user gesture for file input)
+			originalSize = file.size;
+
+			debugStatus = 'Starting compression...';
+			const compressedBlob = await compressImage(file, handleProgress);
+			debugStatus = `Done: ${(compressedBlob.size / 1024 / 1024).toFixed(2)}MB`;
+
+			// Create preview URL
+			if (previewUrl) {
+				URL.revokeObjectURL(previewUrl);
 			}
+			previewUrl = URL.createObjectURL(compressedBlob);
+			capturedBlob = compressedBlob;
 		} catch (e) {
 			debugStatus = `Error: ${e instanceof Error ? e.message : 'Unknown'}`;
-			error = e instanceof Error ? e.message : 'Failed to capture photo';
+			error = e instanceof Error ? e.message : 'Failed to process photo';
 		} finally {
-			isCapturing = false;
+			isProcessing = false;
+			// Reset input so same file can be selected again
+			input.value = '';
 		}
 	}
 
-	async function handleRetake() {
+	function handleRetake() {
 		if (previewUrl) {
 			URL.revokeObjectURL(previewUrl);
 		}
 		previewUrl = null;
 		capturedBlob = null;
-		await handleCapture();
+		debugStatus = 'Ready';
+		// Trigger file input
+		fileInput?.click();
 	}
 
 	async function handleAccept() {
@@ -103,8 +116,7 @@
 				await dailyChoreStore.toggleComplete(choreId, user);
 			}
 
-			// Trigger sync if online - IMPORTANT: call processPhotoQueue() specifically
-			// to ensure photo uploads are triggered immediately, not just mutation sync
+			// Trigger sync if online
 			if (connectionStatus.isOnline) {
 				syncEngine.processQueue();
 				syncEngine.processPhotoQueue();
@@ -124,10 +136,6 @@
 		}
 		goto(resolve('/'));
 	}
-
-	// Note: We do NOT auto-trigger capture on mount.
-	// iOS Safari requires file input clicks to be triggered by a direct user gesture.
-	// Calling input.click() from onMount() (not a user gesture) will silently fail on iOS.
 </script>
 
 <main class="capture-container">
@@ -148,12 +156,31 @@
 		</h1>
 	</header>
 
+	<!-- Hidden file input - real DOM element for iOS compatibility -->
+	<input
+		bind:this={fileInput}
+		type="file"
+		accept="image/*"
+		capture="environment"
+		onchange={handleFileSelect}
+		class="file-input-hidden"
+	/>
+
 	{#if error}
 		<div class="error-container">
 			<p class="error-message">{error}</p>
-			<button class="retry-button" onclick={handleCapture}>Try Again</button>
+			<label class="retry-button">
+				Take Photo
+				<input
+					type="file"
+					accept="image/*"
+					capture="environment"
+					onchange={handleFileSelect}
+					class="file-input-hidden"
+				/>
+			</label>
 		</div>
-	{:else if isCapturing}
+	{:else if isProcessing}
 		<div class="loading-container">
 			<div class="progress-ring-container">
 				<svg class="progress-ring" viewBox="0 0 100 100">
@@ -207,18 +234,24 @@
 		</div>
 	{:else}
 		<div class="ready-container">
-			<button class="capture-button" onclick={handleCapture}>
+			<!-- Use label wrapping input for better iOS compatibility -->
+			<label class="capture-button">
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<path
 						d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
 					></path>
 					<circle cx="12" cy="13" r="4"></circle>
 				</svg>
-				{hasAttemptedCapture ? 'Try Again' : 'Take Photo'}
-			</button>
-			{#if hasAttemptedCapture}
-				<p class="hint-text">Tap the button to open your camera</p>
-			{/if}
+				Take Photo
+				<input
+					type="file"
+					accept="image/*"
+					capture="environment"
+					onchange={handleFileSelect}
+					class="file-input-hidden"
+				/>
+			</label>
+			<p class="debug-status">{debugStatus}</p>
 		</div>
 	{/if}
 </main>
@@ -276,6 +309,18 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
+	}
+
+	.file-input-hidden {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
 	}
 
 	.loading-container {
