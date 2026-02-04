@@ -6,20 +6,45 @@ export interface CompressionProgress {
 }
 
 /**
- * Detect if we should skip Web Workers entirely.
- * iOS Safari (especially older versions and PWAs) has unreliable Web Worker support.
+ * Get iOS version from user agent, or null if not iOS.
  */
-function shouldSkipWebWorker(): boolean {
-	if (typeof navigator === 'undefined') return true;
+function getIOSVersion(): number | null {
+	if (typeof navigator === 'undefined') return null;
 
 	const ua = navigator.userAgent;
+
+	// Check for iOS device
 	const isIOS =
 		/iPad|iPhone|iPod/.test(ua) ||
 		(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-	// Skip Web Workers on all iOS devices - too unreliable in Safari/PWA context
-	if (isIOS) {
-		console.log('[Photo] iOS detected, using main thread compression');
+	if (!isIOS) return null;
+
+	// Extract version: "OS 15_8_6" or "OS 16_0"
+	const match = ua.match(/OS (\d+)[_\d]*/);
+	if (match) {
+		return parseInt(match[1], 10);
+	}
+
+	return null;
+}
+
+/**
+ * Detect if we should skip Web Workers.
+ * iOS < 16 has unreliable Web Worker support, especially in PWAs.
+ */
+function shouldSkipWebWorker(): boolean {
+	if (typeof navigator === 'undefined') return true;
+
+	const iosVersion = getIOSVersion();
+
+	if (iosVersion !== null) {
+		// iOS 16+ has better Web Worker support
+		if (iosVersion >= 16) {
+			console.log(`[Photo] iOS ${iosVersion} detected, using Web Worker`);
+			return false;
+		}
+		console.log(`[Photo] iOS ${iosVersion} detected, using main thread (Web Workers unreliable)`);
 		return true;
 	}
 
