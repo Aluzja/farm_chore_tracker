@@ -31,7 +31,8 @@ function getIOSVersion(): number | null {
 
 /**
  * Detect if we should skip Web Workers.
- * iOS < 16 has unreliable Web Worker support, especially in PWAs.
+ * iOS < 17 has unreliable OffscreenCanvas support in Web Workers.
+ * browser-image-compression uses OffscreenCanvas for Web Worker compression.
  */
 function shouldSkipWebWorker(): boolean {
 	if (typeof navigator === 'undefined') return true;
@@ -39,12 +40,14 @@ function shouldSkipWebWorker(): boolean {
 	const iosVersion = getIOSVersion();
 
 	if (iosVersion !== null) {
-		// iOS 16+ has better Web Worker support
-		if (iosVersion >= 16) {
+		// iOS 17+ has proper OffscreenCanvas support in Web Workers
+		if (iosVersion >= 17) {
 			console.log(`[Photo] iOS ${iosVersion} detected, using Web Worker`);
 			return false;
 		}
-		console.log(`[Photo] iOS ${iosVersion} detected, using main thread (Web Workers unreliable)`);
+		console.log(
+			`[Photo] iOS ${iosVersion} detected, using main thread (OffscreenCanvas unreliable)`
+		);
 		return true;
 	}
 
