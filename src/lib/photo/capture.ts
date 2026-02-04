@@ -5,24 +5,32 @@ export interface CompressionProgress {
 	usingMainThread: boolean;
 }
 
-// Timeout for Web Worker compression before falling back to main thread
-const WEB_WORKER_TIMEOUT_MS = 5000;
-
 /**
- * Run a promise with a timeout
+ * Detect if we should skip Web Workers entirely.
+ * iOS Safari (especially older versions and PWAs) has unreliable Web Worker support.
  */
-function withTimeout<T>(promise: Promise<T>, ms: number, timeoutError: Error): Promise<T> {
-	return Promise.race([
-		promise,
-		new Promise<T>((_, reject) => setTimeout(() => reject(timeoutError), ms))
-	]);
+function shouldSkipWebWorker(): boolean {
+	if (typeof navigator === 'undefined') return true;
+
+	const ua = navigator.userAgent;
+	const isIOS =
+		/iPad|iPhone|iPod/.test(ua) ||
+		(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+	// Skip Web Workers on all iOS devices - too unreliable in Safari/PWA context
+	if (isIOS) {
+		console.log('[Photo] iOS detected, using main thread compression');
+		return true;
+	}
+
+	return false;
 }
 
 /**
  * Compress an image file to ~2MB JPEG (high quality).
  * Strips EXIF metadata (GPS, timestamps) - app tracks its own metadata.
  *
- * Falls back to main thread compression if Web Worker fails or times out (older iOS devices).
+ * Uses main thread on iOS (Web Workers unreliable), Web Worker elsewhere.
  *
  * @param file - Original image file from camera/file input
  * @param onProgress - Optional callback for compression progress
@@ -32,9 +40,13 @@ export async function compressImage(
 	file: File,
 	onProgress?: (progress: CompressionProgress) => void
 ): Promise<Blob> {
-	let hasReceivedProgress = false;
+	const useWebWorker = !shouldSkipWebWorker();
 
-	const makeOptions = (useWebWorker: boolean) => ({
+	console.log(
+		`[Photo] Compressing ${(file.size / 1024 / 1024).toFixed(2)}MB image, useWebWorker: ${useWebWorker}`
+	);
+
+	const options = {
 		maxSizeMB: 2,
 		preserveExif: false,
 		fileType: 'image/jpeg' as const,
@@ -42,31 +54,12 @@ export async function compressImage(
 		useWebWorker,
 		onProgress: onProgress
 			? (percent: number) => {
-					hasReceivedProgress = true;
 					onProgress({ percent, usingMainThread: !useWebWorker });
 				}
 			: undefined
-	});
+	};
 
-	// Try with Web Worker first (faster, non-blocking)
-	// Use timeout because on some older iOS devices, Web Workers silently hang
-	try {
-		const webWorkerPromise = imageCompression(file, makeOptions(true));
-		return await withTimeout(
-			webWorkerPromise,
-			WEB_WORKER_TIMEOUT_MS,
-			new Error('Web Worker timeout')
-		);
-	} catch (error) {
-		const reason = hasReceivedProgress ? 'failed' : 'timed out or not supported';
-		console.warn(`[Photo] Web Worker compression ${reason}, falling back to main thread:`, error);
-	}
-
-	// Reset progress for fallback attempt
-	onProgress?.({ percent: 0, usingMainThread: true });
-
-	// Fallback: compress on main thread (works on older iOS devices)
-	return await imageCompression(file, makeOptions(false));
+	return await imageCompression(file, options);
 }
 
 /**
