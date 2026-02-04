@@ -140,21 +140,33 @@ export async function capturePhoto(onProgress?: (progress: CompressionProgress) 
 
 		// Handle file selection
 		input.onchange = async () => {
+			console.log('[Photo] File input changed');
+
 			const file = input.files?.[0];
 			if (!file) {
+				console.log('[Photo] No file selected');
 				resolve(null);
 				return;
 			}
+
+			console.log(
+				`[Photo] File selected: ${file.name}, size: ${(file.size / 1024 / 1024).toFixed(2)}MB, type: ${file.type}`
+			);
 
 			// Capture original size before compression
 			const originalSize = file.size;
 
 			try {
+				console.log('[Photo] Starting compression...');
 				// Compress the image with progress tracking
 				const compressedBlob = await compressImage(file, onProgress);
+				console.log(
+					`[Photo] Compression complete: ${(compressedBlob.size / 1024 / 1024).toFixed(2)}MB`
+				);
 
 				// Create preview URL
 				const previewUrl = URL.createObjectURL(compressedBlob);
+				console.log('[Photo] Preview URL created');
 
 				resolve({
 					blob: compressedBlob,
