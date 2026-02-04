@@ -34,6 +34,7 @@
 	function getSlotStats(categories: { chores: DailyChore[] }[]): {
 		completed: number;
 		total: number;
+		percent: number;
 	} {
 		let completed = 0;
 		let total = 0;
@@ -43,7 +44,8 @@
 				if (chore.isCompleted) completed++;
 			}
 		}
-		return { completed, total };
+		const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+		return { completed, total, percent };
 	}
 
 	function formatCompletionTime(isoString: string | undefined): string {
@@ -106,13 +108,6 @@
 			</div>
 		</header>
 
-		<div class="progress-bar-container">
-			<div class="progress-bar" style="width: {dailyChoreStore.progress}%"></div>
-		</div>
-		<div class="progress-text">
-			{dailyChoreStore.completedCount} of {dailyChoreStore.totalCount} complete ({dailyChoreStore.progress}%)
-		</div>
-
 		{#if dailyChoreStore.isLoading}
 			<div class="loading">
 				<div class="spinner"></div>
@@ -143,6 +138,7 @@
 							<span class="time-slot-title">{formatTimeSlot(timeSlotGroup.timeSlot)}</span>
 							<span class="time-slot-stats">
 								{stats.completed}/{stats.total}
+								<span class="time-slot-percent">({stats.percent}%)</span>
 								{#if stats.completed === stats.total && stats.total > 0}
 									<svg
 										class="check-mini"
@@ -336,27 +332,6 @@
 		color: #b91c1c;
 	}
 
-	.progress-bar-container {
-		height: 0.625rem;
-		background: #e5e7eb;
-		border-radius: 9999px;
-		overflow: hidden;
-		margin-bottom: 0.5rem;
-	}
-
-	.progress-bar {
-		height: 100%;
-		background: #22c55e;
-		transition: width 0.3s ease;
-	}
-
-	.progress-text {
-		font-size: 0.875rem;
-		color: #6b7280;
-		text-align: center;
-		margin-bottom: 1rem;
-	}
-
 	.loading {
 		display: flex;
 		flex-direction: column;
@@ -451,6 +426,10 @@
 		font-size: 0.875rem;
 		font-weight: 500;
 		opacity: 0.9;
+	}
+
+	.time-slot-percent {
+		opacity: 0.8;
 	}
 
 	.check-mini {
