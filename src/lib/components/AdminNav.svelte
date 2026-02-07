@@ -15,9 +15,20 @@
 		return href === '/' ? pathname === '/' : pathname.startsWith(href);
 	}
 
+	let showSignOutConfirm = $state(false);
+
 	function handleSignOut() {
+		showSignOutConfirm = true;
+	}
+
+	function confirmSignOut() {
+		showSignOutConfirm = false;
 		adminAuth.signOut();
 		goto(resolve('/admin/login'));
+	}
+
+	function cancelSignOut() {
+		showSignOutConfirm = false;
 	}
 </script>
 
@@ -52,12 +63,25 @@
 	</header>
 {/if}
 
+{#if showSignOutConfirm}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="modal-backdrop" onmousedown={cancelSignOut}>
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="modal" onmousedown={(e) => e.stopPropagation()}>
+			<h2 class="modal-title">Sign out?</h2>
+			<p class="modal-message">Are you sure you want to sign out?</p>
+			<div class="modal-actions">
+				<button class="modal-btn modal-btn-cancel" onclick={cancelSignOut}>Cancel</button>
+				<button class="modal-btn modal-btn-confirm" onclick={confirmSignOut}>Sign Out</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
 <style>
 	.admin-header {
 		background-color: white;
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-		position: sticky;
-		top: 0;
 		z-index: 40;
 	}
 
@@ -135,6 +159,74 @@
 
 	.sign-out-text {
 		display: inline;
+	}
+
+	.modal-backdrop {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.5);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 100;
+		padding: 1rem;
+	}
+
+	.modal {
+		background: white;
+		border-radius: 0.75rem;
+		padding: 1.5rem;
+		max-width: 20rem;
+		width: 100%;
+		box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+	}
+
+	.modal-title {
+		font-size: 1.125rem;
+		font-weight: 600;
+		color: #111827;
+		margin: 0 0 0.5rem 0;
+	}
+
+	.modal-message {
+		font-size: 0.875rem;
+		color: #6b7280;
+		margin: 0 0 1.5rem 0;
+		line-height: 1.5;
+	}
+
+	.modal-actions {
+		display: flex;
+		gap: 0.75rem;
+		justify-content: flex-end;
+	}
+
+	.modal-btn {
+		padding: 0.5rem 1rem;
+		min-height: 44px;
+		border-radius: 0.375rem;
+		font-size: 0.875rem;
+		font-weight: 500;
+		cursor: pointer;
+		border: none;
+	}
+
+	.modal-btn-cancel {
+		background: #f3f4f6;
+		color: #374151;
+	}
+
+	.modal-btn-cancel:hover {
+		background: #e5e7eb;
+	}
+
+	.modal-btn-confirm {
+		background: #dc2626;
+		color: white;
+	}
+
+	.modal-btn-confirm:hover {
+		background: #b91c1c;
 	}
 
 	/* Mobile: icon only for sign out */

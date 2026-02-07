@@ -6,7 +6,6 @@
 	import { masterChoreStore, type MasterChore } from '$lib/stores/masterChores.svelte';
 	import { browser } from '$app/environment';
 	import { getTodayDateString } from '$lib/utils/date';
-	import AdminNav from '$lib/components/AdminNav.svelte';
 	import Dropdown from '$lib/components/Dropdown.svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 
@@ -211,8 +210,6 @@
 </svelte:head>
 
 <div class="page">
-	<AdminNav />
-
 	<main class="main">
 		<!-- Page Header with Add Button -->
 		<div class="page-header">
@@ -580,21 +577,15 @@
 
 <style>
 	.page {
-		min-height: 100vh;
-		height: 100vh;
-		display: flex;
-		flex-direction: column;
+		min-height: 100%;
 		background-color: #f9fafb;
-		overflow: hidden;
 	}
 
 	.main {
-		flex: 1;
 		max-width: 56rem;
 		width: 100%;
 		margin: 0 auto;
 		padding: 1.5rem 1rem;
-		overflow-y: auto;
 	}
 
 	.page-header {

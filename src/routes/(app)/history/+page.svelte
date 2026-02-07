@@ -4,7 +4,6 @@
 	import { useQuery } from 'convex-svelte';
 	import { api } from '../../../convex/_generated/api';
 	import { getStoredAccessKey } from '$lib/auth/access-key';
-	import AdminNav from '$lib/components/AdminNav.svelte';
 
 	const history = useQuery(api.dailyChores.getHistory, {
 		daysBack: 7,
@@ -51,8 +50,6 @@
 		});
 	});
 </script>
-
-<AdminNav />
 
 <div class="page">
 	<main class="container">
@@ -111,7 +108,7 @@
 
 <style>
 	.page {
-		min-height: 100vh;
+		min-height: 100%;
 		background-color: #f9fafb;
 	}
 

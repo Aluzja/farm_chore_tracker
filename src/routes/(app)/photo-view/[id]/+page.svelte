@@ -66,7 +66,7 @@
 	}
 
 	function handleBack() {
-		goto(resolve('/'));
+		history.back();
 	}
 
 	function handleReplace() {

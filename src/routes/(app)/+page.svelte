@@ -7,7 +7,7 @@
 	import { connectionStatus } from '$lib/sync/status.svelte';
 	import { formatTimeSlot, getTodayDayName } from '$lib/utils/date';
 	import { getCurrentUser } from '$lib/auth/user-context.svelte';
-	import AdminNav from '$lib/components/AdminNav.svelte';
+	import Fireworks from '$lib/components/Fireworks.svelte';
 	import PhotoThumbnail from '$lib/components/PhotoThumbnail.svelte';
 	import SyncStatusBadge from '$lib/components/SyncStatusBadge.svelte';
 	import type { DailyChore } from '$lib/db/schema';
@@ -79,6 +79,32 @@
 		}
 	}
 
+	let showFireworks = $state(false);
+
+	// Track previous completion per slot so we only fire fireworks
+	// on a *transition* to 100%, not when already complete on load.
+	let previousCompletion = new Map<string, boolean>();
+	let initialized = false;
+
+	$effect(() => {
+		const grouped = dailyChoreStore.grouped;
+		if (!grouped.length || dailyChoreStore.isLoading) return;
+
+		for (const group of grouped) {
+			const stats = getSlotStats(group.categories);
+			const isComplete = stats.completed === stats.total && stats.total > 0;
+			const wasComplete = previousCompletion.get(group.timeSlot) ?? false;
+
+			if (initialized && isComplete && !wasComplete) {
+				showFireworks = true;
+			}
+
+			previousCompletion.set(group.timeSlot, isComplete);
+		}
+
+		initialized = true;
+	});
+
 	async function handleChoreAction(chore: DailyChore) {
 		if (chore.requiresPhoto && !chore.isCompleted) {
 			// Must take photo - navigate to capture page
@@ -89,8 +115,6 @@
 		}
 	}
 </script>
-
-<AdminNav />
 
 <div class="page">
 	<main class="container">
@@ -282,9 +306,13 @@
 	</main>
 </div>
 
+{#if showFireworks}
+	<Fireworks onfinish={() => (showFireworks = false)} />
+{/if}
+
 <style>
 	.page {
-		min-height: 100vh;
+		min-height: 100%;
 		background-color: #f9fafb;
 	}
 

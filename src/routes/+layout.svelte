@@ -9,6 +9,7 @@
 	import { connectionStatus } from '$lib/sync/status.svelte';
 	import { requestPersistentStorage } from '$lib/db/storage';
 	import favicon from '$lib/assets/favicon.svg';
+	import AdminNav from '$lib/components/AdminNav.svelte';
 
 	let { children } = $props();
 
@@ -63,4 +64,24 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-{@render children?.()}
+<div class="app-shell">
+	<AdminNav />
+	<div class="app-content">
+		{@render children?.()}
+	</div>
+</div>
+
+<style>
+	.app-shell {
+		display: grid;
+		grid-template-rows: auto 1fr;
+		height: 100vh;
+		height: 100dvh;
+		overflow: hidden;
+	}
+
+	.app-content {
+		overflow-y: auto;
+		-webkit-overflow-scrolling: touch;
+	}
+</style>

@@ -2,8 +2,6 @@
 	import { useQuery, useConvexClient } from 'convex-svelte';
 	import { api } from '../../../convex/_generated/api';
 	import type { Id } from '../../../convex/_generated/dataModel';
-	import AdminNav from '$lib/components/AdminNav.svelte';
-
 	// Get Convex client for mutations
 	const client = useConvexClient();
 
@@ -115,8 +113,6 @@
 </svelte:head>
 
 <div class="page">
-	<AdminNav />
-
 	<main class="main">
 		<!-- Created Key Banner -->
 		{#if createdKey}
@@ -308,7 +304,7 @@
 
 <style>
 	.page {
-		min-height: 100vh;
+		min-height: 100%;
 		background-color: #f9fafb;
 	}
 
