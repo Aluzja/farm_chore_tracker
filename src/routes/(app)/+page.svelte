@@ -81,28 +81,51 @@
 
 	let showFireworks = $state(false);
 
-	// Track previous completion per slot so we only fire fireworks
-	// on a *transition* to 100%, not when already complete on load.
-	let previousCompletion = new Map<string, boolean>();
-	let initialized = false;
+	// Persist completion snapshot to sessionStorage so we can detect
+	// transitions even after navigating away (e.g. photo capture) and back.
+	const COMPLETION_KEY = 'ksf-slot-completion';
+
+	function loadCompletionSnapshot(): Map<string, boolean> {
+		if (!browser) return new Map();
+		try {
+			const saved = sessionStorage.getItem(COMPLETION_KEY);
+			if (saved) return new Map(JSON.parse(saved));
+		} catch {}
+		return new Map();
+	}
+
+	function saveCompletionSnapshot(map: Map<string, boolean>) {
+		if (!browser) return;
+		try {
+			sessionStorage.setItem(COMPLETION_KEY, JSON.stringify([...map]));
+		} catch {}
+	}
+
+	let previousCompletion = loadCompletionSnapshot();
+	let isFirstRun = true;
 
 	$effect(() => {
 		const grouped = dailyChoreStore.grouped;
 		if (!grouped.length || dailyChoreStore.isLoading) return;
+
+		// On the very first run with no saved snapshot, just record state
+		// without triggering (handles fresh session / hard reload).
+		const hasSavedState = previousCompletion.size > 0;
 
 		for (const group of grouped) {
 			const stats = getSlotStats(group.categories);
 			const isComplete = stats.completed === stats.total && stats.total > 0;
 			const wasComplete = previousCompletion.get(group.timeSlot) ?? false;
 
-			if (initialized && isComplete && !wasComplete) {
+			if ((hasSavedState || !isFirstRun) && isComplete && !wasComplete) {
 				showFireworks = true;
 			}
 
 			previousCompletion.set(group.timeSlot, isComplete);
 		}
 
-		initialized = true;
+		isFirstRun = false;
+		saveCompletionSnapshot(previousCompletion);
 	});
 
 	async function handleChoreAction(chore: DailyChore) {

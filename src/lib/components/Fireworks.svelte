@@ -101,14 +101,24 @@
 			scheduleRocket(rand(0, 400), [H * 0.1, H * 0.35], [10, 16]);
 		}
 
-		// Wave 2: mid burst (500-1200ms)
+		// Wave 2: building (600-1400ms)
 		for (let i = 0; i < 4; i++) {
-			scheduleRocket(rand(500, 1200), [H * 0.08, H * 0.4], [9, 14]);
+			scheduleRocket(rand(600, 1400), [H * 0.08, H * 0.4], [9, 14]);
 		}
 
-		// Wave 3: grand finale (1300-2000ms) — more rockets, spread wide
+		// Wave 3: sustained (1600-2600ms)
 		for (let i = 0; i < 5; i++) {
-			scheduleRocket(rand(1300, 2000), [H * 0.1, H * 0.5], [10, 16]);
+			scheduleRocket(rand(1600, 2600), [H * 0.1, H * 0.45], [10, 15]);
+		}
+
+		// Wave 4: crescendo (2800-3600ms)
+		for (let i = 0; i < 5; i++) {
+			scheduleRocket(rand(2800, 3600), [H * 0.08, H * 0.4], [10, 16]);
+		}
+
+		// Wave 5: grand finale (3800-4200ms) — dense cluster
+		for (let i = 0; i < 6; i++) {
+			scheduleRocket(rand(3800, 4200), [H * 0.1, H * 0.5], [11, 16]);
 		}
 
 		function explodeRocket(r: Rocket) {
