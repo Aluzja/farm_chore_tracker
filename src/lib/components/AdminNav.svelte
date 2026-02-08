@@ -82,7 +82,6 @@
 	.admin-header {
 		background-color: white;
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-		z-index: 40;
 	}
 
 	.admin-header-content {
