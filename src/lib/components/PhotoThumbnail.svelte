@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
+	import { pushState } from '$app/navigation';
 	import { useQuery } from 'convex-svelte';
 	import { api } from '../../convex/_generated/api';
 	import type { Id } from '../../convex/_generated/dataModel';
@@ -43,7 +42,7 @@
 	});
 
 	function handleClick() {
-		goto(resolve(`/photo-view/${choreId}`));
+		pushState(`/photo-view/${choreId}`, { photoChoreId: choreId });
 	}
 </script>
 

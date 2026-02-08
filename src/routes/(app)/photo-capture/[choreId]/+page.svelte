@@ -129,6 +129,9 @@
 
 <main class="capture-container">
 	<header class="capture-header">
+		<h1 class="capture-title">
+			{isReplaceMode ? 'Replace Photo' : chore?.text || 'Capture Photo'}
+		</h1>
 		<button
 			class="cancel-button"
 			onclick={handleCancel}
@@ -140,9 +143,6 @@
 				<line x1="6" y1="6" x2="18" y2="18"></line>
 			</svg>
 		</button>
-		<h1 class="capture-title">
-			{isReplaceMode ? 'Replace Photo' : chore?.text || 'Capture Photo'}
-		</h1>
 	</header>
 
 	<!-- Hidden file input - real DOM element for iOS compatibility -->
@@ -247,6 +247,7 @@
 	.capture-container {
 		position: fixed;
 		inset: 0;
+		z-index: 50;
 		display: flex;
 		flex-direction: column;
 		background: #000;
@@ -277,6 +278,7 @@
 		align-items: center;
 		justify-content: center;
 		cursor: pointer;
+		flex-shrink: 0;
 	}
 
 	.cancel-button:disabled {

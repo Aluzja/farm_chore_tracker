@@ -1,15 +1,19 @@
 <script lang="ts">
-	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { useQuery } from 'convex-svelte';
-	import { api } from '../../../../convex/_generated/api';
+	import { api } from '../../convex/_generated/api';
 	import { dailyChoreStore } from '$lib/stores/dailyChores.svelte';
 	import { getOrCacheImage } from '$lib/db/imageCache';
 	import { getStoredAccessKey } from '$lib/auth/access-key';
-	import type { Id } from '../../../../convex/_generated/dataModel';
+	import type { Id } from '../../convex/_generated/dataModel';
 
-	const choreId = $derived(page.params.id ?? '');
+	interface Props {
+		choreId: string;
+		onclose: () => void;
+	}
+
+	const { choreId, onclose }: Props = $props();
 
 	// Find the chore
 	const chore = $derived(dailyChoreStore.items.find((c) => c._id === choreId));
@@ -65,11 +69,12 @@
 		document.body.removeChild(link);
 	}
 
-	function handleBack() {
-		history.back();
-	}
-
 	function handleReplace() {
+		// Save scroll position before navigating away
+		const scrollEl = document.querySelector('.app-content');
+		if (scrollEl) {
+			sessionStorage.setItem('ksf-chore-scroll', String(scrollEl.scrollTop));
+		}
 		goto(resolve('/(app)/photo-capture/[choreId]/replace', { choreId }));
 	}
 
@@ -79,15 +84,15 @@
 	}
 </script>
 
-<main class="view-container">
+<div class="view-container" role="dialog" aria-modal="true" aria-label="Photo viewer">
 	<header class="view-header">
-		<button class="back-button" onclick={handleBack} aria-label="Go back">
+		<h1 class="view-title">{chore?.text || 'Photo'}</h1>
+		<button class="close-button" onclick={onclose} aria-label="Close">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-				<line x1="19" y1="12" x2="5" y2="12"></line>
-				<polyline points="12 19 5 12 12 5"></polyline>
+				<line x1="18" y1="6" x2="6" y2="18"></line>
+				<line x1="6" y1="6" x2="18" y2="18"></line>
 			</svg>
 		</button>
-		<h1 class="view-title">{chore?.text || 'Photo'}</h1>
 	</header>
 
 	<div class="photo-container">
@@ -161,12 +166,13 @@
 			</button>
 		</div>
 	</footer>
-</main>
+</div>
 
 <style>
 	.view-container {
 		position: fixed;
 		inset: 0;
+		z-index: 50;
 		display: flex;
 		flex-direction: column;
 		background: #000;
@@ -186,7 +192,7 @@
 		z-index: 10;
 	}
 
-	.back-button {
+	.close-button {
 		width: 2.5rem;
 		height: 2.5rem;
 		border-radius: 50%;
@@ -197,9 +203,10 @@
 		align-items: center;
 		justify-content: center;
 		cursor: pointer;
+		flex-shrink: 0;
 	}
 
-	.back-button svg {
+	.close-button svg {
 		width: 1.25rem;
 		height: 1.25rem;
 	}

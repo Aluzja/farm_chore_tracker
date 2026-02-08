@@ -292,11 +292,13 @@
 
 <style>
 	.loading-container {
-		min-height: 100%;
+		position: fixed;
+		inset: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		background-color: #f9fafb;
+		z-index: 40;
 	}
 
 	.loading-content {
@@ -325,12 +327,14 @@
 	}
 
 	.error-container {
-		min-height: 100%;
+		position: fixed;
+		inset: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		background-color: #f9fafb;
 		padding: 1rem;
+		z-index: 40;
 	}
 
 	.error-card {

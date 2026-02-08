@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { fade, slide } from 'svelte/transition';
@@ -128,9 +129,30 @@
 		saveCompletionSnapshot(previousCompletion);
 	});
 
+	const SCROLL_KEY = 'ksf-chore-scroll';
+
+	function saveScrollPosition() {
+		const scrollEl = document.querySelector('.app-content');
+		if (scrollEl) {
+			sessionStorage.setItem(SCROLL_KEY, String(scrollEl.scrollTop));
+		}
+	}
+
+	onMount(() => {
+		const saved = sessionStorage.getItem(SCROLL_KEY);
+		if (saved) {
+			sessionStorage.removeItem(SCROLL_KEY);
+			const scrollEl = document.querySelector('.app-content');
+			if (scrollEl) {
+				scrollEl.scrollTop = Number(saved);
+			}
+		}
+	});
+
 	async function handleChoreAction(chore: DailyChore) {
 		if (chore.requiresPhoto && !chore.isCompleted) {
-			// Must take photo - navigate to capture page
+			// Save scroll position before navigating away
+			saveScrollPosition();
 			await goto(resolve('/(app)/photo-capture/[choreId]', { choreId: chore._id }));
 		} else {
 			// Normal toggle (or undo for completed chores)

@@ -8,8 +8,10 @@
 	import { setConvexClient } from '$lib/sync/engine.svelte';
 	import { connectionStatus } from '$lib/sync/status.svelte';
 	import { requestPersistentStorage } from '$lib/db/storage';
+	import { page } from '$app/state';
 	import favicon from '$lib/assets/favicon.svg';
 	import AdminNav from '$lib/components/AdminNav.svelte';
+	import PhotoViewModal from '$lib/components/PhotoViewModal.svelte';
 
 	let { children } = $props();
 
@@ -71,6 +73,10 @@
 	</div>
 </div>
 
+{#if page.state.photoChoreId}
+	<PhotoViewModal choreId={page.state.photoChoreId} onclose={() => history.back()} />
+{/if}
+
 <style>
 	.app-shell {
 		display: grid;
@@ -83,5 +89,7 @@
 	.app-content {
 		overflow-y: auto;
 		-webkit-overflow-scrolling: touch;
+		display: flex;
+		flex-direction: column;
 	}
 </style>
