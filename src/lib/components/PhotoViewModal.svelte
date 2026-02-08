@@ -70,11 +70,6 @@
 	}
 
 	function handleReplace() {
-		// Save scroll position before navigating away
-		const scrollEl = document.querySelector('.app-content');
-		if (scrollEl) {
-			sessionStorage.setItem('ksf-chore-scroll', String(scrollEl.scrollTop));
-		}
 		goto(resolve('/(app)/photo-capture/[choreId]/replace', { choreId }));
 	}
 

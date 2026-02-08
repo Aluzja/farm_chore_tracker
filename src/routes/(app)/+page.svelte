@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
 	import { fade, slide } from 'svelte/transition';
 	import { dailyChoreStore } from '$lib/stores/dailyChores.svelte';
 	import { syncEngine } from '$lib/sync/engine.svelte';
 	import { connectionStatus } from '$lib/sync/status.svelte';
 	import { formatTimeSlot, getTodayDayName } from '$lib/utils/date';
 	import { getCurrentUser } from '$lib/auth/user-context.svelte';
+	import { compressImage, type CompressionProgress } from '$lib/photo/capture';
+	import { enqueuePhoto } from '$lib/photo/queue';
 	import Fireworks from '$lib/components/Fireworks.svelte';
 	import PhotoThumbnail from '$lib/components/PhotoThumbnail.svelte';
 	import SyncStatusBadge from '$lib/components/SyncStatusBadge.svelte';
@@ -129,35 +129,120 @@
 		saveCompletionSnapshot(previousCompletion);
 	});
 
-	const SCROLL_KEY = 'ksf-chore-scroll';
+	// Inline photo capture state
+	let photoFileInput: HTMLInputElement;
+	let captureChoreId = $state<string | null>(null);
+	let capturePreviewUrl = $state<string | null>(null);
+	let captureBlob = $state<Blob | null>(null);
+	let captureOriginalSize = $state(0);
+	let captureProcessing = $state(false);
+	let captureSubmitting = $state(false);
+	let captureError = $state<string | null>(null);
+	let captureProgress = $state(0);
 
-	function saveScrollPosition() {
-		const scrollEl = document.querySelector('.app-content');
-		if (scrollEl) {
-			sessionStorage.setItem(SCROLL_KEY, String(scrollEl.scrollTop));
+	const captureChore = $derived(
+		captureChoreId ? dailyChoreStore.items.find((c) => c._id === captureChoreId) : null
+	);
+
+	function handleChoreAction(chore: DailyChore) {
+		if (chore.requiresPhoto && !chore.isCompleted) {
+			// Store chore ID and trigger file input synchronously (iOS requires user gesture)
+			captureChoreId = chore._id;
+			photoFileInput?.click();
+		} else {
+			// Normal toggle (or undo for completed chores)
+			dailyChoreStore.toggleComplete(chore._id, getCurrentUser());
 		}
 	}
 
-	onMount(() => {
-		const saved = sessionStorage.getItem(SCROLL_KEY);
-		if (saved) {
-			sessionStorage.removeItem(SCROLL_KEY);
-			const scrollEl = document.querySelector('.app-content');
-			if (scrollEl) {
-				scrollEl.scrollTop = Number(saved);
-			}
-		}
-	});
+	async function handlePhotoSelect(event: Event) {
+		const input = event.target as HTMLInputElement;
+		const file = input.files?.[0];
 
-	async function handleChoreAction(chore: DailyChore) {
-		if (chore.requiresPhoto && !chore.isCompleted) {
-			// Save scroll position before navigating away
-			saveScrollPosition();
-			await goto(resolve('/(app)/photo-capture/[choreId]', { choreId: chore._id }));
-		} else {
-			// Normal toggle (or undo for completed chores)
-			await dailyChoreStore.toggleComplete(chore._id, getCurrentUser());
+		if (!file) {
+			// User cancelled the camera — reset
+			captureChoreId = null;
+			return;
 		}
+
+		captureProcessing = true;
+		captureError = null;
+		captureProgress = 0;
+
+		try {
+			captureOriginalSize = file.size;
+			const compressed = await compressImage(file, (p: CompressionProgress) => {
+				captureProgress = Math.round(p.percent);
+			});
+
+			if (capturePreviewUrl) URL.revokeObjectURL(capturePreviewUrl);
+			capturePreviewUrl = URL.createObjectURL(compressed);
+			captureBlob = compressed;
+		} catch (e) {
+			captureError = e instanceof Error ? e.message : 'Failed to process photo';
+		} finally {
+			captureProcessing = false;
+			input.value = '';
+		}
+	}
+
+	async function handlePhotoAccept() {
+		if (!captureBlob || !captureChoreId || !captureChore) return;
+
+		captureSubmitting = true;
+		captureError = null;
+
+		try {
+			const user = getCurrentUser();
+
+			await enqueuePhoto({
+				id: crypto.randomUUID(),
+				dailyChoreClientId: captureChore._id,
+				blob: captureBlob,
+				mimeType: 'image/jpeg',
+				originalSize: captureOriginalSize,
+				compressedSize: captureBlob.size,
+				capturedAt: Date.now(),
+				capturedBy: user,
+				uploadStatus: 'pending'
+			});
+
+			await dailyChoreStore.toggleComplete(captureChoreId, user);
+
+			if (connectionStatus.isOnline) {
+				syncEngine.processQueue();
+				syncEngine.processPhotoQueue();
+			}
+
+			resetCapture();
+		} catch (e) {
+			captureError = e instanceof Error ? e.message : 'Failed to save photo';
+			captureSubmitting = false;
+		}
+	}
+
+	function handlePhotoCancel() {
+		resetCapture();
+	}
+
+	function handlePhotoRetake() {
+		if (capturePreviewUrl) URL.revokeObjectURL(capturePreviewUrl);
+		capturePreviewUrl = null;
+		captureBlob = null;
+		captureError = null;
+		photoFileInput?.click();
+	}
+
+	function resetCapture() {
+		if (capturePreviewUrl) URL.revokeObjectURL(capturePreviewUrl);
+		captureChoreId = null;
+		capturePreviewUrl = null;
+		captureBlob = null;
+		captureOriginalSize = 0;
+		captureProcessing = false;
+		captureSubmitting = false;
+		captureError = null;
+		captureProgress = 0;
 	}
 </script>
 
@@ -350,6 +435,92 @@
 		{/if}
 	</main>
 </div>
+
+<!-- Hidden file input for photo capture (must be in DOM for iOS) -->
+<input
+	bind:this={photoFileInput}
+	type="file"
+	accept="image/*"
+	capture="environment"
+	onchange={handlePhotoSelect}
+	class="file-input-hidden"
+/>
+
+<!-- Photo processing/preview overlay -->
+{#if captureProcessing}
+	<div class="capture-overlay">
+		<div class="capture-processing">
+			<div class="progress-ring-container">
+				<svg class="progress-ring" viewBox="0 0 100 100">
+					<circle class="progress-ring-bg" cx="50" cy="50" r="45" />
+					<circle
+						class="progress-ring-fill"
+						cx="50"
+						cy="50"
+						r="45"
+						style="stroke-dashoffset: {283 - (283 * captureProgress) / 100}"
+					/>
+				</svg>
+				<span class="progress-percent">{captureProgress}%</span>
+			</div>
+			<p class="progress-label">Processing...</p>
+		</div>
+	</div>
+{:else if capturePreviewUrl}
+	<div class="capture-overlay">
+		<header class="capture-header">
+			<h1 class="capture-title">{captureChore?.text || 'Photo'}</h1>
+			<button
+				class="capture-close"
+				onclick={handlePhotoCancel}
+				disabled={captureSubmitting}
+				aria-label="Cancel"
+			>
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<line x1="18" y1="6" x2="6" y2="18"></line>
+					<line x1="6" y1="6" x2="18" y2="18"></line>
+				</svg>
+			</button>
+		</header>
+
+		<div class="capture-preview">
+			<img src={capturePreviewUrl} alt="Captured preview" />
+		</div>
+
+		{#if captureError}
+			<p class="capture-error">{captureError}</p>
+		{/if}
+
+		<div class="capture-actions">
+			<button
+				class="capture-btn capture-btn-secondary"
+				onclick={handlePhotoRetake}
+				disabled={captureSubmitting}
+			>
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<path d="M1 4v6h6"></path>
+					<path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+				</svg>
+				Retake
+			</button>
+			<button
+				class="capture-btn capture-btn-primary"
+				onclick={handlePhotoAccept}
+				disabled={captureSubmitting}
+			>
+				{#if captureSubmitting}
+					<div class="capture-spinner"></div>
+					Saving...
+				{:else}
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<polyline points="20 6 9 17 4 12"></polyline>
+					</svg>
+					Accept
+				{/if}
+			</button>
+		</div>
+	</div>
+{/if}
 
 {#if showFireworks}
 	<Fireworks onfinish={() => (showFireworks = false)} />
@@ -809,5 +980,206 @@
 
 	.chore-item :global(.sync-badge) {
 		order: 2;
+	}
+
+	/* Hidden file input */
+	.file-input-hidden {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	/* Photo capture overlay */
+	.capture-overlay {
+		position: fixed;
+		inset: 0;
+		z-index: 50;
+		display: flex;
+		flex-direction: column;
+		background: #000;
+		color: white;
+		font-family:
+			system-ui,
+			-apple-system,
+			sans-serif;
+	}
+
+	.capture-processing {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 1rem;
+	}
+
+	.progress-ring-container {
+		position: relative;
+		width: 6rem;
+		height: 6rem;
+	}
+
+	.progress-ring {
+		width: 100%;
+		height: 100%;
+		transform: rotate(-90deg);
+	}
+
+	.progress-ring-bg {
+		fill: none;
+		stroke: rgba(255, 255, 255, 0.2);
+		stroke-width: 6;
+	}
+
+	.progress-ring-fill {
+		fill: none;
+		stroke: #22c55e;
+		stroke-width: 6;
+		stroke-linecap: round;
+		stroke-dasharray: 283;
+		transition: stroke-dashoffset 0.2s ease;
+	}
+
+	.progress-percent {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 1.25rem;
+		font-weight: 600;
+		color: white;
+	}
+
+	.progress-label {
+		margin: 0;
+		font-size: 1rem;
+		color: rgba(255, 255, 255, 0.7);
+	}
+
+	.capture-header {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 1rem;
+		background: rgba(0, 0, 0, 0.8);
+	}
+
+	.capture-title {
+		font-size: 1rem;
+		font-weight: 500;
+		margin: 0;
+		flex: 1;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.capture-close {
+		width: 2.5rem;
+		height: 2.5rem;
+		border-radius: 50%;
+		border: none;
+		background: rgba(255, 255, 255, 0.2);
+		color: white;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		flex-shrink: 0;
+	}
+
+	.capture-close:disabled {
+		opacity: 0.5;
+	}
+
+	.capture-close svg {
+		width: 1.25rem;
+		height: 1.25rem;
+	}
+
+	.capture-preview {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		overflow: hidden;
+		background: #111;
+	}
+
+	.capture-preview img {
+		max-width: 100%;
+		max-height: 100%;
+		object-fit: contain;
+	}
+
+	.capture-error {
+		color: #f87171;
+		text-align: center;
+		padding: 0.75rem 1rem;
+		margin: 0;
+	}
+
+	.capture-actions {
+		display: flex;
+		gap: 1rem;
+		padding: 1.5rem;
+		background: rgba(0, 0, 0, 0.8);
+	}
+
+	.capture-btn {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 1rem;
+		border: none;
+		border-radius: 0.75rem;
+		font-size: 1rem;
+		font-weight: 600;
+		cursor: pointer;
+		min-height: 3.5rem;
+	}
+
+	.capture-btn:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	.capture-btn svg {
+		width: 1.25rem;
+		height: 1.25rem;
+	}
+
+	.capture-btn-secondary {
+		background: rgba(255, 255, 255, 0.15);
+		color: white;
+	}
+
+	.capture-btn-primary {
+		background: #22c55e;
+		color: white;
+	}
+
+	.capture-spinner {
+		width: 1.25rem;
+		height: 1.25rem;
+		border: 2px solid rgba(255, 255, 255, 0.3);
+		border-top-color: white;
+		border-radius: 50%;
+		animation: capture-spin 1s linear infinite;
+	}
+
+	@keyframes capture-spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 </style>
