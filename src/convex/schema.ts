@@ -65,4 +65,5 @@ export default defineSchema({
 		.index('by_date', ['date'])
 		.index('by_date_time_slot', ['date', 'timeSlot'])
 		.index('by_client_id', ['clientId'])
+		.index('by_date_master', ['date', 'masterChoreId'])
 });

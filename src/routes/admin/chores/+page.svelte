@@ -137,7 +137,8 @@
 					description: formDescription.trim() || undefined,
 					timeSlot: formTimeSlot,
 					animalCategory: formCategory.trim(),
-					requiresPhoto: formRequiresPhoto
+					requiresPhoto: formRequiresPhoto,
+					todayDate: getTodayDateString()
 				});
 			}
 			// Close modal and reset form
@@ -182,7 +183,8 @@
 				description: editDescription.trim() || undefined,
 				timeSlot: editTimeSlot,
 				animalCategory: editCategory.trim(),
-				requiresPhoto: editRequiresPhoto
+				requiresPhoto: editRequiresPhoto,
+				todayDate: getTodayDateString()
 			});
 			cancelEdit();
 		} catch (error) {
@@ -197,7 +199,7 @@
 		if (!client) return;
 
 		try {
-			await client.mutation(api.masterChores.remove, { id });
+			await client.mutation(api.masterChores.remove, { id, todayDate: getTodayDateString() });
 		} catch (error) {
 			console.error('Failed to delete chore:', error);
 			alert('Failed to delete chore');
