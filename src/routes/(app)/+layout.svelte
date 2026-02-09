@@ -33,12 +33,14 @@
 	let manualKey = $state('');
 	let isSubmittingKey = $state(false);
 	let keyError = $state<string | null>(null);
+	// Reactive access key — drives the Convex query subscription
+	let activeAccessKey = $state<string | undefined>(getStoredAccessKey() ?? undefined);
 
 	// Daily chores subscription — pass local timezone date so server doesn't use UTC
 	const dailyChoresQuery = browser
 		? useQuery(api.dailyChores.getOrCreateDailyList, () => ({
 				date: getTodayDateString(),
-				accessKey: getStoredAccessKey() ?? undefined
+				accessKey: activeAccessKey
 			}))
 		: null;
 
@@ -54,7 +56,7 @@
 				const data = dailyChoresQuery.data as { needsClone: boolean; date: string };
 				client.mutation(api.dailyChores.cloneMasterToDaily, {
 					date: data.date,
-					accessKey: getStoredAccessKey() ?? undefined
+					accessKey: activeAccessKey
 				});
 			}
 		}
@@ -133,6 +135,7 @@
 			const result = await validateAccessKey(urlKey, convexClient);
 			if (result.valid) {
 				storeAccessKey(urlKey);
+				activeAccessKey = urlKey;
 				hasAccess = true;
 				userName = result.displayName ?? null;
 				isValidating = false;
@@ -219,6 +222,7 @@
 		const result = await validateAccessKey(key, convexClient);
 		if (result.valid) {
 			storeAccessKey(key);
+			activeAccessKey = key;
 			hasAccess = true;
 			userName = result.displayName ?? null;
 			error = null;
