@@ -65,7 +65,9 @@
 
 <style>
 	.admin-loading {
-		min-height: 100%;
+		position: fixed;
+		inset: 0;
+		z-index: 40;
 		display: flex;
 		flex-direction: column;
 		align-items: center;

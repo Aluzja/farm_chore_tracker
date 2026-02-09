@@ -13,7 +13,7 @@ export default defineConfig({
 				short_name: 'Kitchen Sink',
 				description: 'Farm chore tracking for the whole team',
 				theme_color: '#4CAF50',
-				background_color: '#ffffff',
+				background_color: '#e6dcff',
 				display: 'standalone',
 				scope: '/',
 				start_url: '/',
