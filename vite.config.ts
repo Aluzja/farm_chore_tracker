@@ -10,7 +10,7 @@ export default defineConfig({
 			registerType: 'prompt',
 			manifest: {
 				name: 'Kitchen Sink Farm',
-				short_name: 'KSF',
+				short_name: 'Kitchen Sink',
 				description: 'Farm chore tracking for the whole team',
 				theme_color: '#4CAF50',
 				background_color: '#ffffff',
