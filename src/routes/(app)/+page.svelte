@@ -251,9 +251,15 @@
 		<header class="header">
 			<h1 class="title">{dayName}'s Chores</h1>
 			<div class="header-meta">
-				<div class="connection-status" class:online={connectionStatus.isOnline}>
-					{connectionStatus.isOnline ? 'Online' : 'Offline'}
-				</div>
+				{#if connectionStatus.updateAvailable}
+					<button class="connection-status update" onclick={() => connectionStatus.applyUpdate()}>
+						Update Available
+					</button>
+				{:else}
+					<div class="connection-status" class:online={connectionStatus.isOnline}>
+						{connectionStatus.isOnline ? 'Online' : 'Offline'}
+					</div>
+				{/if}
 				{#if syncEngine.pendingCount > 0}
 					<div class="sync-indicator">
 						{syncEngine.isSyncing ? 'Syncing...' : `${syncEngine.pendingCount} pending`}
@@ -575,6 +581,25 @@
 	.connection-status.online {
 		background: #f0fdf4;
 		color: #16a34a;
+	}
+
+	.connection-status.update {
+		background: #3b82f6;
+		color: white;
+		border: none;
+		cursor: pointer;
+		font-weight: 600;
+		animation: pulse-update 2s ease-in-out infinite;
+	}
+
+	@keyframes pulse-update {
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.7;
+		}
 	}
 
 	.sync-indicator {

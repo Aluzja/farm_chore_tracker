@@ -47,15 +47,21 @@
 		// Register service worker
 		if (pwaInfo) {
 			const { registerSW } = await import('virtual:pwa-register');
-			registerSW({
+			const updateSW = registerSW({
 				immediate: true,
+				onNeedRefresh() {
+					connectionStatus.notifyUpdateAvailable();
+				},
 				onRegistered(registration: ServiceWorkerRegistration | undefined) {
-					console.log('[PWA] Service worker registered:', registration?.scope);
+					if (registration) {
+						connectionStatus.startUpdateChecks(registration);
+					}
 				},
 				onRegisterError(error: Error) {
 					console.error('[PWA] Service worker registration error:', error);
 				}
 			});
+			connectionStatus.setUpdateSW(updateSW);
 		}
 	});
 </script>
