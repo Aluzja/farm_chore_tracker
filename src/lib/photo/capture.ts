@@ -8,8 +8,6 @@ export interface CompressionProgress {
 // Timeout for compression before giving up and using original
 const COMPRESSION_TIMEOUT_MS = 30000;
 
-const THUMBNAIL_TIMEOUT_MS = 10000;
-
 /**
  * Run a promise with a timeout
  */
@@ -67,40 +65,31 @@ export async function compressImage(
 
 /**
  * Generate a small thumbnail (~10-30KB) for the chore list.
+ * Uses createImageBitmap + OffscreenCanvas — works directly with blobs
+ * without data URL conversion (which fails for cross-origin fetched blobs).
  * Tries WebP first (smaller), falls back to JPEG if WebP encoding fails.
  * Returns undefined on failure — thumbnail is non-critical during capture.
  */
 export async function generateThumbnail(file: File | Blob): Promise<Blob | undefined> {
-	// browser-image-compression needs a File, convert Blob if needed
-	// Default to image/jpeg if type is missing (e.g. blobs fetched from storage)
-	const mimeType = file.type || 'image/jpeg';
-	const inputFile =
-		file instanceof File ? file : new File([file], 'photo.jpg', { type: mimeType });
-
-	const baseOptions = {
-		maxWidthOrHeight: 300,
-		maxSizeMB: 0.05,
-		preserveExif: false,
-		initialQuality: 0.8,
-		useWebWorker: true
-	};
-
-	// Try WebP first (~30% smaller)
 	try {
-		return await withTimeout(
-			imageCompression(inputFile, { ...baseOptions, fileType: 'image/webp' as const }),
-			THUMBNAIL_TIMEOUT_MS
-		);
-	} catch {
-		// WebP encoding failed, try JPEG fallback
-	}
+		const bitmap = await createImageBitmap(file);
+		const scale = Math.min(300 / bitmap.width, 300 / bitmap.height, 1);
+		const width = Math.round(bitmap.width * scale);
+		const height = Math.round(bitmap.height * scale);
 
-	// Fallback to JPEG (universally compatible)
-	try {
-		return await withTimeout(
-			imageCompression(inputFile, { ...baseOptions, fileType: 'image/jpeg' as const }),
-			THUMBNAIL_TIMEOUT_MS
-		);
+		const canvas = new OffscreenCanvas(width, height);
+		const ctx = canvas.getContext('2d')!;
+		ctx.drawImage(bitmap, 0, 0, width, height);
+		bitmap.close();
+
+		// Try WebP first (~30% smaller)
+		try {
+			return await canvas.convertToBlob({ type: 'image/webp', quality: 0.8 });
+		} catch {
+			// WebP encoding not supported, fall back to JPEG
+		}
+
+		return await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.8 });
 	} catch (error) {
 		console.warn('[Photo] Thumbnail generation failed:', error);
 		return undefined;
