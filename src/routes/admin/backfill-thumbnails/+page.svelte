@@ -52,8 +52,8 @@
 				}
 				const blob = await response.blob();
 
-				// Step 3: Generate WebP thumbnail client-side
-				const thumbnail = await generateThumbnail(blob);
+				// Step 3: Generate JPEG thumbnail client-side (throwOnError to surface real errors)
+				const thumbnail = await generateThumbnail(blob, { throwOnError: true });
 				if (!thumbnail) {
 					throw new Error('Thumbnail generation returned undefined');
 				}

@@ -66,11 +66,14 @@ export async function compressImage(
 }
 
 /**
- * Generate a small WebP thumbnail (~10-30KB) for the chore list.
- * WebP gives ~30-40% better compression than JPEG at same quality.
- * Returns undefined on failure — thumbnail is non-critical.
+ * Generate a small JPEG thumbnail (~15-50KB) for the chore list.
+ * Returns undefined on failure — thumbnail is non-critical during capture.
+ * Throws when throwOnError is true (used by backfill to surface real errors).
  */
-export async function generateThumbnail(file: File | Blob): Promise<Blob | undefined> {
+export async function generateThumbnail(
+	file: File | Blob,
+	opts?: { throwOnError?: boolean }
+): Promise<Blob | undefined> {
 	try {
 		// browser-image-compression needs a File, convert Blob if needed
 		// Default to image/jpeg if type is missing (e.g. blobs fetched from storage)
@@ -82,13 +85,14 @@ export async function generateThumbnail(file: File | Blob): Promise<Blob | undef
 			maxWidthOrHeight: 300,
 			maxSizeMB: 0.05,
 			preserveExif: false,
-			fileType: 'image/webp' as const,
+			fileType: 'image/jpeg' as const,
 			initialQuality: 0.8,
 			useWebWorker: true
 		};
 
 		return await withTimeout(imageCompression(inputFile, options), THUMBNAIL_TIMEOUT_MS);
 	} catch (error) {
+		if (opts?.throwOnError) throw error;
 		console.warn('[Photo] Thumbnail generation failed:', error);
 		return undefined;
 	}
