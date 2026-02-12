@@ -57,14 +57,24 @@ export const getPhotoUrl = query({
 });
 
 // Get chores that have a photo but no thumbnail (for backfill migration)
+// Only returns chores from the last 7 days (older photos are never displayed)
 export const getChoresNeedingThumbnails = query({
 	args: { accessKey: v.optional(v.string()) },
 	handler: async (ctx, { accessKey }) => {
 		const authorized = await checkAuth(ctx, accessKey);
 		if (!authorized) return [];
 
-		const allChores = await ctx.db.query('dailyChores').collect();
-		const needsThumbnail = allChores.filter(
+		// Only backfill photos from the last 7 days
+		const cutoff = new Date();
+		cutoff.setDate(cutoff.getDate() - 7);
+		const cutoffStr = cutoff.toISOString().split('T')[0];
+
+		const recentChores = await ctx.db
+			.query('dailyChores')
+			.withIndex('by_date', (q) => q.gte('date', cutoffStr))
+			.collect();
+
+		const needsThumbnail = recentChores.filter(
 			(c) => c.photoStorageId && !c.thumbnailStorageId
 		);
 

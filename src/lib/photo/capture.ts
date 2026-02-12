@@ -66,33 +66,42 @@ export async function compressImage(
 }
 
 /**
- * Generate a small JPEG thumbnail (~15-50KB) for the chore list.
+ * Generate a small thumbnail (~10-30KB) for the chore list.
+ * Tries WebP first (smaller), falls back to JPEG if WebP encoding fails.
  * Returns undefined on failure — thumbnail is non-critical during capture.
- * Throws when throwOnError is true (used by backfill to surface real errors).
  */
-export async function generateThumbnail(
-	file: File | Blob,
-	opts?: { throwOnError?: boolean }
-): Promise<Blob | undefined> {
+export async function generateThumbnail(file: File | Blob): Promise<Blob | undefined> {
+	// browser-image-compression needs a File, convert Blob if needed
+	// Default to image/jpeg if type is missing (e.g. blobs fetched from storage)
+	const mimeType = file.type || 'image/jpeg';
+	const inputFile =
+		file instanceof File ? file : new File([file], 'photo.jpg', { type: mimeType });
+
+	const baseOptions = {
+		maxWidthOrHeight: 300,
+		maxSizeMB: 0.05,
+		preserveExif: false,
+		initialQuality: 0.8,
+		useWebWorker: true
+	};
+
+	// Try WebP first (~30% smaller)
 	try {
-		// browser-image-compression needs a File, convert Blob if needed
-		// Default to image/jpeg if type is missing (e.g. blobs fetched from storage)
-		const mimeType = file.type || 'image/jpeg';
-		const inputFile =
-			file instanceof File ? file : new File([file], 'photo.jpg', { type: mimeType });
+		return await withTimeout(
+			imageCompression(inputFile, { ...baseOptions, fileType: 'image/webp' as const }),
+			THUMBNAIL_TIMEOUT_MS
+		);
+	} catch {
+		// WebP encoding failed, try JPEG fallback
+	}
 
-		const options = {
-			maxWidthOrHeight: 300,
-			maxSizeMB: 0.05,
-			preserveExif: false,
-			fileType: 'image/jpeg' as const,
-			initialQuality: 0.8,
-			useWebWorker: true
-		};
-
-		return await withTimeout(imageCompression(inputFile, options), THUMBNAIL_TIMEOUT_MS);
+	// Fallback to JPEG (universally compatible)
+	try {
+		return await withTimeout(
+			imageCompression(inputFile, { ...baseOptions, fileType: 'image/jpeg' as const }),
+			THUMBNAIL_TIMEOUT_MS
+		);
 	} catch (error) {
-		if (opts?.throwOnError) throw error;
 		console.warn('[Photo] Thumbnail generation failed:', error);
 		return undefined;
 	}
