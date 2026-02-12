@@ -73,8 +73,10 @@ export async function compressImage(
 export async function generateThumbnail(file: File | Blob): Promise<Blob | undefined> {
 	try {
 		// browser-image-compression needs a File, convert Blob if needed
+		// Default to image/jpeg if type is missing (e.g. blobs fetched from storage)
+		const mimeType = file.type || 'image/jpeg';
 		const inputFile =
-			file instanceof File ? file : new File([file], 'photo.jpg', { type: file.type });
+			file instanceof File ? file : new File([file], 'photo.jpg', { type: mimeType });
 
 		const options = {
 			maxWidthOrHeight: 300,
