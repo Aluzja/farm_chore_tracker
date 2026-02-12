@@ -8,6 +8,8 @@ export interface CompressionProgress {
 // Timeout for compression before giving up and using original
 const COMPRESSION_TIMEOUT_MS = 30000;
 
+const THUMBNAIL_TIMEOUT_MS = 10000;
+
 /**
  * Run a promise with a timeout
  */
@@ -60,5 +62,32 @@ export async function compressImage(
 		console.warn('[Photo] Compression failed, using original file:', error);
 		// Return original file as fallback
 		return file;
+	}
+}
+
+/**
+ * Generate a small WebP thumbnail (~10-30KB) for the chore list.
+ * WebP gives ~30-40% better compression than JPEG at same quality.
+ * Returns undefined on failure — thumbnail is non-critical.
+ */
+export async function generateThumbnail(file: File | Blob): Promise<Blob | undefined> {
+	try {
+		// browser-image-compression needs a File, convert Blob if needed
+		const inputFile =
+			file instanceof File ? file : new File([file], 'photo.jpg', { type: file.type });
+
+		const options = {
+			maxWidthOrHeight: 300,
+			maxSizeMB: 0.05,
+			preserveExif: false,
+			fileType: 'image/webp' as const,
+			initialQuality: 0.8,
+			useWebWorker: true
+		};
+
+		return await withTimeout(imageCompression(inputFile, options), THUMBNAIL_TIMEOUT_MS);
+	} catch (error) {
+		console.warn('[Photo] Thumbnail generation failed:', error);
+		return undefined;
 	}
 }

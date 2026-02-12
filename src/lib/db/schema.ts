@@ -31,6 +31,8 @@ export const DailyChoreSchema = z.object({
 	isAdHoc: z.boolean(),
 	requiresPhoto: z.boolean(),
 	photoStorageId: z.string().optional(), // Convex file storage ID
+	thumbnailStorageId: z.string().optional(), // Thumbnail storage ID
+	photoStatus: z.enum(['pending', 'uploaded']).optional(),
 	syncStatus: z.enum(['pending', 'synced', 'failed']),
 	lastModified: z.number()
 });
@@ -42,6 +44,8 @@ export const PhotoQueueEntrySchema = z.object({
 	id: z.string(), // UUID
 	dailyChoreClientId: z.string(), // Links to dailyChore
 	blob: z.instanceof(Blob), // Compressed image blob
+	thumbnailBlob: z.instanceof(Blob).optional(), // Thumbnail blob (~50KB)
+	thumbnailSize: z.number().optional(), // Thumbnail blob size
 	mimeType: z.literal('image/jpeg'),
 	originalSize: z.number(), // Pre-compression size
 	compressedSize: z.number(), // Post-compression size
@@ -49,7 +53,8 @@ export const PhotoQueueEntrySchema = z.object({
 	capturedBy: z.string(), // User display name
 	uploadStatus: z.enum(['pending', 'uploading', 'failed']),
 	retryCount: z.number().default(0),
-	lastAttemptAt: z.number().optional()
+	lastAttemptAt: z.number().optional(),
+	nextRetryAt: z.number().optional() // Exponential backoff: when to retry next
 });
 
 export type PhotoQueueEntry = z.infer<typeof PhotoQueueEntrySchema>;

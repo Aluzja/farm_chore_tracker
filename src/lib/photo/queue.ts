@@ -1,6 +1,7 @@
 import { browser } from '$app/environment';
 import { getDB } from '$lib/db/client';
 import type { PhotoQueueEntry } from '$lib/db/schema';
+import { PHOTO_BACKOFF_MS } from '$lib/sync/engine.svelte';
 
 /**
  * Add a photo to the upload queue.
@@ -45,7 +46,7 @@ export async function removePhoto(id: string): Promise<void> {
 }
 
 /**
- * Increment retry count and update status.
+ * Increment retry count and update status with exponential backoff.
  */
 export async function incrementPhotoRetry(id: string): Promise<number> {
 	if (!browser) return 0;
@@ -53,10 +54,15 @@ export async function incrementPhotoRetry(id: string): Promise<number> {
 	const entry = await db.get('photoQueue', id);
 	if (!entry) return 0;
 
+	const newRetryCount = entry.retryCount + 1;
+	const backoffIndex = Math.min(newRetryCount - 1, PHOTO_BACKOFF_MS.length - 1);
+	const backoffMs = PHOTO_BACKOFF_MS[backoffIndex];
+
 	const updated: PhotoQueueEntry = {
 		...entry,
-		retryCount: entry.retryCount + 1,
-		lastAttemptAt: Date.now()
+		retryCount: newRetryCount,
+		lastAttemptAt: Date.now(),
+		nextRetryAt: Date.now() + backoffMs
 	};
 	await db.put('photoQueue', updated);
 	return updated.retryCount;

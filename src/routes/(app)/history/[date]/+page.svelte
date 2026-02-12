@@ -152,7 +152,11 @@
 
 									{#if chore.photoStorageId}
 										<div class="chore-photo">
-											<PhotoThumbnail choreId={chore.clientId} storageId={chore.photoStorageId} />
+											<PhotoThumbnail
+												choreId={chore.clientId}
+												storageId={chore.photoStorageId}
+												thumbnailStorageId={chore.thumbnailStorageId}
+											/>
 										</div>
 									{/if}
 								</li>

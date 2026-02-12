@@ -23,8 +23,11 @@ import { uploadPhoto } from '$lib/photo/upload';
 import { getDailyChore, getDailyChoresByStatus, putDailyChore } from '$lib/db/operations';
 import type { Mutation } from '$lib/db/schema';
 
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 5;
 const SYNC_INTERVAL_MS = 30_000; // 30 seconds when online and visible
+
+// Exponential backoff schedule for photo retries (in ms)
+export const PHOTO_BACKOFF_MS = [5_000, 15_000, 45_000, 120_000, 300_000]; // 5s, 15s, 45s, 2min, 5min
 
 // Global reference to Convex client, set by layout component
 let convexClient: ConvexClient | null = null;
@@ -53,6 +56,7 @@ class SyncEngine {
 	lastError = $state<string | null>(null);
 
 	// Photo queue state
+	isUploadingPhotos = $state(false);
 	pendingPhotoCount = $state(0);
 	failedPhotoCount = $state(0);
 	currentPhotoUpload = $state<string | null>(null);
@@ -61,10 +65,14 @@ class SyncEngine {
 	private initialized = false;
 
 	// Bound event handlers for cleanup
-	private handleOnline = () => this.processQueue();
+	private handleOnline = () => {
+		this.processQueue();
+		this.autoRetryFailedPhotos();
+	};
 	private handleVisibility = () => {
 		if (document.visibilityState === 'visible' && connectionStatus.isOnline) {
 			this.processQueue();
+			this.processPhotoQueue();
 		}
 	};
 
@@ -99,6 +107,7 @@ class SyncEngine {
 		this.syncIntervalId = setInterval(() => {
 			if (connectionStatus.isOnline && document.visibilityState === 'visible') {
 				this.processQueue();
+				this.processPhotoQueue();
 			}
 		}, SYNC_INTERVAL_MS);
 	}
@@ -147,9 +156,6 @@ class SyncEngine {
 				}
 			}
 
-			// Process photo queue after mutations
-			await this.processPhotoQueue();
-
 			this.lastSyncedAt = Date.now();
 		} catch (error) {
 			this.lastError = error instanceof Error ? error.message : 'Sync failed';
@@ -157,48 +163,65 @@ class SyncEngine {
 		} finally {
 			this.isSyncing = false;
 		}
+
+		// Process photo queue independently — never blocks mutation syncing
+		this.processPhotoQueue();
 	}
 
 	async processPhotoQueue(): Promise<void> {
+		if (this.isUploadingPhotos) return;
+
 		const client = getConvexClient();
 		if (!client || !connectionStatus.isOnline) return;
 
-		const photos = await getPhotoQueue();
-		this.pendingPhotoCount = photos.filter((p) => p.uploadStatus !== 'failed').length;
+		this.isUploadingPhotos = true;
+		try {
+			const photos = await getPhotoQueue();
+			this.pendingPhotoCount = photos.filter((p) => p.uploadStatus !== 'failed').length;
 
-		// Process sequentially (one at a time)
-		for (const photo of photos) {
-			if (photo.uploadStatus === 'failed') continue;
+			// Process sequentially (one at a time)
+			for (const photo of photos) {
+				if (photo.uploadStatus === 'failed') continue;
 
-			this.currentPhotoUpload = photo.id;
-			await markPhotoUploading(photo.id);
+				// Skip photos not yet ready for retry (exponential backoff)
+				if (photo.nextRetryAt && Date.now() < photo.nextRetryAt) continue;
 
-			try {
-				await uploadPhoto(
-					client,
-					photo.blob,
-					photo.dailyChoreClientId,
-					photo.capturedAt,
-					photo.capturedBy
-				);
-				await removePhoto(photo.id);
-				this.pendingPhotoCount = Math.max(0, this.pendingPhotoCount - 1);
-			} catch (error) {
-				const retryCount = await incrementPhotoRetry(photo.id);
-				if (retryCount >= MAX_RETRIES) {
-					await markPhotoFailed(photo.id);
-					this.failedPhotoCount += 1;
-					console.error(`[Sync] Photo ${photo.id} failed after ${MAX_RETRIES} retries`, error);
-				} else {
-					console.warn(
-						`[Sync] Photo ${photo.id} failed, retry ${retryCount}/${MAX_RETRIES}`,
-						error
+				this.currentPhotoUpload = photo.id;
+				await markPhotoUploading(photo.id);
+
+				try {
+					await uploadPhoto(
+						client,
+						photo.blob,
+						photo.dailyChoreClientId,
+						photo.capturedAt,
+						photo.capturedBy,
+						photo.thumbnailBlob
 					);
+					await removePhoto(photo.id);
+					this.pendingPhotoCount = Math.max(0, this.pendingPhotoCount - 1);
+				} catch (error) {
+					const retryCount = await incrementPhotoRetry(photo.id);
+					if (retryCount >= MAX_RETRIES) {
+						await markPhotoFailed(photo.id);
+						this.failedPhotoCount += 1;
+						console.error(
+							`[Sync] Photo ${photo.id} failed after ${MAX_RETRIES} retries`,
+							error
+						);
+					} else {
+						console.warn(
+							`[Sync] Photo ${photo.id} failed, retry ${retryCount}/${MAX_RETRIES}`,
+							error
+						);
+					}
 				}
 			}
-		}
 
-		this.currentPhotoUpload = null;
+			this.currentPhotoUpload = null;
+		} finally {
+			this.isUploadingPhotos = false;
+		}
 	}
 
 	private async applyMutation(mutation: Mutation): Promise<void> {
@@ -252,6 +275,7 @@ class SyncEngine {
 						isCompleted: boolean;
 						completedAt?: string;
 						completedBy?: string;
+						photoStatus?: string;
 						lastModified: number;
 					}),
 					accessKey
@@ -306,6 +330,17 @@ class SyncEngine {
 		this.failedPhotoCount = 0;
 		await this.processPhotoQueue();
 		return count;
+	}
+
+	/** Auto-retry failed photos when coming back online */
+	private async autoRetryFailedPhotos(): Promise<void> {
+		const failedCount = await getFailedPhotoCount();
+		if (failedCount === 0) return;
+
+		const { resetFailedPhotos } = await import('$lib/photo/queue');
+		await resetFailedPhotos();
+		this.failedPhotoCount = 0;
+		this.processPhotoQueue();
 	}
 
 	destroy() {

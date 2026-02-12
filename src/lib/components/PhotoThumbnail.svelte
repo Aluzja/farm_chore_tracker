@@ -9,21 +9,25 @@
 	interface Props {
 		choreId: string;
 		storageId: string;
+		thumbnailStorageId?: string;
 	}
 
-	const { choreId, storageId }: Props = $props();
+	const { choreId, storageId, thumbnailStorageId }: Props = $props();
+
+	// Use thumbnail for the list view if available, fall back to full image
+	const displayStorageId = $derived(thumbnailStorageId ?? storageId);
 
 	// Query for the remote URL
 	const photoUrlQuery = $derived(
 		useQuery(api.photos.getPhotoUrl, {
-			storageId: storageId as Id<'_storage'>,
+			storageId: displayStorageId as Id<'_storage'>,
 			accessKey: getStoredAccessKey() ?? undefined
 		})
 	);
 
 	// Create a promise that loads the image (from cache or network)
 	async function loadImage(remoteUrl: string): Promise<string> {
-		const blobUrl = await getOrCacheImage(storageId, remoteUrl);
+		const blobUrl = await getOrCacheImage(displayStorageId, remoteUrl);
 		if (!blobUrl) {
 			throw new Error('Failed to load image');
 		}

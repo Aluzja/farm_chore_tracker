@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { compressImage, type CompressionProgress } from '$lib/photo/capture';
+	import { compressImage, generateThumbnail, type CompressionProgress } from '$lib/photo/capture';
 	import { enqueuePhoto } from '$lib/photo/queue';
 	import { dailyChoreStore } from '$lib/stores/dailyChores.svelte';
 	import { getCurrentUser } from '$lib/auth/user-context.svelte';
@@ -14,6 +14,7 @@
 
 	let previewUrl = $state<string | null>(null);
 	let capturedBlob = $state<Blob | null>(null);
+	let capturedThumbnail = $state<Blob | undefined>(undefined);
 	let originalSize = $state(0);
 	let isProcessing = $state(false);
 	let isSubmitting = $state(false);
@@ -49,7 +50,10 @@
 
 		try {
 			originalSize = file.size;
-			const compressedBlob = await compressImage(file, handleProgress);
+			const [compressedBlob, thumbnail] = await Promise.all([
+				compressImage(file, handleProgress),
+				generateThumbnail(file)
+			]);
 
 			// Create preview URL
 			if (previewUrl) {
@@ -57,6 +61,7 @@
 			}
 			previewUrl = URL.createObjectURL(compressedBlob);
 			capturedBlob = compressedBlob;
+			capturedThumbnail = thumbnail;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to process photo';
 		} finally {
@@ -91,6 +96,8 @@
 				id: crypto.randomUUID(),
 				dailyChoreClientId: chore._id,
 				blob: capturedBlob,
+				thumbnailBlob: capturedThumbnail,
+				thumbnailSize: capturedThumbnail?.size,
 				mimeType: 'image/jpeg',
 				originalSize,
 				compressedSize: capturedBlob.size,

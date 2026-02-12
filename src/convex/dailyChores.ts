@@ -91,6 +91,7 @@ export const toggleComplete = mutation({
 		isCompleted: v.boolean(),
 		completedAt: v.optional(v.string()),
 		completedBy: v.optional(v.string()),
+		photoStatus: v.optional(v.string()),
 		lastModified: v.number(),
 		accessKey: v.optional(v.string())
 	},

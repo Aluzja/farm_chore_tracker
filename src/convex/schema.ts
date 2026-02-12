@@ -58,8 +58,10 @@ export default defineSchema({
 		isAdHoc: v.boolean(), // true for today-only chores
 		requiresPhoto: v.boolean(), // Copied from master on clone (defaults false)
 		photoStorageId: v.optional(v.id('_storage')), // Convex file storage ID
+		thumbnailStorageId: v.optional(v.id('_storage')), // Thumbnail for bandwidth savings
 		photoCapturedAt: v.optional(v.number()), // When photo was taken
 		photoCapturedBy: v.optional(v.string()), // Who took the photo
+		photoStatus: v.optional(v.string()), // 'pending' | 'uploaded'
 		lastModified: v.number()
 	})
 		.index('by_date', ['date'])

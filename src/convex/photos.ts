@@ -16,6 +16,7 @@ export const attachPhotoToChore = mutation({
 	args: {
 		dailyChoreClientId: v.string(),
 		storageId: v.id('_storage'),
+		thumbnailStorageId: v.optional(v.id('_storage')),
 		capturedAt: v.number(),
 		capturedBy: v.string(),
 		accessKey: v.optional(v.string())
@@ -34,8 +35,10 @@ export const attachPhotoToChore = mutation({
 
 		await ctx.db.patch(chore._id, {
 			photoStorageId: args.storageId,
+			thumbnailStorageId: args.thumbnailStorageId,
 			photoCapturedAt: args.capturedAt,
 			photoCapturedBy: args.capturedBy,
+			photoStatus: 'uploaded',
 			lastModified: Date.now()
 		});
 
@@ -50,6 +53,56 @@ export const getPhotoUrl = query({
 		const authorized = await checkAuth(ctx, accessKey);
 		if (!authorized) return null;
 		return await ctx.storage.getUrl(storageId);
+	}
+});
+
+// Get chores that have a photo but no thumbnail (for backfill migration)
+export const getChoresNeedingThumbnails = query({
+	args: { accessKey: v.optional(v.string()) },
+	handler: async (ctx, { accessKey }) => {
+		const authorized = await checkAuth(ctx, accessKey);
+		if (!authorized) return [];
+
+		const allChores = await ctx.db.query('dailyChores').collect();
+		const needsThumbnail = allChores.filter(
+			(c) => c.photoStorageId && !c.thumbnailStorageId
+		);
+
+		// Return just the fields needed for backfill
+		return needsThumbnail.map((c) => ({
+			clientId: c.clientId,
+			photoStorageId: c.photoStorageId!,
+			date: c.date,
+			text: c.text
+		}));
+	}
+});
+
+// Attach a backfilled thumbnail to a chore (admin migration)
+export const attachThumbnail = mutation({
+	args: {
+		dailyChoreClientId: v.string(),
+		thumbnailStorageId: v.id('_storage'),
+		accessKey: v.optional(v.string())
+	},
+	handler: async (ctx, { accessKey, dailyChoreClientId, thumbnailStorageId }) => {
+		await requireAuth(ctx, accessKey);
+
+		const chore = await ctx.db
+			.query('dailyChores')
+			.withIndex('by_client_id', (q) => q.eq('clientId', dailyChoreClientId))
+			.first();
+
+		if (!chore) {
+			throw new Error(`Daily chore not found: ${dailyChoreClientId}`);
+		}
+
+		await ctx.db.patch(chore._id, {
+			thumbnailStorageId,
+			lastModified: Date.now()
+		});
+
+		return { success: true };
 	}
 });
 

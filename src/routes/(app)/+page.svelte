@@ -6,7 +6,7 @@
 	import { connectionStatus } from '$lib/sync/status.svelte';
 	import { formatTimeSlot, getTodayDayName } from '$lib/utils/date';
 	import { getCurrentUser } from '$lib/auth/user-context.svelte';
-	import { compressImage, type CompressionProgress } from '$lib/photo/capture';
+	import { compressImage, generateThumbnail, type CompressionProgress } from '$lib/photo/capture';
 	import { enqueuePhoto } from '$lib/photo/queue';
 	import Fireworks from '$lib/components/Fireworks.svelte';
 	import PhotoThumbnail from '$lib/components/PhotoThumbnail.svelte';
@@ -134,6 +134,7 @@
 	let captureChoreId = $state<string | null>(null);
 	let capturePreviewUrl = $state<string | null>(null);
 	let captureBlob = $state<Blob | null>(null);
+	let captureThumbnail = $state<Blob | undefined>(undefined);
 	let captureOriginalSize = $state(0);
 	let captureProcessing = $state(false);
 	let captureSubmitting = $state(false);
@@ -171,13 +172,17 @@
 
 		try {
 			captureOriginalSize = file.size;
-			const compressed = await compressImage(file, (p: CompressionProgress) => {
-				captureProgress = Math.round(p.percent);
-			});
+			const [compressed, thumbnail] = await Promise.all([
+				compressImage(file, (p: CompressionProgress) => {
+					captureProgress = Math.round(p.percent);
+				}),
+				generateThumbnail(file)
+			]);
 
 			if (capturePreviewUrl) URL.revokeObjectURL(capturePreviewUrl);
 			capturePreviewUrl = URL.createObjectURL(compressed);
 			captureBlob = compressed;
+			captureThumbnail = thumbnail;
 		} catch (e) {
 			captureError = e instanceof Error ? e.message : 'Failed to process photo';
 		} finally {
@@ -199,6 +204,8 @@
 				id: crypto.randomUUID(),
 				dailyChoreClientId: captureChore._id,
 				blob: captureBlob,
+				thumbnailBlob: captureThumbnail,
+				thumbnailSize: captureThumbnail?.size,
 				mimeType: 'image/jpeg',
 				originalSize: captureOriginalSize,
 				compressedSize: captureBlob.size,
@@ -207,7 +214,9 @@
 				uploadStatus: 'pending'
 			});
 
-			await dailyChoreStore.toggleComplete(captureChoreId, user);
+			await dailyChoreStore.toggleComplete(captureChoreId, user, {
+				photoStatus: 'pending'
+			});
 
 			if (connectionStatus.isOnline) {
 				syncEngine.processQueue();
@@ -238,6 +247,7 @@
 		captureChoreId = null;
 		capturePreviewUrl = null;
 		captureBlob = null;
+		captureThumbnail = undefined;
 		captureOriginalSize = 0;
 		captureProcessing = false;
 		captureSubmitting = false;
@@ -423,8 +433,13 @@
 															<PhotoThumbnail
 																choreId={chore._id}
 																storageId={chore.photoStorageId}
+																thumbnailStorageId={chore.thumbnailStorageId}
 															/>
 														{/key}
+													{:else if chore.isCompleted && chore.photoStatus === 'pending'}
+														<div class="photo-pending">
+															<span class="photo-pending-spinner"></span>
+														</div>
 													{/if}
 
 													<SyncStatusBadge status={chore.syncStatus} />
@@ -994,6 +1009,30 @@
 		background: #dbeafe;
 		color: #1d4ed8;
 		margin-left: 0.5rem;
+	}
+
+	/* Photo pending upload indicator */
+	.photo-pending {
+		flex-shrink: 0;
+		width: 3rem;
+		height: 3rem;
+		border-radius: 0.375rem;
+		border: 1px solid #e5e7eb;
+		background: #f9fafb;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		order: 0.5;
+		margin-left: auto;
+	}
+
+	.photo-pending-spinner {
+		width: 1rem;
+		height: 1rem;
+		border: 2px solid #e5e7eb;
+		border-top-color: #3b82f6;
+		border-radius: 50%;
+		animation: spin 1s linear infinite;
 	}
 
 	/* Photo thumbnail and sync badge ordering for thumb-friendly layout */

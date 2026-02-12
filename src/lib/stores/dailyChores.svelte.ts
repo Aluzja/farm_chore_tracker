@@ -110,6 +110,8 @@ class DailyChoreStore {
 			isAdHoc: boolean;
 			requiresPhoto: boolean;
 			photoStorageId?: string;
+			thumbnailStorageId?: string;
+			photoStatus?: string;
 			lastModified: number;
 		}>
 	): Promise<void> {
@@ -139,6 +141,8 @@ class DailyChoreStore {
 					isAdHoc: sc.isAdHoc,
 					requiresPhoto: sc.requiresPhoto,
 					photoStorageId: sc.photoStorageId,
+					thumbnailStorageId: sc.thumbnailStorageId,
+					photoStatus: sc.photoStatus as DailyChore['photoStatus'],
 					syncStatus: 'synced' as const,
 					lastModified: sc.lastModified
 				});
@@ -183,7 +187,11 @@ class DailyChoreStore {
 	}
 
 	// Toggle completion
-	async toggleComplete(id: string, userName: string): Promise<void> {
+	async toggleComplete(
+		id: string,
+		userName: string,
+		extra?: Partial<Pick<DailyChore, 'photoStatus'>>
+	): Promise<void> {
 		const chore = this.items.find((c) => c._id === id);
 		if (!chore) return;
 
@@ -194,6 +202,7 @@ class DailyChoreStore {
 			isCompleted: !chore.isCompleted,
 			completedAt: !chore.isCompleted ? nowIso : undefined,
 			completedBy: !chore.isCompleted ? userName : undefined,
+			...extra,
 			syncStatus: 'pending',
 			lastModified: now
 		};
@@ -210,6 +219,7 @@ class DailyChoreStore {
 			isCompleted: updated.isCompleted,
 			completedAt: updated.completedAt,
 			completedBy: updated.completedBy,
+			...extra,
 			lastModified: updated.lastModified
 		});
 	}
