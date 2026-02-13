@@ -34,9 +34,11 @@ export async function compressImage(
 	onProgress?: (progress: CompressionProgress) => void
 ): Promise<Blob> {
 	const fileSizeMB = file.size / 1024 / 1024;
+	const isJpeg = file.type === 'image/jpeg';
 
-	// If file is already small enough, skip compression
-	if (fileSizeMB <= 2) {
+	// Skip only if already a small JPEG — non-JPEG formats (HEIC, PNG)
+	// must always be converted to ensure universal browser compatibility
+	if (isJpeg && fileSizeMB <= 2) {
 		onProgress?.({ percent: 100, usingMainThread: false });
 		return file;
 	}
