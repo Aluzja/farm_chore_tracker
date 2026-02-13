@@ -55,7 +55,9 @@
 				// Step 3: Generate thumbnail client-side (WebP with JPEG fallback)
 				const thumbnail = await generateThumbnail(blob);
 				if (!thumbnail) {
-					throw new Error('Thumbnail generation returned undefined');
+					throw new Error(
+						`Thumbnail failed — blob: ${blob.size} bytes, type: "${blob.type}"`
+					);
 				}
 
 				// Step 4: Upload thumbnail to Convex storage
