@@ -64,34 +64,75 @@ export async function compressImage(
 }
 
 /**
+ * Draw an image source onto an OffscreenCanvas at thumbnail size and encode.
+ * Tries WebP first, falls back to JPEG.
+ */
+async function drawThumbnail(
+	source: ImageBitmap | HTMLImageElement,
+	width: number,
+	height: number
+): Promise<Blob> {
+	const canvas = new OffscreenCanvas(width, height);
+	const ctx = canvas.getContext('2d')!;
+	ctx.drawImage(source, 0, 0, width, height);
+
+	try {
+		return await canvas.convertToBlob({ type: 'image/webp', quality: 0.8 });
+	} catch {
+		return await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.8 });
+	}
+}
+
+/**
  * Generate a small thumbnail (~10-30KB) for the chore list.
- * Uses createImageBitmap + OffscreenCanvas — works directly with blobs
- * without data URL conversion (which fails for cross-origin fetched blobs).
- * Tries WebP first (smaller), falls back to JPEG if WebP encoding fails.
- * Returns undefined on failure — thumbnail is non-critical during capture.
+ * Primary path uses createImageBitmap (fast, no DOM needed).
+ * Falls back to <img> + blob URL for formats createImageBitmap can't decode
+ * (e.g. HEIC on browsers with native HEIC display support).
+ * Returns undefined on failure — thumbnail is non-critical.
  */
 export async function generateThumbnail(file: File | Blob): Promise<Blob | undefined> {
+	// Primary: createImageBitmap (works directly with blobs, no data URL conversion)
 	try {
 		const bitmap = await createImageBitmap(file);
 		const scale = Math.min(300 / bitmap.width, 300 / bitmap.height, 1);
-		const width = Math.round(bitmap.width * scale);
-		const height = Math.round(bitmap.height * scale);
-
-		const canvas = new OffscreenCanvas(width, height);
-		const ctx = canvas.getContext('2d')!;
-		ctx.drawImage(bitmap, 0, 0, width, height);
+		const result = await drawThumbnail(
+			bitmap,
+			Math.round(bitmap.width * scale),
+			Math.round(bitmap.height * scale)
+		);
 		bitmap.close();
+		return result;
+	} catch {
+		// createImageBitmap can't decode this format, try fallback
+	}
 
-		// Try WebP first (~30% smaller)
-		try {
-			return await canvas.convertToBlob({ type: 'image/webp', quality: 0.8 });
-		} catch {
-			// WebP encoding not supported, fall back to JPEG
-		}
-
-		return await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.8 });
+	// Fallback: <img> element with blob URL (supports more formats on some platforms)
+	try {
+		const img = await loadImageFromBlob(file);
+		const scale = Math.min(300 / img.naturalWidth, 300 / img.naturalHeight, 1);
+		return await drawThumbnail(
+			img,
+			Math.round(img.naturalWidth * scale),
+			Math.round(img.naturalHeight * scale)
+		);
 	} catch (error) {
 		console.warn('[Photo] Thumbnail generation failed:', error);
 		return undefined;
 	}
+}
+
+function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
+	return new Promise((resolve, reject) => {
+		const url = URL.createObjectURL(blob);
+		const img = new Image();
+		img.onload = () => {
+			URL.revokeObjectURL(url);
+			resolve(img);
+		};
+		img.onerror = () => {
+			URL.revokeObjectURL(url);
+			reject(new Error('Image decode failed'));
+		};
+		img.src = url;
+	});
 }
