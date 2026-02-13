@@ -116,6 +116,37 @@ export const attachThumbnail = mutation({
 	}
 });
 
+// Clear broken photo references from a chore (empty storage entries)
+export const clearBrokenPhoto = mutation({
+	args: {
+		dailyChoreClientId: v.string(),
+		accessKey: v.optional(v.string())
+	},
+	handler: async (ctx, { accessKey, dailyChoreClientId }) => {
+		await requireAuth(ctx, accessKey);
+
+		const chore = await ctx.db
+			.query('dailyChores')
+			.withIndex('by_client_id', (q) => q.eq('clientId', dailyChoreClientId))
+			.first();
+
+		if (!chore) {
+			throw new Error(`Daily chore not found: ${dailyChoreClientId}`);
+		}
+
+		await ctx.db.patch(chore._id, {
+			photoStorageId: undefined,
+			thumbnailStorageId: undefined,
+			photoCapturedAt: undefined,
+			photoCapturedBy: undefined,
+			photoStatus: undefined,
+			lastModified: Date.now()
+		});
+
+		return { success: true };
+	}
+});
+
 // Get photo URL for a specific daily chore
 export const getPhotoUrlByChore = query({
 	args: { dailyChoreClientId: v.string(), accessKey: v.optional(v.string()) },

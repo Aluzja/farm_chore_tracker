@@ -18,6 +18,7 @@
 	let isRunning = $state(false);
 	let processed = $state(0);
 	let succeeded = $state(0);
+	let cleaned = $state(0);
 	let failed = $state(0);
 	let currentChore = $state<string | null>(null);
 	let errors = $state<string[]>([]);
@@ -28,6 +29,7 @@
 		isRunning = true;
 		processed = 0;
 		succeeded = 0;
+		cleaned = 0;
 		failed = 0;
 		errors = [];
 
@@ -52,7 +54,18 @@
 				}
 				const blob = await response.blob();
 
-				// Step 3: Generate thumbnail client-side (WebP with JPEG fallback)
+				// Step 3: Check for empty storage entries (broken uploads)
+				if (blob.size === 0) {
+					await client.mutation(api.photos.clearBrokenPhoto, {
+						dailyChoreClientId: chore.clientId,
+						accessKey
+					});
+					cleaned += 1;
+					processed += 1;
+					continue;
+				}
+
+				// Step 4: Generate thumbnail client-side (WebP with JPEG fallback)
 				const thumbnail = await generateThumbnail(blob);
 				if (!thumbnail) {
 					throw new Error(
@@ -128,8 +141,14 @@
 					</div>
 					<div class="stat success">
 						<span class="stat-value">{succeeded}</span>
-						<span class="stat-label">succeeded</span>
+						<span class="stat-label">thumbnailed</span>
 					</div>
+					{#if cleaned > 0}
+						<div class="stat warning">
+							<span class="stat-value">{cleaned}</span>
+							<span class="stat-label">empty (cleaned)</span>
+						</div>
+					{/if}
 					{#if failed > 0}
 						<div class="stat error">
 							<span class="stat-value">{failed}</span>
@@ -247,6 +266,14 @@
 
 	.stat.success {
 		background: #f0fdf4;
+	}
+
+	.stat.warning {
+		background: #fffbeb;
+	}
+
+	.stat.warning .stat-value {
+		color: #d97706;
 	}
 
 	.stat.error {
