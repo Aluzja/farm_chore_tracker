@@ -370,9 +370,13 @@
 													<button
 														class="toggle-button"
 														class:checked={chore.isCompleted}
+														class:locked={chore.isCompleted && chore.completedBy !== getCurrentUser()}
+														disabled={chore.isCompleted && chore.completedBy !== getCurrentUser()}
 														onclick={() => handleChoreAction(chore)}
 														aria-label={chore.isCompleted
-															? 'Mark incomplete'
+															? chore.completedBy !== getCurrentUser()
+																? `Completed by ${chore.completedBy}`
+																: 'Mark incomplete'
 															: chore.requiresPhoto
 																? 'Take photo to complete'
 																: 'Mark complete'}
@@ -907,6 +911,11 @@
 	.toggle-button.checked {
 		background: #22c55e;
 		border-color: #22c55e;
+	}
+
+	.toggle-button.locked {
+		opacity: 0.5;
+		cursor: not-allowed;
 	}
 
 	.check-icon {
