@@ -1,6 +1,6 @@
 import { browser } from '$app/environment';
 import { getDB } from '$lib/db/client';
-import type { PhotoQueueEntry } from '$lib/db/schema';
+import type { DailyChore, PhotoQueueEntry } from '$lib/db/schema';
 import { PHOTO_BACKOFF_MS } from '$lib/sync/engine.svelte';
 
 /**
@@ -107,6 +107,37 @@ export async function getFailedPhotoCount(): Promise<number> {
 	const db = await getDB();
 	const all = await db.getAllFromIndex('photoQueue', 'by-upload-status', 'failed');
 	return all.length;
+}
+
+/**
+ * Get all photos in the queue with chore name for display.
+ */
+export async function getPhotoQueueWithDetails(): Promise<
+	Array<PhotoQueueEntry & { choreName?: string }>
+> {
+	if (!browser) return [];
+	const db = await getDB();
+	const photos = await db.getAllFromIndex('photoQueue', 'by-captured-at');
+	const enriched = [];
+	for (const photo of photos) {
+		const chore = (await db.get('dailyChores', photo.dailyChoreClientId)) as
+			| DailyChore
+			| undefined;
+		enriched.push({ ...photo, choreName: chore?.text });
+	}
+	return enriched;
+}
+
+/**
+ * Remove a photo entry from the queue. Returns the dailyChoreClientId for cleanup.
+ */
+export async function removePhotoEntry(id: string): Promise<string | null> {
+	if (!browser) return null;
+	const db = await getDB();
+	const entry = await db.get('photoQueue', id);
+	if (!entry) return null;
+	await db.delete('photoQueue', id);
+	return entry.dailyChoreClientId;
 }
 
 /**

@@ -147,6 +147,34 @@ export const clearBrokenPhoto = mutation({
 	}
 });
 
+// Clear photoStatus on a chore when photo upload permanently fails
+// Only clears photoStatus (not photoStorageId) since no blob was ever uploaded
+export const clearPhotoStatus = mutation({
+	args: {
+		dailyChoreClientId: v.string(),
+		accessKey: v.optional(v.string())
+	},
+	handler: async (ctx, { accessKey, dailyChoreClientId }) => {
+		await requireAuth(ctx, accessKey);
+
+		const chore = await ctx.db
+			.query('dailyChores')
+			.withIndex('by_client_id', (q) => q.eq('clientId', dailyChoreClientId))
+			.first();
+
+		if (!chore) return { success: true };
+
+		if (chore.photoStatus === 'pending') {
+			await ctx.db.patch(chore._id, {
+				photoStatus: undefined,
+				lastModified: Date.now()
+			});
+		}
+
+		return { success: true };
+	}
+});
+
 // Get photo URL for a specific daily chore
 export const getPhotoUrlByChore = query({
 	args: { dailyChoreClientId: v.string(), accessKey: v.optional(v.string()) },

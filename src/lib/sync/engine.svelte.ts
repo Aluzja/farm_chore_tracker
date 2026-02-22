@@ -205,6 +205,7 @@ class SyncEngine {
 					if (retryCount >= MAX_RETRIES) {
 						await markPhotoFailed(photo.id);
 						this.failedPhotoCount += 1;
+						await this.clearChorePhotoStatus(photo.dailyChoreClientId);
 						console.error(
 							`[Sync] Photo ${photo.id} failed after ${MAX_RETRIES} retries`,
 							error
@@ -221,6 +222,24 @@ class SyncEngine {
 			this.currentPhotoUpload = null;
 		} finally {
 			this.isUploadingPhotos = false;
+		}
+	}
+
+	private async clearChorePhotoStatus(dailyChoreClientId: string): Promise<void> {
+		try {
+			const { dailyChoreStore } = await import('$lib/stores/dailyChores.svelte');
+			await dailyChoreStore.clearPhotoStatus(dailyChoreClientId);
+
+			const client = getConvexClient();
+			if (client && connectionStatus.isOnline) {
+				const accessKey = getStoredAccessKey() ?? undefined;
+				await client.mutation(api.photos.clearPhotoStatus, {
+					dailyChoreClientId,
+					accessKey
+				});
+			}
+		} catch (err) {
+			console.warn('[Sync] Failed to clear photoStatus:', dailyChoreClientId, err);
 		}
 	}
 

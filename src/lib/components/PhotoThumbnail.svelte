@@ -10,9 +10,10 @@
 		choreId: string;
 		storageId: string;
 		thumbnailStorageId?: string;
+		onclear?: () => void;
 	}
 
-	const { choreId, storageId, thumbnailStorageId }: Props = $props();
+	const { choreId, storageId, thumbnailStorageId, onclear }: Props = $props();
 
 	// Use thumbnail for the list view if available, fall back to full image
 	const displayStorageId = $derived(thumbnailStorageId ?? storageId);
@@ -23,6 +24,13 @@
 			storageId: displayStorageId as Id<'_storage'>,
 			accessKey: getStoredAccessKey() ?? undefined
 		})
+	);
+
+	// Detect broken reference: query resolved but storage blob is gone
+	const isBrokenReference = $derived(
+		photoUrlQuery.isLoading === false &&
+			photoUrlQuery.error === undefined &&
+			photoUrlQuery.data === null
 	);
 
 	// Create a promise that loads the image (from cache or network)
@@ -42,11 +50,19 @@
 		if (photoUrlQuery.data) {
 			return loadImage(photoUrlQuery.data);
 		}
+		if (isBrokenReference) {
+			return Promise.reject(new Error('Photo not found'));
+		}
 		return null;
 	});
 
 	function handleClick() {
 		pushState(`/photo-view/${choreId}`, { photoChoreId: choreId });
+	}
+
+	function handleClear(event: MouseEvent) {
+		event.stopPropagation();
+		onclear?.();
 	}
 </script>
 
@@ -57,13 +73,32 @@
 		{:then url}
 			<img src={url} alt="Chore completion" />
 		{:catch}
-			<span class="thumbnail-placeholder">
-				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-					<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-					<circle cx="8.5" cy="8.5" r="1.5"></circle>
-					<polyline points="21 15 16 10 5 21"></polyline>
-				</svg>
-			</span>
+			{#if onclear}
+				<span
+					class="thumbnail-broken"
+					role="button"
+					tabindex="0"
+					onclick={handleClear}
+					onkeydown={(e) => {
+						if (e.key === 'Enter') onclear?.();
+					}}
+					aria-label="Photo unavailable - tap to clear"
+					title="Photo unavailable - tap to clear"
+				>
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<line x1="18" y1="6" x2="6" y2="18"></line>
+						<line x1="6" y1="6" x2="18" y2="18"></line>
+					</svg>
+				</span>
+			{:else}
+				<span class="thumbnail-placeholder">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+						<circle cx="8.5" cy="8.5" r="1.5"></circle>
+						<polyline points="21 15 16 10 5 21"></polyline>
+					</svg>
+				</span>
+			{/if}
 		{/await}
 	{:else}
 		<span class="thumbnail-loading"></span>
@@ -112,6 +147,26 @@
 	.thumbnail-placeholder svg {
 		width: 1.25rem;
 		height: 1.25rem;
+	}
+
+	.thumbnail-broken {
+		color: #dc2626;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		height: 100%;
+		background: #fef2f2;
+	}
+
+	.thumbnail-broken svg {
+		width: 1.25rem;
+		height: 1.25rem;
+	}
+
+	.thumbnail-broken:hover {
+		background: #fee2e2;
 	}
 
 	@keyframes spin {

@@ -1,15 +1,18 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { fade, slide } from 'svelte/transition';
 	import { dailyChoreStore } from '$lib/stores/dailyChores.svelte';
-	import { syncEngine } from '$lib/sync/engine.svelte';
+	import { syncEngine, getConvexClient } from '$lib/sync/engine.svelte';
 	import { connectionStatus } from '$lib/sync/status.svelte';
+	import { getStoredAccessKey } from '$lib/auth/access-key';
+	import { api } from '../../convex/_generated/api';
+	import { putDailyChore } from '$lib/db/operations';
 	import { formatTimeSlot, getTodayDayName } from '$lib/utils/date';
 	import { getCurrentUser } from '$lib/auth/user-context.svelte';
 	import { compressImage, generateThumbnail, type CompressionProgress } from '$lib/photo/capture';
 	import { enqueuePhoto } from '$lib/photo/queue';
 	import Fireworks from '$lib/components/Fireworks.svelte';
 	import PhotoThumbnail from '$lib/components/PhotoThumbnail.svelte';
+	import PhotoQueueModal from '$lib/components/PhotoQueueModal.svelte';
 	import SyncStatusBadge from '$lib/components/SyncStatusBadge.svelte';
 	import type { DailyChore } from '$lib/db/schema';
 	import { browser } from '$app/environment';
@@ -254,6 +257,28 @@
 		captureError = null;
 		captureProgress = 0;
 	}
+
+	// Photo queue modal
+	let showPhotoQueueModal = $state(false);
+
+	// Clear a broken photo reference from a chore
+	async function clearBrokenPhoto(choreId: string) {
+		const client = getConvexClient();
+		try {
+			// Clear on server
+			if (client && connectionStatus.isOnline) {
+				const accessKey = getStoredAccessKey() ?? undefined;
+				await client.mutation(api.photos.clearBrokenPhoto, {
+					dailyChoreClientId: choreId,
+					accessKey
+				});
+			}
+			// Clear locally
+			await dailyChoreStore.clearBrokenPhoto(choreId);
+		} catch (err) {
+			console.error('[Page] Failed to clear broken photo:', err);
+		}
+	}
 </script>
 
 <div class="page">
@@ -275,25 +300,36 @@
 						{syncEngine.isSyncing ? 'Syncing...' : `${syncEngine.pendingCount} pending`}
 					</div>
 				{/if}
-				{#if syncEngine.pendingPhotoCount > 0}
-					<div class="photo-upload-indicator">
+				{#if syncEngine.pendingPhotoCount > 0 || syncEngine.failedPhotoCount > 0}
+					<button
+						class="photo-upload-indicator"
+						onclick={() => (showPhotoQueueModal = true)}
+						aria-label="View photo upload queue"
+					>
 						{#if syncEngine.currentPhotoUpload}
 							<span class="upload-spinner"></span>
 						{/if}
-						{syncEngine.currentPhotoUpload
-							? 'Uploading photo...'
-							: `${syncEngine.pendingPhotoCount} photos`}
-					</div>
+						{#if syncEngine.failedPhotoCount > 0}
+							{syncEngine.failedPhotoCount} photo{syncEngine.failedPhotoCount === 1
+								? ''
+								: 's'} failed
+						{:else if syncEngine.currentPhotoUpload}
+							Uploading photo...
+						{:else}
+							{syncEngine.pendingPhotoCount} photo{syncEngine.pendingPhotoCount === 1
+								? ''
+								: 's'}
+						{/if}
+					</button>
 				{/if}
-				{#if syncEngine.failedCount > 0 || syncEngine.failedPhotoCount > 0}
+				{#if syncEngine.failedCount > 0}
 					<button
 						class="retry-button"
 						onclick={() => {
 							syncEngine.retryFailed();
-							syncEngine.retryFailedPhotos();
 						}}
 					>
-						{syncEngine.failedCount + syncEngine.failedPhotoCount} failed - Retry
+						{syncEngine.failedCount} failed - Retry
 					</button>
 				{/if}
 			</div>
@@ -370,7 +406,8 @@
 													<button
 														class="toggle-button"
 														class:checked={chore.isCompleted}
-														class:locked={chore.isCompleted && chore.completedBy !== getCurrentUser()}
+														class:locked={chore.isCompleted &&
+															chore.completedBy !== getCurrentUser()}
 														disabled={chore.isCompleted && chore.completedBy !== getCurrentUser()}
 														onclick={() => handleChoreAction(chore)}
 														aria-label={chore.isCompleted
@@ -438,6 +475,7 @@
 																choreId={chore._id}
 																storageId={chore.photoStorageId}
 																thumbnailStorageId={chore.thumbnailStorageId}
+																onclear={() => clearBrokenPhoto(chore._id)}
 															/>
 														{/key}
 													{:else if chore.isCompleted && chore.photoStatus === 'pending'}
@@ -545,6 +583,10 @@
 			</button>
 		</div>
 	</div>
+{/if}
+
+{#if showPhotoQueueModal}
+	<PhotoQueueModal onclose={() => (showPhotoQueueModal = false)} />
 {/if}
 
 {#if showFireworks}
@@ -993,6 +1035,16 @@
 		gap: 0.25rem;
 		font-size: 0.75rem;
 		color: #3b82f6;
+		background: none;
+		border: none;
+		padding: 0.25rem 0.5rem;
+		min-height: 44px;
+		cursor: pointer;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.photo-upload-indicator:hover {
+		color: #2563eb;
 	}
 
 	.upload-spinner {
