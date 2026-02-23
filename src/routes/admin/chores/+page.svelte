@@ -105,6 +105,7 @@
 	const categoryOptions = [
 		{ value: 'General', label: 'General' },
 		{ value: 'Sheep', label: 'Sheep' },
+		{ value: 'Goats', label: 'Goats' },
 		{ value: 'Chickens', label: 'Chickens' },
 		{ value: 'Ducks', label: 'Ducks' },
 		{ value: 'Geese', label: 'Geese' },
