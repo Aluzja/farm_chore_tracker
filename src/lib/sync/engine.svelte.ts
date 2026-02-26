@@ -64,6 +64,10 @@ class SyncEngine {
 	private syncIntervalId: ReturnType<typeof setInterval> | null = null;
 	private initialized = false;
 
+	// Abort controller for in-flight photo uploads — aborted when page goes hidden
+	// to prevent truncated uploads from being stored as 0-byte blobs
+	private photoUploadAbort: AbortController | null = null;
+
 	// Bound event handlers for cleanup
 	private handleOnline = () => {
 		this.processQueue();
@@ -73,6 +77,9 @@ class SyncEngine {
 		if (document.visibilityState === 'visible' && connectionStatus.isOnline) {
 			this.processQueue();
 			this.processPhotoQueue();
+		} else if (document.visibilityState === 'hidden') {
+			// Abort in-flight photo uploads to prevent truncated 0-byte uploads
+			this.photoUploadAbort?.abort();
 		}
 	};
 
@@ -184,6 +191,16 @@ class SyncEngine {
 		const client = getConvexClient();
 		if (!client || !connectionStatus.isOnline) return;
 
+		// Don't start uploads if the page is backgrounded — the OS will kill
+		// the connection mid-stream, causing 0-byte blobs on the server.
+		// Uploads will resume when the page becomes visible again.
+		if (document.visibilityState !== 'visible') return;
+
+		// Create an abort controller for this upload session so we can
+		// cancel in-flight uploads if the page goes hidden
+		this.photoUploadAbort = new AbortController();
+		const { signal } = this.photoUploadAbort;
+
 		this.isUploadingPhotos = true;
 		try {
 			const photos = await getPhotoQueue();
@@ -192,6 +209,9 @@ class SyncEngine {
 			// Process sequentially (one at a time)
 			for (const photo of photos) {
 				if (photo.uploadStatus === 'failed') continue;
+
+				// Stop processing if page went hidden or upload was aborted
+				if (signal.aborted || document.visibilityState !== 'visible') break;
 
 				// Skip photos not yet ready for retry (exponential backoff)
 				if (photo.nextRetryAt && Date.now() < photo.nextRetryAt) continue;
@@ -216,11 +236,15 @@ class SyncEngine {
 						photo.dailyChoreClientId,
 						photo.capturedAt,
 						photo.capturedBy,
-						photo.thumbnailBlob
+						photo.thumbnailBlob,
+						signal
 					);
 					await removePhoto(photo.id);
 					this.pendingPhotoCount = Math.max(0, this.pendingPhotoCount - 1);
 				} catch (error) {
+					// Don't count aborts (from page going hidden) as real failures
+					if (signal.aborted) break;
+
 					const retryCount = await incrementPhotoRetry(photo.id);
 					if (retryCount >= MAX_RETRIES) {
 						await markPhotoFailed(photo.id);
@@ -242,6 +266,7 @@ class SyncEngine {
 			this.currentPhotoUpload = null;
 		} finally {
 			this.isUploadingPhotos = false;
+			this.photoUploadAbort = null;
 		}
 	}
 
