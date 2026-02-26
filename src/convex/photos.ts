@@ -12,6 +12,8 @@ export const generateUploadUrl = mutation({
 });
 
 // Attach uploaded photo to a daily chore
+// Verifies the storage blob is non-empty before attaching to prevent
+// 0-byte uploads from bad wifi being linked to chores
 export const attachPhotoToChore = mutation({
 	args: {
 		dailyChoreClientId: v.string(),
@@ -24,6 +26,24 @@ export const attachPhotoToChore = mutation({
 	handler: async (ctx, { accessKey, ...args }) => {
 		await requireAuth(ctx, accessKey);
 
+		// Verify the photo blob actually has data (not a 0-byte truncated upload)
+		const photoMeta = await ctx.db.system.get(args.storageId);
+		if (!photoMeta || photoMeta.size === 0) {
+			// Clean up the empty storage entry
+			await ctx.storage.delete(args.storageId);
+			throw new Error('Photo upload was empty — blob was truncated during transfer');
+		}
+
+		// Verify thumbnail if provided (non-critical — skip if empty)
+		let thumbnailStorageId = args.thumbnailStorageId;
+		if (thumbnailStorageId) {
+			const thumbMeta = await ctx.db.system.get(thumbnailStorageId);
+			if (!thumbMeta || thumbMeta.size === 0) {
+				await ctx.storage.delete(thumbnailStorageId);
+				thumbnailStorageId = undefined;
+			}
+		}
+
 		const chore = await ctx.db
 			.query('dailyChores')
 			.withIndex('by_client_id', (q) => q.eq('clientId', args.dailyChoreClientId))
@@ -35,7 +55,7 @@ export const attachPhotoToChore = mutation({
 
 		await ctx.db.patch(chore._id, {
 			photoStorageId: args.storageId,
-			thumbnailStorageId: args.thumbnailStorageId,
+			thumbnailStorageId,
 			photoCapturedAt: args.capturedAt,
 			photoCapturedBy: args.capturedBy,
 			photoStatus: 'uploaded',

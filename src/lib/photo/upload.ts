@@ -68,7 +68,10 @@ export async function uploadPhoto(
 	try {
 		response = await fetch(uploadUrl, {
 			method: 'POST',
-			headers: { 'Content-Type': blob.type },
+			headers: {
+				'Content-Type': blob.type,
+				'Content-Length': String(blob.size)
+			},
 			body: blob,
 			signal: uploadController.signal
 		});
@@ -102,7 +105,10 @@ export async function uploadPhoto(
 			try {
 				const thumbResponse = await fetch(thumbUploadUrl, {
 					method: 'POST',
-					headers: { 'Content-Type': thumbnailBlob.type },
+					headers: {
+						'Content-Type': thumbnailBlob.type,
+						'Content-Length': String(thumbnailBlob.size)
+					},
 					body: thumbnailBlob,
 					signal: thumbController.signal
 				});
