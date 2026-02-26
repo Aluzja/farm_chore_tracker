@@ -5,11 +5,17 @@ import { PHOTO_BACKOFF_MS } from '$lib/sync/engine.svelte';
 
 /**
  * Add a photo to the upload queue.
+ * Validates that the blob contains actual data before enqueuing.
  */
 export async function enqueuePhoto(
 	entry: Omit<PhotoQueueEntry, 'retryCount' | 'lastAttemptAt'>
 ): Promise<void> {
 	if (!browser) return;
+
+	if (!entry.blob || entry.blob.size === 0) {
+		throw new Error('Cannot enqueue photo with empty blob');
+	}
+
 	const db = await getDB();
 	await db.put('photoQueue', {
 		...entry,

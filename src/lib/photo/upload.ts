@@ -43,6 +43,11 @@ export async function uploadPhoto(
 ): Promise<PhotoUploadResult> {
 	const accessKey = getStoredAccessKey() ?? undefined;
 
+	// Validate blob before wasting a network round-trip
+	if (!blob || blob.size === 0) {
+		throw new Error('Cannot upload empty photo blob');
+	}
+
 	// Step 1: Get upload URL from Convex
 	const uploadUrl = await withTimeout(
 		client.mutation(api.photos.generateUploadUrl, { accessKey }),

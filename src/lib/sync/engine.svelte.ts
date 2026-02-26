@@ -80,6 +80,16 @@ class SyncEngine {
 		if (!browser || this.initialized) return;
 		this.initialized = true;
 
+		// Request persistent storage so the browser is less likely to evict
+		// photo blobs from IndexedDB under memory pressure
+		if (navigator.storage?.persist) {
+			try {
+				await navigator.storage.persist();
+			} catch {
+				// Non-critical — best-effort
+			}
+		}
+
 		// Initial mutation queue counts
 		this.pendingCount = await getQueueLength();
 		this.failedCount = (await getDailyChoresByStatus('failed')).length;
@@ -187,6 +197,16 @@ class SyncEngine {
 				if (photo.nextRetryAt && Date.now() < photo.nextRetryAt) continue;
 
 				this.currentPhotoUpload = photo.id;
+
+				// Validate blob is still intact (iOS Safari can evict IndexedDB blob data)
+				if (!photo.blob || photo.blob.size === 0) {
+					console.error(`[Sync] Photo ${photo.id} has empty blob — data was evicted`);
+					await markPhotoFailed(photo.id);
+					this.failedPhotoCount += 1;
+					await this.clearChorePhotoStatus(photo.dailyChoreClientId);
+					continue;
+				}
+
 				await markPhotoUploading(photo.id);
 
 				try {
