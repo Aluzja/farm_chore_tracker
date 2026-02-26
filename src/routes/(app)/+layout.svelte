@@ -364,12 +364,6 @@
 		line-height: 1.5;
 	}
 
-	.error-actions {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-	}
-
 	.btn-primary {
 		width: 100%;
 		padding: 0.75rem 1rem;

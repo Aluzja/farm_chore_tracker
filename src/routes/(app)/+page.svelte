@@ -261,24 +261,6 @@
 	// Photo queue modal
 	let showPhotoQueueModal = $state(false);
 
-	// Clear a broken photo reference from a chore
-	async function clearBrokenPhoto(choreId: string) {
-		const client = getConvexClient();
-		try {
-			// Clear on server
-			if (client && connectionStatus.isOnline) {
-				const accessKey = getStoredAccessKey() ?? undefined;
-				await client.mutation(api.photos.clearBrokenPhoto, {
-					dailyChoreClientId: choreId,
-					accessKey
-				});
-			}
-			// Clear locally
-			await dailyChoreStore.clearBrokenPhoto(choreId);
-		} catch (err) {
-			console.error('[Page] Failed to clear broken photo:', err);
-		}
-	}
 </script>
 
 <div class="page">
@@ -475,7 +457,6 @@
 																choreId={chore._id}
 																storageId={chore.photoStorageId}
 																thumbnailStorageId={chore.thumbnailStorageId}
-																onclear={() => clearBrokenPhoto(chore._id)}
 															/>
 														{/key}
 													{:else if chore.isCompleted && chore.photoStatus === 'pending'}

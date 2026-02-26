@@ -49,7 +49,16 @@ export async function cacheImage(storageId: string, url: string): Promise<string
 			throw new Error(`Failed to fetch image: ${response.status}`);
 		}
 
+		const contentType = response.headers.get('Content-Type') || '';
+		if (!contentType.startsWith('image/')) {
+			throw new Error(`Response is not an image: ${contentType}`);
+		}
+
 		const blob = await response.blob();
+		if (blob.size === 0) {
+			throw new Error('Empty image response');
+		}
+
 		const mimeType = blob.type || 'image/jpeg';
 
 		const entry: ImageCacheEntry = {

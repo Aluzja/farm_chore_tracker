@@ -274,22 +274,6 @@ class DailyChoreStore {
 		await putDailyChore($state.snapshot(updated));
 	}
 
-	// Clear all photo fields on a chore (when photo reference is broken)
-	async clearBrokenPhoto(id: string): Promise<void> {
-		const chore = this.items.find((c) => c._id === id);
-		if (!chore) return;
-
-		const updated: DailyChore = {
-			...chore,
-			photoStorageId: undefined,
-			thumbnailStorageId: undefined,
-			photoStatus: undefined,
-			lastModified: Date.now()
-		};
-		this.items = this.items.map((c) => (c._id === id ? updated : c));
-		await putDailyChore($state.snapshot(updated));
-	}
-
 	// Add ad-hoc chore for today only
 	async addAdHoc(
 		text: string,

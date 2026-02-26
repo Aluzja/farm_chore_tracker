@@ -3,17 +3,16 @@
 	import { useQuery } from 'convex-svelte';
 	import { api } from '../../convex/_generated/api';
 	import type { Id } from '../../convex/_generated/dataModel';
-	import { getOrCacheImage } from '$lib/db/imageCache';
+	import { getOrCacheImage, removeCachedImage } from '$lib/db/imageCache';
 	import { getStoredAccessKey } from '$lib/auth/access-key';
 
 	interface Props {
 		choreId: string;
 		storageId: string;
 		thumbnailStorageId?: string;
-		onclear?: () => void;
 	}
 
-	const { choreId, storageId, thumbnailStorageId, onclear }: Props = $props();
+	const { choreId, storageId, thumbnailStorageId }: Props = $props();
 
 	// Use thumbnail for the list view if available, fall back to full image
 	const displayStorageId = $derived(thumbnailStorageId ?? storageId);
@@ -26,24 +25,57 @@
 		})
 	);
 
-	// Detect broken reference: query resolved but storage blob is gone
-	const isBrokenReference = $derived(
-		photoUrlQuery.isLoading === false &&
-			photoUrlQuery.error === undefined &&
-			photoUrlQuery.data === null
-	);
+	// Track consecutive null results before declaring broken.
+	// This prevents transient nulls (subscription reconnection, brief network blip)
+	// from immediately showing the broken state.
+	let nullCount = $state(0);
+	const BROKEN_THRESHOLD = 3;
 
-	// Create a promise that loads the image (from cache or network)
+	$effect(() => {
+		const isNull =
+			photoUrlQuery.isLoading === false &&
+			photoUrlQuery.error === undefined &&
+			photoUrlQuery.data === null;
+
+		if (isNull) {
+			nullCount++;
+		} else {
+			nullCount = 0;
+		}
+	});
+
+	const isBrokenReference = $derived(nullCount >= BROKEN_THRESHOLD);
+
+	// Track retry attempts for onerror recovery
+	let retryCount = $state(0);
+	const MAX_RETRIES = 2;
+
+	// Validate that a blob URL actually contains decodable image data
+	function validateImage(blobUrl: string): Promise<string> {
+		return new Promise((resolve, reject) => {
+			const img = new Image();
+			img.onload = () => resolve(blobUrl);
+			img.onerror = () => reject(new Error('Image decode failed'));
+			img.src = blobUrl;
+		});
+	}
+
+	// Load image from cache or network, then validate it's decodable
 	async function loadImage(remoteUrl: string): Promise<string> {
 		const blobUrl = await getOrCacheImage(displayStorageId, remoteUrl);
 		if (!blobUrl) {
 			throw new Error('Failed to load image');
 		}
-		return blobUrl;
+		// Validate the blob is actually renderable image data
+		return validateImage(blobUrl);
 	}
 
 	// Derive the image promise - only create when we have data
+	// retryCount is read here so that incrementing it triggers a re-fetch
 	const imagePromise = $derived.by(() => {
+		// Read retryCount to establish reactivity for retries
+		const _retry = retryCount;
+
 		if (photoUrlQuery.error) {
 			return Promise.reject(new Error('Query failed'));
 		}
@@ -56,13 +88,24 @@
 		return null;
 	});
 
-	function handleClick() {
-		pushState(`/photo-view/${choreId}`, { photoChoreId: choreId });
+	// When <img> fails to render, evict cache and retry
+	async function handleImgError() {
+		if (retryCount < MAX_RETRIES) {
+			await removeCachedImage(displayStorageId);
+			retryCount++;
+		}
 	}
 
-	function handleClear(event: MouseEvent) {
+	// Manual retry: evict cache, reset broken-reference counter, and re-trigger load
+	async function handleRetry(event: MouseEvent) {
 		event.stopPropagation();
-		onclear?.();
+		await removeCachedImage(displayStorageId);
+		nullCount = 0;
+		retryCount++;
+	}
+
+	function handleClick() {
+		pushState(`/photo-view/${choreId}`, { photoChoreId: choreId });
 	}
 </script>
 
@@ -71,34 +114,24 @@
 		{#await imagePromise}
 			<span class="thumbnail-loading"></span>
 		{:then url}
-			<img src={url} alt="Chore completion" />
+			<img src={url} alt="Chore completion" onerror={handleImgError} />
 		{:catch}
-			{#if onclear}
-				<span
-					class="thumbnail-broken"
-					role="button"
-					tabindex="0"
-					onclick={handleClear}
-					onkeydown={(e) => {
-						if (e.key === 'Enter') onclear?.();
-					}}
-					aria-label="Photo unavailable - tap to clear"
-					title="Photo unavailable - tap to clear"
-				>
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<line x1="18" y1="6" x2="6" y2="18"></line>
-						<line x1="6" y1="6" x2="18" y2="18"></line>
-					</svg>
-				</span>
-			{:else}
-				<span class="thumbnail-placeholder">
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-						<circle cx="8.5" cy="8.5" r="1.5"></circle>
-						<polyline points="21 15 16 10 5 21"></polyline>
-					</svg>
-				</span>
-			{/if}
+			<span
+				class="thumbnail-retry"
+				role="button"
+				tabindex="0"
+				onclick={handleRetry}
+				onkeydown={(e) => {
+					if (e.key === 'Enter') handleRetry(e as unknown as MouseEvent);
+				}}
+				aria-label="Tap to retry loading photo"
+				title="Tap to retry"
+			>
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<polyline points="23 4 23 10 17 10"></polyline>
+					<path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+				</svg>
+			</span>
 		{/await}
 	{:else}
 		<span class="thumbnail-loading"></span>
@@ -140,33 +173,25 @@
 		animation: spin 1s linear infinite;
 	}
 
-	.thumbnail-placeholder {
-		color: #9ca3af;
-	}
-
-	.thumbnail-placeholder svg {
-		width: 1.25rem;
-		height: 1.25rem;
-	}
-
-	.thumbnail-broken {
-		color: #dc2626;
+	.thumbnail-retry {
+		color: #6b7280;
 		cursor: pointer;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		width: 100%;
 		height: 100%;
-		background: #fef2f2;
+		background: #f3f4f6;
 	}
 
-	.thumbnail-broken svg {
+	.thumbnail-retry svg {
 		width: 1.25rem;
 		height: 1.25rem;
 	}
 
-	.thumbnail-broken:hover {
-		background: #fee2e2;
+	.thumbnail-retry:hover {
+		background: #e5e7eb;
+		color: #3b82f6;
 	}
 
 	@keyframes spin {
