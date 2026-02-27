@@ -19,8 +19,11 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 /**
- * Compress an image file to ~2MB JPEG (high quality).
+ * Compress an image file to ~500KB JPEG.
  * Strips EXIF metadata (GPS, timestamps) - app tracks its own metadata.
+ *
+ * Targets a small file size so uploads complete quickly on slow rural
+ * cell connections (500KB takes ~5s on 3G vs ~30s for 2MB).
  *
  * Uses Web Worker for non-blocking compression when available.
  * Falls back to original file if compression fails or times out.
@@ -38,16 +41,16 @@ export async function compressImage(
 
 	// Skip only if already a small JPEG — non-JPEG formats (HEIC, PNG)
 	// must always be converted to ensure universal browser compatibility
-	if (isJpeg && fileSizeMB <= 2) {
+	if (isJpeg && fileSizeMB <= 0.5) {
 		onProgress?.({ percent: 100, usingMainThread: false });
 		return file;
 	}
 
 	const options = {
-		maxSizeMB: 2,
+		maxSizeMB: 0.5,
 		preserveExif: false,
 		fileType: 'image/jpeg' as const,
-		initialQuality: 0.92,
+		initialQuality: 0.8,
 		useWebWorker: true,
 		onProgress: onProgress
 			? (percent: number) => {

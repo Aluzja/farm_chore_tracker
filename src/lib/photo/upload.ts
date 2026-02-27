@@ -38,8 +38,7 @@ export async function uploadPhoto(
 	dailyChoreClientId: string,
 	capturedAt: number,
 	capturedBy: string,
-	thumbnailBlob?: Blob,
-	signal?: AbortSignal
+	thumbnailBlob?: Blob
 ): Promise<PhotoUploadResult> {
 	const accessKey = getStoredAccessKey() ?? undefined;
 
@@ -55,14 +54,9 @@ export async function uploadPhoto(
 		'generateUploadUrl'
 	);
 
-	// Step 2: Upload blob to the URL with timeout via AbortController
+	// Step 2: Upload blob to the URL with timeout
 	const uploadController = new AbortController();
 	const uploadTimer = setTimeout(() => uploadController.abort(), UPLOAD_TIMEOUT_MS);
-
-	// If an external signal is provided, propagate abort
-	if (signal) {
-		signal.addEventListener('abort', () => uploadController.abort(), { once: true });
-	}
 
 	let response: Response;
 	try {
@@ -97,10 +91,6 @@ export async function uploadPhoto(
 
 			const thumbController = new AbortController();
 			const thumbTimer = setTimeout(() => thumbController.abort(), UPLOAD_TIMEOUT_MS);
-
-			if (signal) {
-				signal.addEventListener('abort', () => thumbController.abort(), { once: true });
-			}
 
 			try {
 				const thumbResponse = await fetch(thumbUploadUrl, {
