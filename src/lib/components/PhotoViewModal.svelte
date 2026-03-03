@@ -19,11 +19,18 @@
 	// Find the chore
 	const chore = $derived(dailyChoreStore.items.find((c) => c._id === choreId));
 
-	// Use Convex query to get photo URL
+	// Extract primitive to stabilize downstream derivations.
+	// chore object reference changes on every store hydration, but the storageId
+	// string stays the same — primitive === comparison prevents cascading re-derives.
+	const photoStorageId = $derived(chore?.photoStorageId);
+
+	// Use Convex query to get photo URL.
+	// Depends on photoStorageId (primitive) instead of chore?.photoStorageId,
+	// so useQuery() is only re-called when the actual ID changes.
 	const photoUrlQuery = $derived(
-		chore?.photoStorageId
+		photoStorageId
 			? useQuery(api.photos.getPhotoUrl, {
-					storageId: chore.photoStorageId as Id<'_storage'>,
+					storageId: photoStorageId as Id<'_storage'>,
 					accessKey: getStoredAccessKey() ?? undefined
 				})
 			: null
@@ -38,18 +45,31 @@
 		return blobUrl;
 	}
 
-	// Derive the image promise - only create when we have data
-	const imagePromise = $derived.by(() => {
-		const storageId = chore?.photoStorageId;
-		if (!storageId) return null;
+	// Stabilize image promise — only create a new one when the URL actually changes.
+	// Without this, every store hydration would create a new Promise (even with
+	// identical data), causing {#await} to reset to "Loading..." indefinitely.
+	let imagePromise = $state<Promise<string> | null>(null);
+	let trackedUrl = '';
+
+	$effect(() => {
+		const sid = photoStorageId;
+		if (!sid) {
+			trackedUrl = '';
+			imagePromise = null;
+			return;
+		}
 
 		if (photoUrlQuery?.error) {
-			return Promise.reject(new Error(photoUrlQuery.error.message));
+			trackedUrl = '';
+			imagePromise = Promise.reject(new Error(photoUrlQuery.error.message));
+			return;
 		}
-		if (photoUrlQuery?.data) {
-			return loadImage(storageId, photoUrlQuery.data);
+
+		const url = photoUrlQuery?.data;
+		if (url && url !== trackedUrl) {
+			trackedUrl = url;
+			imagePromise = loadImage(sid, url);
 		}
-		return null;
 	});
 
 	// Track loaded URL for download functionality
