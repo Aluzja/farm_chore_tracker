@@ -69,15 +69,11 @@
 		}
 	});
 
-	// Stop loading spinner if server query resolved with no data (empty list or needsClone)
-	// or if we're offline and won't get server data
+	// Stop loading spinner when we can definitively show content (or lack thereof).
+	// Deliberately does NOT stop loading for needsClone — the clone mutation is in
+	// flight and the subscription will deliver real chore data shortly.
 	$effect(() => {
 		if (!browser || !hasAccess) return;
-
-		// Query resolved but not as an array (e.g. needsClone) — stop loading, clone will trigger re-query
-		if (dailyChoresQuery?.data && !Array.isArray(dailyChoresQuery.data)) {
-			dailyChoreStore.isLoading = false;
-		}
 
 		// Query finished with empty array — genuinely no chores today
 		if (
