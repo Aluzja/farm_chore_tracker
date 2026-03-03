@@ -158,8 +158,25 @@ class DailyChoreStore {
 					localMap.set(id, serverChore);
 					hasChanges = true;
 				} else if (local.syncStatus === 'pending') {
-					// Keep local pending changes
-				} else if (serverChore.lastModified > local.lastModified) {
+					// Keep local pending changes, BUT adopt server photo fields.
+					// Photo data is set by attachPhotoToChore (a separate mutation
+					// from whatever is pending), so the server is authoritative.
+					if (serverChore.photoStorageId || serverChore.photoStatus === 'uploaded') {
+						const photoChanged =
+							local.photoStorageId !== serverChore.photoStorageId ||
+							local.thumbnailStorageId !== serverChore.thumbnailStorageId ||
+							local.photoStatus !== serverChore.photoStatus;
+						if (photoChanged) {
+							localMap.set(id, {
+								...local,
+								photoStorageId: serverChore.photoStorageId,
+								thumbnailStorageId: serverChore.thumbnailStorageId,
+								photoStatus: serverChore.photoStatus
+							});
+							hasChanges = true;
+						}
+					}
+				} else if (serverChore.lastModified >= local.lastModified) {
 					localMap.set(id, serverChore);
 					hasChanges = true;
 				}
@@ -213,13 +230,14 @@ class DailyChoreStore {
 		// Persist to IndexedDB
 		await putDailyChore($state.snapshot(updated));
 
-		// Queue for sync
+		// Queue for sync — deliberately omit photoStatus (from extra).
+		// Photo status is managed server-side by attachPhotoToChore;
+		// sending 'pending' here would race and potentially revert 'uploaded'.
 		await enqueueMutation('update', 'dailyChores', {
 			clientId: updated._id,
 			isCompleted: updated.isCompleted,
 			completedAt: updated.completedAt,
 			completedBy: updated.completedBy,
-			...extra,
 			lastModified: updated.lastModified
 		});
 	}

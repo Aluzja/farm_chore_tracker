@@ -108,6 +108,12 @@ export const toggleComplete = mutation({
 			return null;
 		}
 
+		// Never let toggleComplete revert photoStatus that attachPhotoToChore
+		// already set to 'uploaded' — the two mutations race concurrently.
+		if (updates.photoStatus && existing.photoStatus === 'uploaded') {
+			delete updates.photoStatus;
+		}
+
 		// Last-write-wins: only apply if newer
 		if (lastModified > existing.lastModified) {
 			await ctx.db.patch(existing._id, {
