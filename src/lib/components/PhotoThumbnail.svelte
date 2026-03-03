@@ -25,11 +25,11 @@
 		})
 	);
 
-	// Track consecutive null results before declaring broken.
-	// This prevents transient nulls (subscription reconnection, brief network blip)
-	// from immediately showing the broken state.
-	let nullCount = $state(0);
-	const BROKEN_THRESHOLD = 3;
+	// Detect broken photo references after a grace period.
+	// A null result that persists is likely a deleted/invalid storage object;
+	// transient nulls (reconnection, processing delay) resolve within the window.
+	let isBrokenReference = $state(false);
+	const BROKEN_GRACE_MS = 5000;
 
 	$effect(() => {
 		const isNull =
@@ -38,13 +38,14 @@
 			photoUrlQuery.data === null;
 
 		if (isNull) {
-			nullCount++;
-		} else {
-			nullCount = 0;
+			const timer = setTimeout(() => {
+				isBrokenReference = true;
+			}, BROKEN_GRACE_MS);
+			return () => clearTimeout(timer);
 		}
-	});
 
-	const isBrokenReference = $derived(nullCount >= BROKEN_THRESHOLD);
+		isBrokenReference = false;
+	});
 
 	// Track retry attempts for onerror recovery
 	let retryCount = $state(0);
@@ -96,11 +97,11 @@
 		}
 	}
 
-	// Manual retry: evict cache, reset broken-reference counter, and re-trigger load
+	// Manual retry: evict cache, reset broken-reference state, and re-trigger load
 	async function handleRetry(event: MouseEvent) {
 		event.stopPropagation();
 		await removeCachedImage(displayStorageId);
-		nullCount = 0;
+		isBrokenReference = false;
 		retryCount++;
 	}
 

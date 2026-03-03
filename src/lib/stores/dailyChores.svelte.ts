@@ -176,7 +176,7 @@ class DailyChoreStore {
 							hasChanges = true;
 						}
 					}
-				} else if (serverChore.lastModified >= local.lastModified) {
+				} else if (serverChore.lastModified > local.lastModified) {
 					localMap.set(id, serverChore);
 					hasChanges = true;
 				}
