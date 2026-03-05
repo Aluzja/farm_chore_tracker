@@ -114,6 +114,21 @@ export const toggleComplete = mutation({
 			delete updates.photoStatus;
 		}
 
+		// Require photo evidence when completing a photo-required chore.
+		// Either the photo is already uploaded, or the client declares 'pending'.
+		if (
+			updates.isCompleted &&
+			existing.requiresPhoto &&
+			!existing.photoStorageId &&
+			existing.photoStatus !== 'uploaded' &&
+			updates.photoStatus !== 'pending'
+		) {
+			console.log(
+				`[dailyChores.toggleComplete] Rejected: chore ${clientId} requires photo but none pending/uploaded`
+			);
+			return null;
+		}
+
 		// Last-write-wins: only apply if newer
 		if (lastModified > existing.lastModified) {
 			await ctx.db.patch(existing._id, {

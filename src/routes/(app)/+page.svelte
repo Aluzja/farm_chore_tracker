@@ -9,7 +9,7 @@
 	import { formatTimeSlot, getTodayDayName } from '$lib/utils/date';
 	import { getCurrentUser } from '$lib/auth/user-context.svelte';
 	import { compressImage, generateThumbnail, type CompressionProgress } from '$lib/photo/capture';
-	import { enqueuePhoto } from '$lib/photo/queue';
+	import { enqueuePhoto, getFailedPhotoForChore, resetFailedPhoto } from '$lib/photo/queue';
 	import Fireworks from '$lib/components/Fireworks.svelte';
 	import PhotoThumbnail from '$lib/components/PhotoThumbnail.svelte';
 	import PhotoQueueModal from '$lib/components/PhotoQueueModal.svelte';
@@ -217,9 +217,17 @@
 				uploadStatus: 'pending'
 			});
 
-			await dailyChoreStore.toggleComplete(captureChoreId, user, {
-				photoStatus: 'pending'
-			});
+			if (captureChore.isCompleted) {
+				// Retake: chore already completed, just restore photoStatus locally
+				await putDailyChore({ ...captureChore, photoStatus: 'pending' });
+				dailyChoreStore.items = dailyChoreStore.items.map((c) =>
+					c._id === captureChoreId ? { ...c, photoStatus: 'pending' as const } : c
+				);
+			} else {
+				await dailyChoreStore.toggleComplete(captureChoreId, user, {
+					photoStatus: 'pending'
+				});
+			}
 
 			if (connectionStatus.isOnline) {
 				syncEngine.processQueue();
@@ -256,6 +264,43 @@
 		captureSubmitting = false;
 		captureError = null;
 		captureProgress = 0;
+	}
+
+	// Retry a failed photo upload for a specific chore
+	let retryingChoreIds = $state<Set<string>>(new Set());
+
+	async function handleRetryPhotoUpload(choreId: string) {
+		const entry = await getFailedPhotoForChore(choreId);
+		if (!entry) {
+			// Blob was dismissed/evicted — need to retake
+			captureChoreId = choreId;
+			photoFileInput?.click();
+			return;
+		}
+
+		retryingChoreIds = new Set([...retryingChoreIds, choreId]);
+
+		try {
+			await resetFailedPhoto(entry.id);
+
+			// Restore photoStatus locally so the pending spinner shows
+			const chore = dailyChoreStore.items.find((c) => c._id === choreId);
+			if (chore && !chore.photoStatus) {
+				await putDailyChore({ ...chore, photoStatus: 'pending' });
+				dailyChoreStore.items = dailyChoreStore.items.map((c) =>
+					c._id === choreId ? { ...c, photoStatus: 'pending' as const } : c
+				);
+			}
+
+			syncEngine.failedPhotoCount = Math.max(0, syncEngine.failedPhotoCount - 1);
+			syncEngine.pendingPhotoCount += 1;
+
+			if (connectionStatus.isOnline) {
+				syncEngine.processPhotoQueue();
+			}
+		} finally {
+			retryingChoreIds = new Set([...retryingChoreIds].filter((id) => id !== choreId));
+		}
 	}
 
 	// Photo queue modal
@@ -463,6 +508,22 @@
 														<div class="photo-pending">
 															<span class="photo-pending-spinner"></span>
 														</div>
+													{:else if chore.isCompleted && chore.requiresPhoto && !chore.photoStorageId}
+														<button
+															class="photo-retry"
+															onclick={() => handleRetryPhotoUpload(chore._id)}
+															disabled={retryingChoreIds.has(chore._id)}
+															aria-label="Retry photo upload"
+														>
+															{#if retryingChoreIds.has(chore._id)}
+																<span class="photo-pending-spinner"></span>
+															{:else}
+																<svg class="retry-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+																	<path d="M1 4v6h6"></path>
+																	<path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+																</svg>
+															{/if}
+														</button>
 													{/if}
 
 													<SyncStatusBadge status={chore.syncStatus} />
@@ -1075,6 +1136,38 @@
 		border-top-color: #3b82f6;
 		border-radius: 50%;
 		animation: spin 1s linear infinite;
+	}
+
+	/* Photo upload failed — retry button */
+	.photo-retry {
+		flex-shrink: 0;
+		width: 3rem;
+		height: 3rem;
+		border-radius: 0.375rem;
+		border: 1px solid #fca5a5;
+		background: #fef2f2;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		order: 0.5;
+		margin-left: auto;
+		cursor: pointer;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.photo-retry:hover {
+		background: #fee2e2;
+	}
+
+	.photo-retry:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	.retry-icon {
+		width: 1.25rem;
+		height: 1.25rem;
+		color: #dc2626;
 	}
 
 	/* Photo thumbnail and sync badge ordering for thumb-friendly layout */

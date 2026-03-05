@@ -147,6 +147,36 @@ export async function removePhotoEntry(id: string): Promise<string | null> {
 }
 
 /**
+ * Get a failed photo queue entry for a specific chore.
+ * Returns the entry if found (blob still available for retry), or null.
+ */
+export async function getFailedPhotoForChore(
+	dailyChoreClientId: string
+): Promise<PhotoQueueEntry | null> {
+	if (!browser) return null;
+	const db = await getDB();
+	const failed = await db.getAllFromIndex('photoQueue', 'by-upload-status', 'failed');
+	return failed.find((e) => e.dailyChoreClientId === dailyChoreClientId) ?? null;
+}
+
+/**
+ * Reset a single failed photo for retry by its queue ID.
+ */
+export async function resetFailedPhoto(id: string): Promise<void> {
+	if (!browser) return;
+	const db = await getDB();
+	const entry = await db.get('photoQueue', id);
+	if (!entry || entry.uploadStatus !== 'failed') return;
+
+	await db.put('photoQueue', {
+		...entry,
+		uploadStatus: 'pending' as const,
+		retryCount: 0,
+		nextRetryAt: undefined
+	});
+}
+
+/**
  * Reset failed photos for retry.
  */
 export async function resetFailedPhotos(): Promise<number> {

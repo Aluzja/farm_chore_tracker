@@ -230,14 +230,15 @@ class DailyChoreStore {
 		// Persist to IndexedDB
 		await putDailyChore($state.snapshot(updated));
 
-		// Queue for sync — deliberately omit photoStatus (from extra).
-		// Photo status is managed server-side by attachPhotoToChore;
-		// sending 'pending' here would race and potentially revert 'uploaded'.
+		// Queue for sync — include photoStatus when set (for photo-required chores).
+		// The server guards against reverting 'uploaded' back to 'pending',
+		// so this is race-safe with attachPhotoToChore.
 		await enqueueMutation('update', 'dailyChores', {
 			clientId: updated._id,
 			isCompleted: updated.isCompleted,
 			completedAt: updated.completedAt,
 			completedBy: updated.completedBy,
+			...(extra?.photoStatus ? { photoStatus: extra.photoStatus } : {}),
 			lastModified: updated.lastModified
 		});
 	}
