@@ -101,7 +101,8 @@ export async function markPhotoUploading(id: string): Promise<void> {
 
 	await db.put('photoQueue', {
 		...entry,
-		uploadStatus: 'uploading'
+		uploadStatus: 'uploading',
+		lastAttemptAt: Date.now()
 	});
 }
 
@@ -177,6 +178,22 @@ export async function resetFailedPhoto(id: string): Promise<void> {
 }
 
 /**
+ * Reset a stale 'uploading' photo back to pending (e.g. app was closed mid-upload).
+ */
+export async function resetStalePhoto(id: string): Promise<void> {
+	if (!browser) return;
+	const db = await getDB();
+	const entry = await db.get('photoQueue', id);
+	if (!entry) return;
+
+	await db.put('photoQueue', {
+		...entry,
+		uploadStatus: 'pending' as const,
+		nextRetryAt: undefined
+	});
+}
+
+/**
  * Reset failed photos for retry.
  */
 export async function resetFailedPhotos(): Promise<number> {
@@ -188,7 +205,8 @@ export async function resetFailedPhotos(): Promise<number> {
 		await db.put('photoQueue', {
 			...entry,
 			uploadStatus: 'pending',
-			retryCount: 0
+			retryCount: 0,
+			nextRetryAt: undefined
 		});
 	}
 

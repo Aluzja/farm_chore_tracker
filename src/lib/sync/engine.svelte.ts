@@ -1,4 +1,5 @@
 import { browser } from '$app/environment';
+import * as Sentry from '@sentry/sveltekit';
 import type { ConvexClient } from 'convex/browser';
 import { api } from '../../convex/_generated/api';
 import { getStoredAccessKey } from '$lib/auth/access-key';
@@ -25,6 +26,7 @@ import type { Mutation } from '$lib/db/schema';
 
 const MAX_RETRIES = 5;
 const SYNC_INTERVAL_MS = 30_000; // 30 seconds when online and visible
+const STALE_UPLOAD_MS = 20_000; // 20s — if a photo is 'uploading' longer than this, it's stuck
 
 // Exponential backoff schedule for photo retries (in ms)
 export const PHOTO_BACKOFF_MS = [5_000, 15_000, 45_000, 120_000, 300_000]; // 5s, 15s, 45s, 2min, 5min
@@ -213,6 +215,20 @@ class SyncEngine {
 				// upload already in-flight (below) is allowed to finish.
 				if (this.photoUploadCancelled) break;
 
+				// Recover photos stuck in 'uploading' from a previous session
+				// (e.g. app was closed mid-upload). Reset to pending so they retry.
+				if (
+					photo.uploadStatus === 'uploading' &&
+					photo.lastAttemptAt &&
+					Date.now() - photo.lastAttemptAt > STALE_UPLOAD_MS
+				) {
+					console.warn(
+						`[Sync] Photo ${photo.id} stuck in uploading for ${Math.round((Date.now() - photo.lastAttemptAt) / 1000)}s — resetting`
+					);
+					const { resetStalePhoto } = await import('$lib/photo/queue');
+					await resetStalePhoto(photo.id);
+				}
+
 				// Skip photos not yet ready for retry (exponential backoff)
 				if (photo.nextRetryAt && Date.now() < photo.nextRetryAt) continue;
 
@@ -221,6 +237,14 @@ class SyncEngine {
 				// Validate blob is still intact (iOS Safari can evict IndexedDB blob data)
 				if (!photo.blob || photo.blob.size === 0) {
 					console.error(`[Sync] Photo ${photo.id} has empty blob — data was evicted`);
+					Sentry.captureException(new Error('Photo blob evicted from IndexedDB'), {
+						tags: { component: 'photo-upload' },
+						extra: {
+							photoId: photo.id,
+							dailyChoreClientId: photo.dailyChoreClientId,
+							retryCount: photo.retryCount
+						}
+					});
 					await markPhotoFailed(photo.id);
 					this.failedPhotoCount += 1;
 					await this.clearChorePhotoStatus(photo.dailyChoreClientId);
@@ -241,20 +265,36 @@ class SyncEngine {
 					await removePhoto(photo.id);
 					this.pendingPhotoCount = Math.max(0, this.pendingPhotoCount - 1);
 				} catch (error) {
+					const errorMsg =
+						error instanceof Error ? error.message : String(error);
 					const retryCount = await incrementPhotoRetry(photo.id);
 					if (retryCount >= MAX_RETRIES) {
 						await markPhotoFailed(photo.id);
 						this.failedPhotoCount += 1;
 						await this.clearChorePhotoStatus(photo.dailyChoreClientId);
 						console.error(
-							`[Sync] Photo ${photo.id} failed after ${MAX_RETRIES} retries`,
-							error
+							`[Sync] Photo ${photo.id} permanently failed after ${MAX_RETRIES} retries: ${errorMsg}`
 						);
+						Sentry.captureException(error, {
+							tags: { component: 'photo-upload', permanent: 'true' },
+							extra: {
+								photoId: photo.id,
+								dailyChoreClientId: photo.dailyChoreClientId,
+								retryCount,
+								compressedSize: photo.compressedSize,
+								blobSize: photo.blob?.size
+							}
+						});
 					} else {
 						console.warn(
-							`[Sync] Photo ${photo.id} failed, retry ${retryCount}/${MAX_RETRIES}`,
-							error
+							`[Sync] Photo ${photo.id} upload error (retry ${retryCount}/${MAX_RETRIES}): ${errorMsg}`
 						);
+						Sentry.addBreadcrumb({
+							category: 'photo-upload',
+							message: `Upload retry ${retryCount}/${MAX_RETRIES}: ${errorMsg}`,
+							level: 'warning',
+							data: { photoId: photo.id }
+						});
 					}
 				}
 			}

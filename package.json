@@ -36,6 +36,7 @@
 	"dependencies": {
 		"@auth/core": "0.37.0",
 		"@convex-dev/auth": "^0.0.90",
+		"@sentry/sveltekit": "^10.42.0",
 		"@sveltejs/adapter-cloudflare": "^7.2.6",
 		"browser-image-compression": "^2.0.2",
 		"convex": "1.31.7",
