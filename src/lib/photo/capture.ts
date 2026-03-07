@@ -43,7 +43,9 @@ export async function compressImage(
 	// must always be converted to ensure universal browser compatibility
 	if (isJpeg && fileSizeMB <= 0.5) {
 		onProgress?.({ percent: 100, usingMainThread: false });
-		return file;
+		// Read into a self-contained Blob — the original File is a temp
+		// reference that iOS Safari can invalidate after the camera closes
+		return await detachFile(file);
 	}
 
 	const options = {
@@ -63,9 +65,20 @@ export async function compressImage(
 		return await withTimeout(imageCompression(file, options), COMPRESSION_TIMEOUT_MS);
 	} catch (error) {
 		console.warn('[Photo] Compression failed, using original file:', error);
-		// Return original file as fallback
-		return file;
+		// Read into a self-contained Blob so it survives temp file cleanup
+		return await detachFile(file);
 	}
+}
+
+/**
+ * Read a File into a self-contained Blob that doesn't depend on the
+ * original temp file reference. iOS Safari can invalidate camera File
+ * objects after the picker closes, causing "The requested file could
+ * not be read" errors when the data is accessed later.
+ */
+async function detachFile(file: File): Promise<Blob> {
+	const buffer = await file.arrayBuffer();
+	return new Blob([buffer], { type: file.type || 'image/jpeg' });
 }
 
 /**
