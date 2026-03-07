@@ -59,6 +59,15 @@ export const PhotoQueueEntrySchema = z.object({
 
 export type PhotoQueueEntry = z.infer<typeof PhotoQueueEntrySchema>;
 
+/**
+ * Internal IndexedDB storage type — uses ArrayBuffer instead of Blob
+ * to avoid iOS Safari structured clone failures with Blob objects.
+ */
+export type PhotoQueueEntryStored = Omit<PhotoQueueEntry, 'blob' | 'thumbnailBlob'> & {
+	blob: ArrayBuffer;
+	thumbnailBlob?: ArrayBuffer;
+};
+
 // Cached image entry for offline viewing of uploaded photos
 export const ImageCacheEntrySchema = z.object({
 	storageId: z.string(), // Convex storage ID (used as key)

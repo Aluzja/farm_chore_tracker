@@ -234,6 +234,14 @@ class SyncEngine {
 
 				this.currentPhotoUpload = photo.id;
 
+				// Skip photos whose chore hasn't synced to the server yet.
+				// Without this, attachPhotoToChore fails with "Daily chore not found"
+				// because processQueue() and processPhotoQueue() can run concurrently.
+				const chore = await getDailyChore(photo.dailyChoreClientId);
+				if (chore && chore.syncStatus !== 'synced') {
+					continue;
+				}
+
 				// Validate blob is still intact (iOS Safari can evict IndexedDB blob data)
 				if (!photo.blob || photo.blob.size === 0) {
 					console.error(`[Sync] Photo ${photo.id} has empty blob — data was evicted`);

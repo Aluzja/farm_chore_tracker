@@ -5,7 +5,7 @@ import {
 	STORES,
 	type DailyChore,
 	type Mutation,
-	type PhotoQueueEntry,
+	type PhotoQueueEntryStored,
 	type ImageCacheEntry
 } from './schema';
 
@@ -35,7 +35,7 @@ interface KitchenSinkDB extends DBSchema {
 	};
 	photoQueue: {
 		key: string;
-		value: PhotoQueueEntry;
+		value: PhotoQueueEntryStored;
 		indexes: {
 			'by-upload-status': string;
 			'by-captured-at': number;
