@@ -1,10 +1,12 @@
 import { sentrySvelteKit } from '@sentry/sveltekit';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { SvelteKitPWA } from '@vite-pwa/sveltekit';
+import basicSsl from '@vitejs/plugin-basic-ssl';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
 	plugins: [
+		basicSsl(),
 		sentrySvelteKit({
 			autoUploadSourceMaps: !!process.env.SENTRY_AUTH_TOKEN
 		}),
