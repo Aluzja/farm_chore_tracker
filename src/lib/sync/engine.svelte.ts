@@ -239,6 +239,16 @@ class SyncEngine {
 				// because processQueue() and processPhotoQueue() can run concurrently.
 				const chore = await getDailyChore(photo.dailyChoreClientId);
 				if (chore && chore.syncStatus !== 'synced') {
+					Sentry.addBreadcrumb({
+						category: 'photo-upload',
+						message: `Skipping photo ${photo.id} — chore not yet synced (status: ${chore.syncStatus})`,
+						level: 'info',
+						data: {
+							photoId: photo.id,
+							dailyChoreClientId: photo.dailyChoreClientId,
+							choreSyncStatus: chore.syncStatus
+						}
+					});
 					continue;
 				}
 
