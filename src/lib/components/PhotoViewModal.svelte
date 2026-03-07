@@ -7,7 +7,6 @@
 	import { getOrCacheImage } from '$lib/db/imageCache';
 	import { getStoredAccessKey } from '$lib/auth/access-key';
 	import { getCurrentUser } from '$lib/auth/user-context.svelte';
-	import type { Id } from '../../convex/_generated/dataModel';
 
 	interface Props {
 		choreId: string;
@@ -16,29 +15,20 @@
 
 	const { choreId, onclose }: Props = $props();
 
-	// Find the chore
+	// Find the chore in the local store (today's chores).
+	// May be undefined for history chores — that's fine, we query the photo URL
+	// by clientId directly so the modal works for any chore.
 	const chore = $derived(dailyChoreStore.items.find((c) => c._id === choreId));
 
-	// Extract primitive to stabilize downstream derivations.
-	// chore object reference changes on every store hydration, but the storageId
-	// string stays the same — primitive === comparison prevents cascading re-derives.
-	const photoStorageId = $derived(chore?.photoStorageId);
-
-	// Use Convex query to get photo URL.
-	// Depends on photoStorageId (primitive) instead of chore?.photoStorageId,
-	// so useQuery() is only re-called when the actual ID changes.
-	const photoUrlQuery = $derived(
-		photoStorageId
-			? useQuery(api.photos.getPhotoUrl, {
-					storageId: photoStorageId as Id<'_storage'>,
-					accessKey: getStoredAccessKey() ?? undefined
-				})
-			: null
-	);
+	// Query photo URL by chore clientId — works for both today and history chores
+	const photoUrlQuery = useQuery(api.photos.getPhotoUrlByChore, {
+		dailyChoreClientId: choreId,
+		accessKey: getStoredAccessKey() ?? undefined
+	});
 
 	// Create a promise that loads the image (from cache or network)
-	async function loadImage(storageId: string, remoteUrl: string): Promise<string> {
-		const blobUrl = await getOrCacheImage(storageId, remoteUrl);
+	async function loadImage(remoteUrl: string): Promise<string> {
+		const blobUrl = await getOrCacheImage(choreId, remoteUrl);
 		if (!blobUrl) {
 			throw new Error('Failed to load image');
 		}
@@ -52,23 +42,19 @@
 	let trackedUrl = '';
 
 	$effect(() => {
-		const sid = photoStorageId;
-		if (!sid) {
-			trackedUrl = '';
-			imagePromise = null;
-			return;
-		}
-
-		if (photoUrlQuery?.error) {
+		if (photoUrlQuery.error) {
 			trackedUrl = '';
 			imagePromise = Promise.reject(new Error(photoUrlQuery.error.message));
 			return;
 		}
 
-		const url = photoUrlQuery?.data;
+		const url = photoUrlQuery.data;
 		if (url && url !== trackedUrl) {
 			trackedUrl = url;
-			imagePromise = loadImage(sid, url);
+			imagePromise = loadImage(url);
+		} else if (url === null && !photoUrlQuery.isLoading) {
+			trackedUrl = '';
+			imagePromise = null;
 		}
 	});
 
@@ -112,11 +98,7 @@
 	</header>
 
 	<div class="photo-container">
-		{#if !chore?.photoStorageId}
-			<div class="empty-state">
-				<p>No photo available</p>
-			</div>
-		{:else if imagePromise}
+		{#if imagePromise}
 			{#await imagePromise}
 				<div class="loading-state">
 					<div class="spinner"></div>
@@ -135,10 +117,14 @@
 					<p class="error-detail">{error.message}</p>
 				</div>
 			{/await}
-		{:else}
+		{:else if photoUrlQuery.isLoading}
 			<div class="loading-state">
 				<div class="spinner"></div>
 				<p>Loading photo...</p>
+			</div>
+		{:else}
+			<div class="empty-state">
+				<p>No photo available</p>
 			</div>
 		{/if}
 	</div>
@@ -163,7 +149,7 @@
 
 	<footer class="view-footer">
 		<div class="footer-buttons">
-			<button class="replace-button" onclick={handleReplace} disabled={chore?.completedBy !== getCurrentUser()}>
+			<button class="replace-button" onclick={handleReplace} disabled={!chore || chore.completedBy !== getCurrentUser()}>
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<path
 						d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
