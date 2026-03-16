@@ -20,20 +20,37 @@
 
 	const STORAGE_KEY = 'ksf-collapsed-daily';
 
-	// Load collapsed state from localStorage
+	function todayDateString(): string {
+		return new Date().toISOString().slice(0, 10);
+	}
+
+	// Default state each new day: morning open, everything else collapsed
+	function defaultCollapsedSlots(): SvelteSet<string> {
+		return new SvelteSet(['afternoon', 'evening']);
+	}
+
+	// Load collapsed state from localStorage, resetting if the date has changed
 	function loadCollapsedSlots(): Set<string> {
 		if (!browser) return new Set();
 		try {
 			const saved = localStorage.getItem(STORAGE_KEY);
-			if (saved) return new SvelteSet(JSON.parse(saved));
+			if (saved) {
+				const parsed = JSON.parse(saved);
+				if (parsed.date === todayDateString() && Array.isArray(parsed.slots)) {
+					return new SvelteSet(parsed.slots);
+				}
+			}
 		} catch {}
-		return new SvelteSet();
+		return defaultCollapsedSlots();
 	}
 
 	function saveCollapsedSlots(slots: Set<string>) {
 		if (!browser) return;
 		try {
-			localStorage.setItem(STORAGE_KEY, JSON.stringify([...slots]));
+			localStorage.setItem(
+				STORAGE_KEY,
+				JSON.stringify({ date: todayDateString(), slots: [...slots] })
+			);
 		} catch {}
 	}
 
