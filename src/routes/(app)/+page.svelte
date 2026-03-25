@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { fade, slide } from 'svelte/transition';
+	import { fade } from 'svelte/transition';
 	import { dailyChoreStore } from '$lib/stores/dailyChores.svelte';
 	import { syncEngine, getConvexClient } from '$lib/sync/engine.svelte';
 	import { connectionStatus } from '$lib/sync/status.svelte';
@@ -16,58 +16,104 @@
 	import SyncStatusBadge from '$lib/components/SyncStatusBadge.svelte';
 	import type { DailyChore } from '$lib/db/schema';
 	import { browser } from '$app/environment';
-	import { SvelteSet } from 'svelte/reactivity';
 
-	const STORAGE_KEY = 'ksf-collapsed-daily';
+	const TAB_STORAGE_KEY = 'ksf-selected-tab';
 
 	function todayDateString(): string {
 		return new Date().toISOString().slice(0, 10);
 	}
 
-	// Default state each new day: morning open, everything else collapsed
-	function defaultCollapsedSlots(): SvelteSet<string> {
-		return new SvelteSet(['afternoon', 'evening']);
-	}
-
-	// Load collapsed state from localStorage, resetting if the date has changed
-	function loadCollapsedSlots(): Set<string> {
-		if (!browser) return new Set();
+	function loadSelectedSlot(): string {
+		if (!browser) return 'morning';
 		try {
-			const saved = localStorage.getItem(STORAGE_KEY);
+			const saved = localStorage.getItem(TAB_STORAGE_KEY);
 			if (saved) {
 				const parsed = JSON.parse(saved);
-				if (parsed.date === todayDateString() && Array.isArray(parsed.slots)) {
-					return new SvelteSet(parsed.slots);
+				if (parsed.date === todayDateString() && parsed.slot) {
+					return parsed.slot;
 				}
 			}
 		} catch {}
-		return defaultCollapsedSlots();
+		return 'morning';
 	}
 
-	function saveCollapsedSlots(slots: Set<string>) {
+	function saveSelectedSlot(slot: string) {
 		if (!browser) return;
 		try {
 			localStorage.setItem(
-				STORAGE_KEY,
-				JSON.stringify({ date: todayDateString(), slots: [...slots] })
+				TAB_STORAGE_KEY,
+				JSON.stringify({ date: todayDateString(), slot })
 			);
 		} catch {}
 	}
 
-	let collapsedSlots = $state<Set<string>>(loadCollapsedSlots());
+	let selectedSlot = $state(loadSelectedSlot());
 
-	function toggleSlotCollapse(timeSlot: string) {
-		if (collapsedSlots.has(timeSlot)) {
-			collapsedSlots.delete(timeSlot);
-		} else {
-			collapsedSlots.add(timeSlot);
-		}
-		collapsedSlots = new SvelteSet(collapsedSlots);
-		saveCollapsedSlots(collapsedSlots);
+	function selectSlot(slot: string) {
+		selectedSlot = slot;
+		saveSelectedSlot(slot);
 	}
 
-	function isSlotCollapsed(timeSlot: string): boolean {
-		return collapsedSlots.has(timeSlot);
+	// If the selected slot has no chores (e.g. no afternoon chores), fall back to first available
+	const activeSlot = $derived.by(() => {
+		const grouped = dailyChoreStore.grouped;
+		if (!grouped.length) return selectedSlot;
+		const hasSelected = grouped.some((g) => g.timeSlot === selectedSlot);
+		if (hasSelected) return selectedSlot;
+		return grouped[0].timeSlot;
+	});
+
+	const activeGroup = $derived(
+		dailyChoreStore.grouped.find((g) => g.timeSlot === activeSlot)
+	);
+
+	// Category collapse state (persisted, no daily reset)
+	const CATEGORY_COLLAPSE_KEY = 'ksf-collapsed-categories';
+
+	function loadCollapsedCategories(): Set<string> {
+		if (!browser) return new Set();
+		try {
+			const saved = localStorage.getItem(CATEGORY_COLLAPSE_KEY);
+			if (saved) return new Set(JSON.parse(saved));
+		} catch {}
+		return new Set();
+	}
+
+	function saveCollapsedCategories(set: Set<string>) {
+		if (!browser) return;
+		try {
+			localStorage.setItem(CATEGORY_COLLAPSE_KEY, JSON.stringify([...set]));
+		} catch {}
+	}
+
+	let collapsedCategories = $state<Set<string>>(loadCollapsedCategories());
+
+	function categoryKey(timeSlot: string, categoryName: string): string {
+		return `${timeSlot}:${categoryName}`;
+	}
+
+	function isCategoryCollapsed(timeSlot: string, categoryName: string): boolean {
+		return collapsedCategories.has(categoryKey(timeSlot, categoryName));
+	}
+
+	function toggleCategoryCollapse(timeSlot: string, categoryName: string) {
+		const key = categoryKey(timeSlot, categoryName);
+		const next = new Set(collapsedCategories);
+		if (next.has(key)) {
+			next.delete(key);
+		} else {
+			next.add(key);
+		}
+		collapsedCategories = next;
+		saveCollapsedCategories(next);
+	}
+
+	function getCategoryStats(chores: DailyChore[]): { completed: number; total: number } {
+		let completed = 0;
+		for (const chore of chores) {
+			if (chore.isCompleted) completed++;
+		}
+		return { completed, total: chores.length };
 	}
 
 	const dayName = getTodayDayName();
@@ -396,164 +442,173 @@
 				</p>
 			</div>
 		{:else}
-			<div class="chore-list">
+			<nav class="time-slot-tabs" role="tablist">
 				{#each dailyChoreStore.grouped as timeSlotGroup (timeSlotGroup.timeSlot)}
 					{@const stats = getSlotStats(timeSlotGroup.categories)}
-					{@const isCollapsed = isSlotCollapsed(timeSlotGroup.timeSlot)}
-					<section class="time-slot-section" class:collapsed={isCollapsed}>
-						<button
-							class="time-slot-header"
-							onclick={() => toggleSlotCollapse(timeSlotGroup.timeSlot)}
-							aria-expanded={!isCollapsed}
-						>
-							<span class="time-slot-title">{formatTimeSlot(timeSlotGroup.timeSlot)}</span>
-							<span class="time-slot-stats">
-								{stats.completed}/{stats.total}
-								<span class="time-slot-percent">({stats.percent}%)</span>
-								{#if stats.completed === stats.total && stats.total > 0}
-									<svg
-										class="check-mini"
-										viewBox="0 0 24 24"
-										fill="none"
-										stroke="currentColor"
-										stroke-width="3"
-									>
-										<polyline points="20 6 9 17 4 12"></polyline>
-									</svg>
-								{/if}
-							</span>
-							<svg
-								class="chevron"
-								class:rotated={isCollapsed}
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-							>
-								<polyline points="6 9 12 15 18 9"></polyline>
-							</svg>
-						</button>
-
-						{#if !isCollapsed}
-							<div class="time-slot-content" transition:slide={{ duration: 200 }}>
-								{#each timeSlotGroup.categories as categoryGroup, categoryIndex (categoryGroup.name)}
-									<div class="category-group category-color-{categoryIndex % 6}">
-										<h3 class="category-header">{categoryGroup.name}</h3>
-
-										<ul class="chore-items">
-											{#each categoryGroup.chores as chore (chore._id)}
-												<li
-													class="chore-item"
-													class:completed={chore.isCompleted}
-													transition:slide={{ duration: 150 }}
-												>
-													<button
-														class="toggle-button"
-														class:checked={chore.isCompleted}
-														class:locked={chore.isCompleted &&
-															chore.completedBy !== getCurrentUser()}
-														disabled={chore.isCompleted && chore.completedBy !== getCurrentUser()}
-														onclick={() => handleChoreAction(chore)}
-														aria-label={chore.isCompleted
-															? chore.completedBy !== getCurrentUser()
-																? `Completed by ${chore.completedBy}`
-																: 'Mark incomplete'
-															: chore.requiresPhoto
-																? 'Take photo to complete'
-																: 'Mark complete'}
-													>
-														{#if chore.isCompleted}
-															<svg
-																class="check-icon"
-																viewBox="0 0 24 24"
-																fill="none"
-																stroke="currentColor"
-																stroke-width="3"
-															>
-																<polyline points="20 6 9 17 4 12"></polyline>
-															</svg>
-														{:else if chore.requiresPhoto}
-															<svg
-																class="camera-icon"
-																viewBox="0 0 24 24"
-																fill="none"
-																stroke="currentColor"
-																stroke-width="2"
-															>
-																<path
-																	d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
-																></path>
-																<circle cx="12" cy="13" r="4"></circle>
-															</svg>
-														{/if}
-													</button>
-
-													<div class="chore-content">
-														<span class="chore-text">
-															{chore.text}
-															{#if chore.requiresPhoto && !chore.isCompleted}
-																<span class="badge photo-required" title="Photo required"
-																	>Photo</span
-																>
-															{/if}
-														</span>
-
-														{#if chore.description}
-															<span class="chore-description">{chore.description}</span>
-														{/if}
-
-														{#if chore.isAdHoc}
-															<span class="badge adhoc">Today only</span>
-														{/if}
-
-														{#if chore.isCompleted && chore.completedBy}
-															<div class="completion-info" transition:fade={{ duration: 200 }}>
-																{chore.completedBy} at {formatCompletionTime(chore.completedAt)}
-															</div>
-														{/if}
-													</div>
-
-													{#if chore.isCompleted && chore.photoStorageId}
-														{#key chore.photoStorageId}
-															<PhotoThumbnail
-																choreId={chore._id}
-																storageId={chore.photoStorageId}
-																thumbnailStorageId={chore.thumbnailStorageId}
-															/>
-														{/key}
-													{:else if chore.isCompleted && chore.photoStatus === 'pending'}
-														<div class="photo-pending">
-															<span class="photo-pending-spinner"></span>
-														</div>
-													{:else if chore.isCompleted && chore.requiresPhoto && !chore.photoStorageId}
-														<button
-															class="photo-retry"
-															onclick={() => handleRetryPhotoUpload(chore._id)}
-															disabled={retryingChoreIds.has(chore._id)}
-															aria-label="Retry photo upload"
-														>
-															{#if retryingChoreIds.has(chore._id)}
-																<span class="photo-pending-spinner"></span>
-															{:else}
-																<svg class="retry-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-																	<path d="M1 4v6h6"></path>
-																	<path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
-																</svg>
-															{/if}
-														</button>
-													{/if}
-
-													<SyncStatusBadge status={chore.syncStatus} />
-												</li>
-											{/each}
-										</ul>
-									</div>
-								{/each}
-							</div>
-						{/if}
-					</section>
+					{@const isActive = activeSlot === timeSlotGroup.timeSlot}
+					<button
+						class="tab tab-{timeSlotGroup.timeSlot}"
+						class:active={isActive}
+						role="tab"
+						aria-selected={isActive}
+						onclick={() => selectSlot(timeSlotGroup.timeSlot)}
+					>
+						<span class="tab-label">{formatTimeSlot(timeSlotGroup.timeSlot)}</span>
+						<span class="tab-stats">
+							{stats.completed}/{stats.total}
+							{#if stats.completed === stats.total && stats.total > 0}
+								<svg
+									class="check-mini"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="3"
+								>
+									<polyline points="20 6 9 17 4 12"></polyline>
+								</svg>
+							{/if}
+						</span>
+					</button>
 				{/each}
-			</div>
+			</nav>
+
+			{#if activeGroup}
+				<div class="tab-content" role="tabpanel">
+					{#each activeGroup.categories as categoryGroup, categoryIndex (categoryGroup.name)}
+						{@const catStats = getCategoryStats(categoryGroup.chores)}
+						{@const catCollapsed = isCategoryCollapsed(activeSlot, categoryGroup.name)}
+						<div class="category-group category-color-{categoryIndex % 6}">
+							<button
+								class="category-header"
+								onclick={() => toggleCategoryCollapse(activeSlot, categoryGroup.name)}
+								aria-expanded={!catCollapsed}
+							>
+								<span class="category-label">{categoryGroup.name}</span>
+								<span class="category-stats">{catStats.completed}/{catStats.total}</span>
+								<svg
+									class="category-chevron"
+									class:rotated={catCollapsed}
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+								>
+									<polyline points="6 9 12 15 18 9"></polyline>
+								</svg>
+							</button>
+
+							{#if !catCollapsed}
+							<ul class="chore-items">
+								{#each categoryGroup.chores as chore (chore._id)}
+									<li
+										class="chore-item"
+										class:completed={chore.isCompleted}
+									>
+										<button
+											class="toggle-button"
+											class:checked={chore.isCompleted}
+											class:locked={chore.isCompleted &&
+												chore.completedBy !== getCurrentUser()}
+											disabled={chore.isCompleted && chore.completedBy !== getCurrentUser()}
+											onclick={() => handleChoreAction(chore)}
+											aria-label={chore.isCompleted
+												? chore.completedBy !== getCurrentUser()
+													? `Completed by ${chore.completedBy}`
+													: 'Mark incomplete'
+												: chore.requiresPhoto
+													? 'Take photo to complete'
+													: 'Mark complete'}
+										>
+											{#if chore.isCompleted}
+												<svg
+													class="check-icon"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="3"
+												>
+													<polyline points="20 6 9 17 4 12"></polyline>
+												</svg>
+											{:else if chore.requiresPhoto}
+												<svg
+													class="camera-icon"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+												>
+													<path
+														d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+													></path>
+													<circle cx="12" cy="13" r="4"></circle>
+												</svg>
+											{/if}
+										</button>
+
+										<div class="chore-content">
+											<span class="chore-text">
+												{chore.text}
+												{#if chore.requiresPhoto && !chore.isCompleted}
+													<span class="badge photo-required" title="Photo required"
+														>Photo</span
+													>
+												{/if}
+											</span>
+
+											{#if chore.description}
+												<span class="chore-description">{chore.description}</span>
+											{/if}
+
+											{#if chore.isAdHoc}
+												<span class="badge adhoc">Today only</span>
+											{/if}
+
+											{#if chore.isCompleted && chore.completedBy}
+												<div class="completion-info" transition:fade={{ duration: 200 }}>
+													{chore.completedBy} at {formatCompletionTime(chore.completedAt)}
+												</div>
+											{/if}
+										</div>
+
+										{#if chore.isCompleted && chore.photoStorageId}
+											{#key chore.photoStorageId}
+												<PhotoThumbnail
+													choreId={chore._id}
+													storageId={chore.photoStorageId}
+													thumbnailStorageId={chore.thumbnailStorageId}
+												/>
+											{/key}
+										{:else if chore.isCompleted && chore.photoStatus === 'pending'}
+											<div class="photo-pending">
+												<span class="photo-pending-spinner"></span>
+											</div>
+										{:else if chore.isCompleted && chore.requiresPhoto && !chore.photoStorageId}
+											<button
+												class="photo-retry"
+												onclick={() => handleRetryPhotoUpload(chore._id)}
+												disabled={retryingChoreIds.has(chore._id)}
+												aria-label="Retry photo upload"
+											>
+												{#if retryingChoreIds.has(chore._id)}
+													<span class="photo-pending-spinner"></span>
+												{:else}
+													<svg class="retry-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+														<path d="M1 4v6h6"></path>
+														<path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+													</svg>
+												{/if}
+											</button>
+										{/if}
+
+										<SyncStatusBadge status={chore.syncStatus} />
+									</li>
+								{/each}
+							</ul>
+							{/if}
+						</div>
+					{/each}
+				</div>
+			{/if}
 		{/if}
 	</main>
 </div>
@@ -791,91 +846,81 @@
 		color: #6b7280;
 	}
 
-	.chore-list {
+	.time-slot-tabs {
 		display: flex;
-		flex-direction: column;
-		gap: 1.5rem;
+		position: sticky;
+		top: 0;
+		z-index: 10;
+		background: #f9fafb;
+		padding-bottom: 0.5rem;
+		gap: 0.5rem;
 	}
 
-	.time-slot-section {
+	.tab {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.375rem;
+		padding: 0.4rem 0.5rem;
+		border: none;
+		border-radius: 0.5rem;
+		background: white;
+		color: #6b7280;
+		font-size: 0.9375rem;
+		font-weight: 600;
+		cursor: pointer;
+		-webkit-tap-highlight-color: transparent;
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+		transition: color 0.15s, background-color 0.15s;
+	}
+
+	.tab:active {
+		transform: scale(0.97);
+	}
+
+	.tab.active {
+		color: white;
+	}
+
+	.tab-morning.active {
+		background: #f59e0b;
+		box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+	}
+
+	.tab-afternoon.active {
+		background: #3b82f6;
+		box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+	}
+
+	.tab-evening.active {
+		background: #8b5cf6;
+		box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+	}
+
+	.tab-label {
+		line-height: 1;
+	}
+
+	.tab-stats {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		font-size: 0.75rem;
+		font-weight: 500;
+		opacity: 0.85;
+	}
+
+	.check-mini {
+		width: 0.875rem;
+		height: 0.875rem;
+	}
+
+	.tab-content {
 		background: white;
 		border-radius: 0.75rem;
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 		overflow: hidden;
-	}
-
-	.time-slot-header {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		width: 100%;
-		font-size: 1rem;
-		font-weight: 600;
-		color: white;
-		background: #4b5563;
-		padding: 0.75rem 1rem;
-		margin: 0;
-		border: none;
-		cursor: pointer;
-		text-align: left;
-		-webkit-tap-highlight-color: transparent;
-	}
-
-	.time-slot-header:active {
-		filter: brightness(0.95);
-	}
-
-	.time-slot-title {
-		flex: 1;
-	}
-
-	.time-slot-stats {
-		display: flex;
-		align-items: center;
-		gap: 0.25rem;
-		font-size: 0.875rem;
-		font-weight: 500;
-		opacity: 0.9;
-	}
-
-	.time-slot-percent {
-		opacity: 0.8;
-	}
-
-	.check-mini {
-		width: 1rem;
-		height: 1rem;
-	}
-
-	.chevron {
-		width: 1.25rem;
-		height: 1.25rem;
-		transition: transform 0.2s ease;
-		flex-shrink: 0;
-	}
-
-	.chevron.rotated {
-		transform: rotate(-90deg);
-	}
-
-	.time-slot-content {
-		overflow: hidden;
-	}
-
-	.time-slot-section:nth-child(1) .time-slot-header {
-		background: #f59e0b;
-	}
-
-	.time-slot-section:nth-child(2) .time-slot-header {
-		background: #3b82f6;
-	}
-
-	.time-slot-section:nth-child(3) .time-slot-header {
-		background: #8b5cf6;
-	}
-
-	.time-slot-section.collapsed {
-		border-radius: 0.75rem;
 	}
 
 	.category-group {
@@ -887,6 +932,10 @@
 	}
 
 	.category-header {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		width: 100%;
 		font-size: 0.75rem;
 		font-weight: 600;
 		text-transform: uppercase;
@@ -894,7 +943,33 @@
 		color: #6b7280;
 		padding: 0.5rem 1rem;
 		margin: 0;
+		border: none;
 		border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+		cursor: pointer;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.category-label {
+		flex: 1;
+		text-align: left;
+	}
+
+	.category-stats {
+		font-size: 0.6875rem;
+		font-weight: 500;
+		opacity: 0.8;
+	}
+
+	.category-chevron {
+		width: 0.875rem;
+		height: 0.875rem;
+		transition: transform 0.2s ease;
+		flex-shrink: 0;
+		opacity: 0.5;
+	}
+
+	.category-chevron.rotated {
+		transform: rotate(-90deg);
 	}
 
 	/* Category color highlights */
