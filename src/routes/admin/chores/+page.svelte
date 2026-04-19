@@ -110,7 +110,8 @@
 		{ value: 'Ducks', label: 'Ducks' },
 		{ value: 'Geese', label: 'Geese' },
 		{ value: 'Cats', label: 'Cats' },
-		{ value: 'Garden', label: 'Garden' }
+		{ value: 'Garden', label: 'Garden' },
+		{ value: 'Rabbits', label: 'Rabbits' }
 	];
 
 	async function handleCreate(e: SubmitEvent) {

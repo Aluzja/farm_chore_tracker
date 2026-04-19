@@ -1,3 +1,4 @@
+import { SvelteMap } from 'svelte/reactivity';
 import type { Id } from '../../convex/_generated/dataModel';
 
 type TimeSlot = 'morning' | 'afternoon' | 'evening';
@@ -50,7 +51,7 @@ class MasterChoreStore {
 
 			if (slotChores.length > 0) {
 				// Group by category
-				const categoryMap = new Map<string, MasterChore[]>();
+				const categoryMap = new SvelteMap<string, MasterChore[]>();
 				for (const chore of slotChores) {
 					const cat = chore.animalCategory;
 					if (!categoryMap.has(cat)) {
