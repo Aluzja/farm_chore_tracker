@@ -235,9 +235,9 @@
 	}
 
 	.photo-image {
-		max-width: none;
-		max-height: none;
-		width: 100%;
+		max-width: 100%;
+		max-height: 100%;
+		width: auto;
 		height: auto;
 		object-fit: contain;
 		transform-origin: 0 0;
