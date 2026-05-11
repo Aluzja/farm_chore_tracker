@@ -25,24 +25,22 @@
 	// Get Convex client at component init (must be called at top level, not in onMount)
 	const convexClient = browser ? useConvexClient() : null;
 
-	// Set up auth token provider
+	// Set up auth token provider and share client with sync engine synchronously.
+	// Doing this at script init (not in onMount) ensures the child layout's $effects
+	// can see the client — child effects can run before parent onMount.
 	if (browser && convexClient) {
 		convexClient.setAuth(async () => {
 			return localStorage.getItem('convex_auth_token');
 		});
+		setConvexClient(convexClient);
+		connectionStatus.init();
 	}
 
 	onMount(async () => {
-		// Initialize connection status (must happen in browser)
-		connectionStatus.init();
-
-		// Request persistent storage for IndexedDB
-		await requestPersistentStorage();
-
-		// Share Convex client with sync engine (client was obtained at top level)
-		if (convexClient) {
-			setConvexClient(convexClient);
-		}
+		// Request persistent storage for IndexedDB (best-effort, don't block boot)
+		requestPersistentStorage().catch(() => {
+			// Non-critical
+		});
 
 		// Register service worker
 		if (pwaInfo) {
