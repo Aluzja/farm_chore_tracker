@@ -107,12 +107,13 @@
 		{ value: 'Sheep', label: 'Sheep' },
 		{ value: 'Goats', label: 'Goats' },
 		{ value: 'Chickens', label: 'Chickens' },
+		{ value: 'Chicks & Ducklings', label: 'Chicks & Ducklings' },
 		{ value: 'Ducks', label: 'Ducks' },
 		{ value: 'Geese', label: 'Geese' },
 		{ value: 'Cats', label: 'Cats' },
 		{ value: 'Garden', label: 'Garden' },
 		{ value: 'Rabbits', label: 'Rabbits' }
-	];
+	].sort((a, b) => a.label.localeCompare(b.label));
 
 	async function handleCreate(e: SubmitEvent) {
 		e.preventDefault();
