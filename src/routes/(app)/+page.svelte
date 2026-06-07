@@ -40,10 +40,7 @@
 	function saveSelectedSlot(slot: string) {
 		if (!browser) return;
 		try {
-			localStorage.setItem(
-				TAB_STORAGE_KEY,
-				JSON.stringify({ date: todayDateString(), slot })
-			);
+			localStorage.setItem(TAB_STORAGE_KEY, JSON.stringify({ date: todayDateString(), slot }));
 		} catch {}
 	}
 
@@ -63,9 +60,7 @@
 		return grouped[0].timeSlot;
 	});
 
-	const activeGroup = $derived(
-		dailyChoreStore.grouped.find((g) => g.timeSlot === activeSlot)
-	);
+	const activeGroup = $derived(dailyChoreStore.grouped.find((g) => g.timeSlot === activeSlot));
 
 	// Category collapse state (persisted, no daily reset)
 	const CATEGORY_COLLAPSE_KEY = 'ksf-collapsed-categories';
@@ -368,7 +363,6 @@
 
 	// Photo queue modal
 	let showPhotoQueueModal = $state(false);
-
 </script>
 
 <div class="page">
@@ -400,15 +394,11 @@
 							<span class="upload-spinner"></span>
 						{/if}
 						{#if syncEngine.failedPhotoCount > 0}
-							{syncEngine.failedPhotoCount} photo{syncEngine.failedPhotoCount === 1
-								? ''
-								: 's'} failed
+							{syncEngine.failedPhotoCount} photo{syncEngine.failedPhotoCount === 1 ? '' : 's'} failed
 						{:else if syncEngine.currentPhotoUpload}
 							Uploading photo...
 						{:else}
-							{syncEngine.pendingPhotoCount} photo{syncEngine.pendingPhotoCount === 1
-								? ''
-								: 's'}
+							{syncEngine.pendingPhotoCount} photo{syncEngine.pendingPhotoCount === 1 ? '' : 's'}
 						{/if}
 					</button>
 				{/if}
@@ -442,7 +432,7 @@
 				</p>
 			</div>
 		{:else}
-			<nav class="time-slot-tabs" role="tablist">
+			<div class="time-slot-tabs" role="tablist">
 				{#each dailyChoreStore.grouped as timeSlotGroup (timeSlotGroup.timeSlot)}
 					{@const stats = getSlotStats(timeSlotGroup.categories)}
 					{@const isActive = activeSlot === timeSlotGroup.timeSlot}
@@ -456,21 +446,10 @@
 						<span class="tab-label">{formatTimeSlot(timeSlotGroup.timeSlot)}</span>
 						<span class="tab-stats">
 							{stats.completed}/{stats.total}
-							{#if stats.completed === stats.total && stats.total > 0}
-								<svg
-									class="check-mini"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="3"
-								>
-									<polyline points="20 6 9 17 4 12"></polyline>
-								</svg>
-							{/if}
 						</span>
 					</button>
 				{/each}
-			</nav>
+			</div>
 
 			{#if activeGroup}
 				<div class="tab-content" role="tabpanel">
@@ -498,112 +477,112 @@
 							</button>
 
 							{#if !catCollapsed}
-							<ul class="chore-items">
-								{#each categoryGroup.chores as chore (chore._id)}
-									<li
-										class="chore-item"
-										class:completed={chore.isCompleted}
-									>
-										<button
-											class="toggle-button"
-											class:checked={chore.isCompleted}
-											class:locked={chore.isCompleted &&
-												chore.completedBy !== getCurrentUser()}
-											disabled={chore.isCompleted && chore.completedBy !== getCurrentUser()}
-											onclick={() => handleChoreAction(chore)}
-											aria-label={chore.isCompleted
-												? chore.completedBy !== getCurrentUser()
-													? `Completed by ${chore.completedBy}`
-													: 'Mark incomplete'
-												: chore.requiresPhoto
-													? 'Take photo to complete'
-													: 'Mark complete'}
-										>
-											{#if chore.isCompleted}
-												<svg
-													class="check-icon"
-													viewBox="0 0 24 24"
-													fill="none"
-													stroke="currentColor"
-													stroke-width="3"
-												>
-													<polyline points="20 6 9 17 4 12"></polyline>
-												</svg>
-											{:else if chore.requiresPhoto}
-												<svg
-													class="camera-icon"
-													viewBox="0 0 24 24"
-													fill="none"
-													stroke="currentColor"
-													stroke-width="2"
-												>
-													<path
-														d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
-													></path>
-													<circle cx="12" cy="13" r="4"></circle>
-												</svg>
-											{/if}
-										</button>
-
-										<div class="chore-content">
-											<span class="chore-text">
-												{chore.text}
-												{#if chore.requiresPhoto && !chore.isCompleted}
-													<span class="badge photo-required" title="Photo required"
-														>Photo</span
-													>
-												{/if}
-											</span>
-
-											{#if chore.description}
-												<span class="chore-description">{chore.description}</span>
-											{/if}
-
-											{#if chore.isAdHoc}
-												<span class="badge adhoc">Today only</span>
-											{/if}
-
-											{#if chore.isCompleted && chore.completedBy}
-												<div class="completion-info" transition:fade={{ duration: 200 }}>
-													{chore.completedBy} at {formatCompletionTime(chore.completedAt)}
-												</div>
-											{/if}
-										</div>
-
-										{#if chore.isCompleted && chore.photoStorageId}
-											{#key chore.photoStorageId}
-												<PhotoThumbnail
-													choreId={chore._id}
-													storageId={chore.photoStorageId}
-													thumbnailStorageId={chore.thumbnailStorageId}
-												/>
-											{/key}
-										{:else if chore.isCompleted && chore.photoStatus === 'pending'}
-											<div class="photo-pending">
-												<span class="photo-pending-spinner"></span>
-											</div>
-										{:else if chore.isCompleted && chore.requiresPhoto && !chore.photoStorageId}
+								<ul class="chore-items">
+									{#each categoryGroup.chores as chore (chore._id)}
+										<li class="chore-item" class:completed={chore.isCompleted}>
 											<button
-												class="photo-retry"
-												onclick={() => handleRetryPhotoUpload(chore._id)}
-												disabled={retryingChoreIds.has(chore._id)}
-												aria-label="Retry photo upload"
+												class="toggle-button"
+												class:checked={chore.isCompleted}
+												class:locked={chore.isCompleted && chore.completedBy !== getCurrentUser()}
+												disabled={chore.isCompleted && chore.completedBy !== getCurrentUser()}
+												onclick={() => handleChoreAction(chore)}
+												aria-label={chore.isCompleted
+													? chore.completedBy !== getCurrentUser()
+														? `Completed by ${chore.completedBy}`
+														: 'Mark incomplete'
+													: chore.requiresPhoto
+														? 'Take photo to complete'
+														: 'Mark complete'}
 											>
-												{#if retryingChoreIds.has(chore._id)}
-													<span class="photo-pending-spinner"></span>
-												{:else}
-													<svg class="retry-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-														<path d="M1 4v6h6"></path>
-														<path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+												{#if chore.isCompleted}
+													<svg
+														class="check-icon"
+														viewBox="0 0 24 24"
+														fill="none"
+														stroke="currentColor"
+														stroke-width="3"
+													>
+														<polyline points="20 6 9 17 4 12"></polyline>
+													</svg>
+												{:else if chore.requiresPhoto}
+													<svg
+														class="camera-icon"
+														viewBox="0 0 24 24"
+														fill="none"
+														stroke="currentColor"
+														stroke-width="2"
+													>
+														<path
+															d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+														></path>
+														<circle cx="12" cy="13" r="4"></circle>
 													</svg>
 												{/if}
 											</button>
-										{/if}
 
-										<SyncStatusBadge status={chore.syncStatus} />
-									</li>
-								{/each}
-							</ul>
+											<div class="chore-content">
+												<span class="chore-text">
+													{chore.text}
+													{#if chore.requiresPhoto && !chore.isCompleted}
+														<span class="badge photo-required" title="Photo required">Photo</span>
+													{/if}
+												</span>
+
+												{#if chore.description}
+													<span class="chore-description">{chore.description}</span>
+												{/if}
+
+												{#if chore.isAdHoc}
+													<span class="badge adhoc">Today only</span>
+												{/if}
+
+												{#if chore.isCompleted && chore.completedBy}
+													<div class="completion-info" transition:fade={{ duration: 200 }}>
+														{chore.completedBy} at {formatCompletionTime(chore.completedAt)}
+													</div>
+												{/if}
+											</div>
+
+											{#if chore.isCompleted && chore.photoStorageId}
+												{#key chore.photoStorageId}
+													<PhotoThumbnail
+														choreId={chore._id}
+														storageId={chore.photoStorageId}
+														thumbnailStorageId={chore.thumbnailStorageId}
+													/>
+												{/key}
+											{:else if chore.isCompleted && chore.photoStatus === 'pending'}
+												<div class="photo-pending">
+													<span class="photo-pending-spinner"></span>
+												</div>
+											{:else if chore.isCompleted && chore.requiresPhoto && !chore.photoStorageId}
+												<button
+													class="photo-retry"
+													onclick={() => handleRetryPhotoUpload(chore._id)}
+													disabled={retryingChoreIds.has(chore._id)}
+													aria-label="Retry photo upload"
+												>
+													{#if retryingChoreIds.has(chore._id)}
+														<span class="photo-pending-spinner"></span>
+													{:else}
+														<svg
+															class="retry-icon"
+															viewBox="0 0 24 24"
+															fill="none"
+															stroke="currentColor"
+															stroke-width="2"
+														>
+															<path d="M1 4v6h6"></path>
+															<path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+														</svg>
+													{/if}
+												</button>
+											{/if}
+
+											<SyncStatusBadge status={chore.syncStatus} />
+										</li>
+									{/each}
+								</ul>
 							{/if}
 						</div>
 					{/each}
@@ -872,7 +851,9 @@
 		cursor: pointer;
 		-webkit-tap-highlight-color: transparent;
 		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-		transition: color 0.15s, background-color 0.15s;
+		transition:
+			color 0.15s,
+			background-color 0.15s;
 	}
 
 	.tab:active {

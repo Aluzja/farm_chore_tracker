@@ -32,9 +32,9 @@ export function isToday(dateStr: string): boolean {
  */
 export function formatTimeSlot(slot: string): string {
 	const labels: Record<string, string> = {
-		morning: 'Morning',
-		afternoon: 'Afternoon',
-		evening: 'Evening'
+		morning: 'morning',
+		afternoon: 'afternoon',
+		evening: 'evening'
 	};
 	return labels[slot] || slot;
 }
