@@ -68,6 +68,12 @@
 			}));
 	});
 
+	// Ordered clientIds of every photo chore this day, in display order
+	// (morning → afternoon → evening), for left/right navigation in the viewer.
+	const photoChoreIds = $derived(
+		grouped.flatMap((g) => g.chores).filter((c) => c.photoStorageId).map((c) => c.clientId)
+	);
+
 	// Summary stats
 	const stats = $derived.by(() => {
 		const completed = dayChores.filter((c) => c.isCompleted).length;
@@ -156,6 +162,7 @@
 												choreId={chore.clientId}
 												storageId={chore.photoStorageId}
 												thumbnailStorageId={chore.thumbnailStorageId}
+												siblingIds={photoChoreIds}
 											/>
 										</div>
 									{/if}

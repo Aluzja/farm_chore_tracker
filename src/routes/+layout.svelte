@@ -78,7 +78,11 @@
 </div>
 
 {#if page.state.photoChoreId}
-	<PhotoViewModal choreId={page.state.photoChoreId} onclose={() => history.back()} />
+	<PhotoViewModal
+		choreId={page.state.photoChoreId}
+		siblingIds={page.state.photoSiblingIds ?? []}
+		onclose={() => history.back()}
+	/>
 {/if}
 
 <style>

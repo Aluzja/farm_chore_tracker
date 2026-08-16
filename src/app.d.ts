@@ -7,6 +7,9 @@ declare global {
 		// interface PageData {}
 		interface PageState {
 			photoChoreId?: string;
+			// Ordered clientIds of the photo chores in the list the modal was opened
+			// from, used for left/right navigation between photos.
+			photoSiblingIds?: string[];
 		}
 		// interface Platform {}
 	}

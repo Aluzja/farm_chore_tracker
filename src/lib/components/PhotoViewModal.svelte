@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { useQuery } from 'convex-svelte';
 	import { api } from '../../convex/_generated/api';
@@ -10,21 +10,123 @@
 
 	interface Props {
 		choreId: string;
+		siblingIds?: string[];
 		onclose: () => void;
 	}
 
-	const { choreId, onclose }: Props = $props();
+	const { choreId, siblingIds = [], onclose }: Props = $props();
+
+	// Position within the sibling list, for left/right navigation.
+	const currentIndex = $derived(siblingIds.indexOf(choreId));
+	const hasPrev = $derived(currentIndex > 0);
+	const hasNext = $derived(currentIndex >= 0 && currentIndex < siblingIds.length - 1);
+
+	function navigate(offset: number) {
+		const target = siblingIds[currentIndex + offset];
+		if (!target) return;
+		// Replace (not push) so the viewer stays a single history entry and
+		// closing returns to the list rather than stepping back through photos.
+		replaceState(`/photo-view/${target}`, {
+			photoChoreId: target,
+			photoSiblingIds: siblingIds
+		});
+	}
+
+	function handleKeydown(event: KeyboardEvent) {
+		if (event.key === 'ArrowLeft' && hasPrev) navigate(-1);
+		else if (event.key === 'ArrowRight' && hasNext) navigate(1);
+		else if (event.key === 'Escape') onclose();
+	}
+
+	// Pinch-to-zoom + pan. The app disables native zoom globally (viewport
+	// user-scalable=no), so we handle it ourselves inside the viewer.
+	const MAX_SCALE = 4;
+	let scale = $state(1);
+	let tx = $state(0);
+	let ty = $state(0);
+	const isZoomed = $derived(scale > 1);
+
+	let startDist = 0;
+	let startScale = 1;
+	let panStartX = 0;
+	let panStartY = 0;
+	let panStartTx = 0;
+	let panStartTy = 0;
+	let lastTapTime = 0;
+
+	function resetZoom() {
+		scale = 1;
+		tx = 0;
+		ty = 0;
+	}
+
+	// Reset zoom whenever the displayed photo changes.
+	$effect(() => {
+		choreId;
+		resetZoom();
+	});
+
+	function touchDistance(touches: TouchList): number {
+		return Math.hypot(
+			touches[0].clientX - touches[1].clientX,
+			touches[0].clientY - touches[1].clientY
+		);
+	}
+
+	function handleTouchStart(event: TouchEvent) {
+		if (event.touches.length === 2) {
+			startDist = touchDistance(event.touches);
+			startScale = scale;
+		} else if (event.touches.length === 1 && isZoomed) {
+			panStartX = event.touches[0].clientX;
+			panStartY = event.touches[0].clientY;
+			panStartTx = tx;
+			panStartTy = ty;
+		}
+	}
+
+	function handleTouchMove(event: TouchEvent) {
+		if (event.touches.length === 2 && startDist > 0) {
+			const next = startScale * (touchDistance(event.touches) / startDist);
+			scale = Math.min(Math.max(next, 1), MAX_SCALE);
+			if (scale === 1) {
+				tx = 0;
+				ty = 0;
+			}
+		} else if (event.touches.length === 1 && isZoomed) {
+			tx = panStartTx + (event.touches[0].clientX - panStartX);
+			ty = panStartTy + (event.touches[0].clientY - panStartY);
+		}
+	}
+
+	function handleTouchEnd(event: TouchEvent) {
+		startDist = 0;
+		if (event.touches.length > 0) return;
+		// Double-tap toggles between fit and 2x zoom.
+		const now = Date.now();
+		if (now - lastTapTime < 300) {
+			if (isZoomed) resetZoom();
+			else scale = 2;
+			lastTapTime = 0;
+		} else {
+			lastTapTime = now;
+		}
+	}
 
 	// Find the chore in the local store (today's chores).
 	// May be undefined for history chores — that's fine, we query the photo URL
 	// by clientId directly so the modal works for any chore.
 	const chore = $derived(dailyChoreStore.items.find((c) => c._id === choreId));
 
-	// Query photo URL by chore clientId — works for both today and history chores
-	const photoUrlQuery = useQuery(api.photos.getPhotoUrlByChore, {
-		dailyChoreClientId: choreId,
-		accessKey: getStoredAccessKey() ?? undefined
-	});
+	// Query photo URL by chore clientId — works for both today and history chores.
+	// Wrapped in $derived so navigating between photos (choreId prop changes on the
+	// same component instance) re-subscribes the query to the new chore.
+	const photoUrlQuery = $derived(
+		useQuery(api.photos.getPhotoUrlByChore, {
+			dailyChoreClientId: choreId,
+			accessKey: getStoredAccessKey() ?? undefined
+		})
+	);
 
 	// Create a promise that loads the image (from cache or network)
 	async function loadImage(remoteUrl: string): Promise<string> {
@@ -51,6 +153,7 @@
 		const url = photoUrlQuery.data;
 		if (url && url !== trackedUrl) {
 			trackedUrl = url;
+			loadedImageUrl = null;
 			imagePromise = loadImage(url);
 		} else if (url === null && !photoUrlQuery.isLoading) {
 			trackedUrl = '';
@@ -86,6 +189,8 @@
 	}
 </script>
 
+<svelte:window onkeydown={handleKeydown} />
+
 <div class="view-container" role="dialog" aria-modal="true" aria-label="Photo viewer">
 	<header class="view-header">
 		<h1 class="view-title">{chore?.text || 'Photo'}</h1>
@@ -97,7 +202,28 @@
 		</button>
 	</header>
 
-	<div class="photo-container">
+	<div
+		class="photo-container"
+		role="group"
+		aria-label="Zoomable photo — pinch or double-tap to zoom"
+		ontouchstart={handleTouchStart}
+		ontouchmove={handleTouchMove}
+		ontouchend={handleTouchEnd}
+	>
+		{#if hasPrev && !isZoomed}
+			<button class="nav-arrow nav-prev" onclick={() => navigate(-1)} aria-label="Previous photo">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<polyline points="15 18 9 12 15 6"></polyline>
+				</svg>
+			</button>
+		{/if}
+		{#if hasNext && !isZoomed}
+			<button class="nav-arrow nav-next" onclick={() => navigate(1)} aria-label="Next photo">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<polyline points="9 18 15 12 9 6"></polyline>
+				</svg>
+			</button>
+		{/if}
 		{#if imagePromise}
 			{#await imagePromise}
 				<div class="loading-state">
@@ -109,6 +235,8 @@
 					src={url}
 					alt="Chore completion"
 					class="photo-image"
+					class:zoomed={isZoomed}
+					style="transform: translate({tx}px, {ty}px) scale({scale})"
 					onload={() => handleImageLoad(url)}
 				/>
 			{:catch error}
@@ -224,14 +352,15 @@
 	}
 
 	.photo-container {
+		position: relative;
 		flex: 1;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		overflow: auto;
+		overflow: hidden;
 		background: #111;
-		touch-action: pinch-zoom;
-		-webkit-overflow-scrolling: touch;
+		/* Gestures are handled in JS (pinch-zoom / pan), so suppress native touch actions */
+		touch-action: none;
 	}
 
 	.photo-image {
@@ -240,7 +369,47 @@
 		width: auto;
 		height: auto;
 		object-fit: contain;
-		transform-origin: 0 0;
+		transform-origin: center center;
+		will-change: transform;
+	}
+
+	.photo-image.zoomed {
+		cursor: grab;
+	}
+
+	.nav-arrow {
+		position: absolute;
+		top: 50%;
+		transform: translateY(-50%);
+		z-index: 5;
+		width: 3rem;
+		height: 3rem;
+		border-radius: 50%;
+		border: none;
+		background: rgba(0, 0, 0, 0.5);
+		color: white;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.nav-arrow:hover {
+		background: rgba(0, 0, 0, 0.75);
+	}
+
+	.nav-arrow svg {
+		width: 1.5rem;
+		height: 1.5rem;
+	}
+
+	.nav-prev {
+		left: 0.75rem;
+	}
+
+	.nav-next {
+		right: 0.75rem;
 	}
 
 	.loading-state,

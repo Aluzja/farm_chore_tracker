@@ -10,9 +10,12 @@
 		choreId: string;
 		storageId: string;
 		thumbnailStorageId?: string;
+		// Ordered clientIds of all photo chores in this list, for left/right
+		// navigation in the viewer. Defaults to just this chore (no navigation).
+		siblingIds?: string[];
 	}
 
-	const { choreId, storageId, thumbnailStorageId }: Props = $props();
+	const { choreId, storageId, thumbnailStorageId, siblingIds }: Props = $props();
 
 	// Use thumbnail for the list view if available, fall back to full image
 	const displayStorageId = $derived(thumbnailStorageId ?? storageId);
@@ -106,7 +109,10 @@
 	}
 
 	function handleClick() {
-		pushState(`/photo-view/${choreId}`, { photoChoreId: choreId });
+		pushState(`/photo-view/${choreId}`, {
+			photoChoreId: choreId,
+			photoSiblingIds: siblingIds ?? [choreId]
+		});
 	}
 </script>
 

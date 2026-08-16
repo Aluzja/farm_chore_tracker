@@ -62,6 +62,15 @@
 
 	const activeGroup = $derived(dailyChoreStore.grouped.find((g) => g.timeSlot === activeSlot));
 
+	// Ordered ids of the completed photo chores visible in the active tab,
+	// for left/right navigation in the photo viewer.
+	const photoChoreIds = $derived(
+		(activeGroup?.categories ?? [])
+			.flatMap((c) => c.chores)
+			.filter((c) => c.isCompleted && c.photoStorageId)
+			.map((c) => c._id)
+	);
+
 	// Category collapse state (persisted, no daily reset)
 	const CATEGORY_COLLAPSE_KEY = 'ksf-collapsed-categories';
 
@@ -549,6 +558,7 @@
 														choreId={chore._id}
 														storageId={chore.photoStorageId}
 														thumbnailStorageId={chore.thumbnailStorageId}
+														siblingIds={photoChoreIds}
 													/>
 												{/key}
 											{:else if chore.isCompleted && chore.photoStatus === 'pending'}
