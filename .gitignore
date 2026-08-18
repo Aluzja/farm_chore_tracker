@@ -27,3 +27,7 @@ dev-dist
 
 # btca
 .btca
+
+# Convex snapshot exports (may contain real user data)
+*prod-snapshot.zip
+convex-snapshot*.zip
