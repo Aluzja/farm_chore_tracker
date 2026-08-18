@@ -7,6 +7,7 @@ export interface MasterChore {
 	_id: Id<'masterChores'>;
 	text: string;
 	description?: string;
+	feedItems?: { feed: string; amount: number; unit: string }[];
 	timeSlot: string;
 	animalCategory: string;
 	sortOrder: number;

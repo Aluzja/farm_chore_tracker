@@ -2,6 +2,8 @@ import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { getAuthUserId } from '@convex-dev/auth/server';
 import { requireAuth, checkAuth } from './authCheck';
+import { feedItemValidator } from './schema';
+import { ensureFeedTypes } from './feedTypes';
 
 // Get or create daily list for a date
 // Returns chores array if exists, or { needsClone: true, date } if needs cloning
@@ -67,6 +69,7 @@ export const cloneMasterToDaily = mutation({
 				clientId,
 				text: master.text,
 				description: master.description,
+				feedItems: master.feedItems,
 				timeSlot: master.timeSlot,
 				animalCategory: master.animalCategory,
 				sortOrder: master.sortOrder,
@@ -245,6 +248,7 @@ export const addAdHocAdmin = mutation({
 	args: {
 		text: v.string(),
 		description: v.optional(v.string()),
+		feedItems: v.optional(v.array(feedItemValidator)),
 		timeSlot: v.string(),
 		animalCategory: v.string(),
 		date: v.string(),
@@ -256,6 +260,8 @@ export const addAdHocAdmin = mutation({
 
 		const user = await ctx.db.get(userId);
 		if (!user?.isAdmin) throw new Error('Admin required');
+
+		await ensureFeedTypes(ctx, args.feedItems?.map((f) => f.feed) ?? []);
 
 		const now = Date.now();
 		const clientId = crypto.randomUUID();
@@ -273,6 +279,7 @@ export const addAdHocAdmin = mutation({
 			clientId,
 			text: args.text,
 			description: args.description,
+			feedItems: args.feedItems,
 			timeSlot: args.timeSlot,
 			animalCategory: args.animalCategory,
 			sortOrder: maxOrder + 1,

@@ -7,6 +7,9 @@
 	import { browser } from '$app/environment';
 	import { getTodayDateString } from '$lib/utils/date';
 	import Dropdown from '$lib/components/Dropdown.svelte';
+	import FeedItemsEditor from '$lib/components/FeedItemsEditor.svelte';
+	import FeedTable from '$lib/components/FeedTable.svelte';
+	import type { FeedItem } from '$lib/db/schema';
 	import { SvelteSet } from 'svelte/reactivity';
 
 	// Get Convex client for mutations
@@ -14,6 +17,18 @@
 
 	// Query for listing master chores
 	const masterChoresQuery = browser ? useQuery(api.masterChores.list, {}) : null;
+
+	// Feed catalog for the feed dropdown (new names typed in the form are
+	// saved back to the db by the create/update mutations)
+	const feedTypesQuery = browser ? useQuery(api.feedTypes.list, {}) : null;
+	const feedOptions = $derived(feedTypesQuery?.data?.map((f) => f.name) ?? []);
+
+	// Drop empty rows and coerce amounts before sending to the server
+	function cleanFeedItems(items: FeedItem[]): FeedItem[] {
+		return items
+			.map((f) => ({ feed: f.feed.trim(), amount: Number(f.amount), unit: f.unit }))
+			.filter((f) => f.feed && f.amount > 0);
+	}
 
 	// Hydrate store when query data changes
 	$effect(() => {
@@ -26,6 +41,7 @@
 	type TimeSlot = 'morning' | 'afternoon' | 'evening';
 	let formText = $state('');
 	let formDescription = $state('');
+	let formFeedItems = $state<FeedItem[]>([]);
 	let formTimeSlot = $state<TimeSlot>('morning');
 	let formCategory = $state('');
 	let formRequiresPhoto = $state(false);
@@ -40,6 +56,7 @@
 	let editingChore = $state<MasterChore | null>(null);
 	let editText = $state('');
 	let editDescription = $state('');
+	let editFeedItems = $state<FeedItem[]>([]);
 	let editTimeSlot = $state<TimeSlot>('morning');
 	let editCategory = $state('');
 	let editRequiresPhoto = $state(false);
@@ -88,6 +105,7 @@
 		// Reset form
 		formText = '';
 		formDescription = '';
+		formFeedItems = [];
 		formCategory = '';
 		formTimeSlot = 'morning';
 		formRequiresPhoto = false;
@@ -126,11 +144,13 @@
 		formError = null;
 
 		try {
+			const feedItems = cleanFeedItems(formFeedItems);
 			if (formTodayOnly) {
 				// Add as ad-hoc chore for today only
 				await client.mutation(api.dailyChores.addAdHocAdmin, {
 					text: formText.trim(),
 					description: formDescription.trim() || undefined,
+					feedItems: feedItems.length > 0 ? feedItems : undefined,
 					timeSlot: formTimeSlot,
 					animalCategory: formCategory.trim(),
 					date: getTodayDateString(),
@@ -141,6 +161,7 @@
 				await client.mutation(api.masterChores.create, {
 					text: formText.trim(),
 					description: formDescription.trim() || undefined,
+					feedItems: feedItems.length > 0 ? feedItems : undefined,
 					timeSlot: formTimeSlot,
 					animalCategory: formCategory.trim(),
 					requiresPhoto: formRequiresPhoto,
@@ -160,6 +181,7 @@
 		editingChore = chore;
 		editText = chore.text;
 		editDescription = chore.description ?? '';
+		editFeedItems = chore.feedItems?.map((f) => ({ ...f })) ?? [];
 		editTimeSlot = chore.timeSlot as TimeSlot;
 		editCategory = chore.animalCategory;
 		editRequiresPhoto = chore.requiresPhoto ?? false;
@@ -169,6 +191,7 @@
 		editingChore = null;
 		editText = '';
 		editDescription = '';
+		editFeedItems = [];
 		editTimeSlot = 'morning';
 		editCategory = '';
 		editRequiresPhoto = false;
@@ -187,6 +210,7 @@
 				id: editingChore._id,
 				text: editText.trim(),
 				description: editDescription.trim() || undefined,
+				feedItems: cleanFeedItems(editFeedItems),
 				timeSlot: editTimeSlot,
 				animalCategory: editCategory.trim(),
 				requiresPhoto: editRequiresPhoto,
@@ -270,8 +294,13 @@
 								id="chore-description"
 								type="text"
 								bind:value={formDescription}
-								placeholder="e.g., 2 scoops of feed per coop"
+								placeholder="e.g., put wood board back on"
 							/>
+						</div>
+
+						<div class="form-group">
+							<span class="group-label">Feed (optional)</span>
+							<FeedItemsEditor bind:items={formFeedItems} {feedOptions} />
 						</div>
 
 						<div class="form-group">
@@ -389,8 +418,13 @@
 								id="edit-description"
 								type="text"
 								bind:value={editDescription}
-								placeholder="e.g., 2 scoops of feed per coop"
+								placeholder="e.g., put wood board back on"
 							/>
+						</div>
+
+						<div class="form-group">
+							<span class="group-label">Feed (optional)</span>
+							<FeedItemsEditor bind:items={editFeedItems} {feedOptions} />
 						</div>
 
 						<div class="form-group">
@@ -519,6 +553,9 @@
 																</span>
 															{/if}
 														</div>
+														{#if chore.feedItems?.length}
+															<FeedTable items={chore.feedItems} />
+														{/if}
 														{#if chore.description}
 															<span class="chore-description">{chore.description}</span>
 														{/if}
@@ -747,7 +784,8 @@
 		color: #22c55e;
 	}
 
-	.form-group label {
+	.form-group label,
+	.form-group .group-label {
 		font-size: 0.875rem;
 		font-weight: 500;
 		color: #374151;

@@ -8,7 +8,8 @@
 		{ href: '/', label: 'Today' },
 		{ href: '/history', label: 'History' },
 		{ href: '/admin/keys', label: 'Keys' },
-		{ href: '/admin/chores', label: 'Chores' }
+		{ href: '/admin/chores', label: 'Chores' },
+		{ href: '/admin/feed', label: 'Daily Total' }
 	] as const;
 
 	function isActive(href: string, pathname: string): boolean {

@@ -101,6 +101,7 @@ class DailyChoreStore {
 			masterChoreId?: string;
 			text: string;
 			description?: string;
+			feedItems?: { feed: string; amount: number; unit: string }[];
 			timeSlot: string;
 			animalCategory: string;
 			sortOrder: number;
@@ -132,6 +133,7 @@ class DailyChoreStore {
 					masterChoreId: sc.masterChoreId,
 					text: sc.text,
 					description: sc.description,
+					feedItems: sc.feedItems,
 					timeSlot: sc.timeSlot,
 					animalCategory: sc.animalCategory,
 					sortOrder: sc.sortOrder,

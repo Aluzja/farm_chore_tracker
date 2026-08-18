@@ -15,6 +15,15 @@ export const MutationSchema = z.object({
 
 export type Mutation = z.infer<typeof MutationSchema>;
 
+// Structured feed data on a chore (feed name + amount + unit)
+export const FeedItemSchema = z.object({
+	feed: z.string(),
+	amount: z.number(),
+	unit: z.string()
+});
+
+export type FeedItem = z.infer<typeof FeedItemSchema>;
+
 // Daily chore schema - mirrors Convex dailyChores but adds syncStatus for offline
 export const DailyChoreSchema = z.object({
 	_id: z.string(), // clientId used as local _id
@@ -22,6 +31,7 @@ export const DailyChoreSchema = z.object({
 	masterChoreId: z.string().optional(),
 	text: z.string().min(1),
 	description: z.string().optional(),
+	feedItems: z.array(FeedItemSchema).optional(),
 	timeSlot: z.string(),
 	animalCategory: z.string(),
 	sortOrder: z.number(),

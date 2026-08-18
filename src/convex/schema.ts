@@ -2,8 +2,23 @@ import { defineSchema, defineTable } from 'convex/server';
 import { authTables } from '@convex-dev/auth/server';
 import { v } from 'convex/values';
 
+// Structured feed data on a chore: what feed and how much.
+// `feed` is the feedTypes name (denormalized string, same pattern as animalCategory)
+export const feedItemValidator = v.object({
+	feed: v.string(),
+	amount: v.number(),
+	unit: v.string() // "lb" | "hand" | "scoop" | "cup"
+});
+
 export default defineSchema({
 	...authTables,
+
+	// Feed catalog - drives the feed dropdown in the chore form
+	feedTypes: defineTable({
+		name: v.string(),
+		isActive: v.boolean(),
+		createdAt: v.number()
+	}).index('by_name', ['name']),
 
 	// Extend users table with admin flag
 	users: defineTable({
@@ -32,6 +47,7 @@ export default defineSchema({
 		description: v.optional(v.string()), // Details (e.g., "2 scoops of feed per coop")
 		timeSlot: v.string(), // "morning" | "afternoon" | "evening"
 		animalCategory: v.string(), // "chickens" | "goats" | "pigs" | "general" etc.
+		feedItems: v.optional(v.array(feedItemValidator)), // Structured feed type + amount
 		sortOrder: v.number(), // Display order within group
 		isActive: v.boolean(), // Soft delete / disable
 		requiresPhoto: v.optional(v.boolean()), // Admin configures if photo proof needed
@@ -49,6 +65,7 @@ export default defineSchema({
 		clientId: v.string(), // For offline-first idempotency
 		text: v.string(),
 		description: v.optional(v.string()), // Copied from master on clone
+		feedItems: v.optional(v.array(feedItemValidator)), // Copied from master on clone
 		timeSlot: v.string(),
 		animalCategory: v.string(),
 		sortOrder: v.number(),

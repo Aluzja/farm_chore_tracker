@@ -3,6 +3,8 @@ import { mutation, query } from './_generated/server';
 import { getAuthUserId } from '@convex-dev/auth/server';
 import type { MutationCtx } from './_generated/server';
 import type { Id } from './_generated/dataModel';
+import { feedItemValidator } from './schema';
+import { ensureFeedTypes } from './feedTypes';
 
 // Find today's daily chore linked to a master chore
 async function findTodaysDailyChore(
@@ -36,6 +38,7 @@ export const create = mutation({
 	args: {
 		text: v.string(),
 		description: v.optional(v.string()),
+		feedItems: v.optional(v.array(feedItemValidator)),
 		timeSlot: v.string(),
 		animalCategory: v.string(),
 		sortOrder: v.optional(v.number()),
@@ -60,10 +63,13 @@ export const create = mutation({
 			sortOrder = maxOrder + 1;
 		}
 
+		await ensureFeedTypes(ctx, args.feedItems?.map((f) => f.feed) ?? []);
+
 		const now = Date.now();
 		const masterId = await ctx.db.insert('masterChores', {
 			text: args.text,
 			description: args.description,
+			feedItems: args.feedItems,
 			timeSlot: args.timeSlot,
 			animalCategory: args.animalCategory,
 			sortOrder,
@@ -88,6 +94,7 @@ export const create = mutation({
 					clientId: crypto.randomUUID(),
 					text: args.text,
 					description: args.description,
+					feedItems: args.feedItems,
 					timeSlot: args.timeSlot,
 					animalCategory: args.animalCategory,
 					sortOrder,
@@ -110,6 +117,7 @@ export const update = mutation({
 		id: v.id('masterChores'),
 		text: v.optional(v.string()),
 		description: v.optional(v.string()),
+		feedItems: v.optional(v.array(feedItemValidator)),
 		timeSlot: v.optional(v.string()),
 		animalCategory: v.optional(v.string()),
 		sortOrder: v.optional(v.number()),
@@ -128,9 +136,17 @@ export const update = mutation({
 		if (!existing) throw new Error('Chore not found');
 
 		// Filter out undefined values
+		if (updates.feedItems !== undefined) {
+			await ensureFeedTypes(
+				ctx,
+				updates.feedItems.map((f) => f.feed)
+			);
+		}
+
 		const patch: Record<string, unknown> = { updatedAt: Date.now() };
 		if (updates.text !== undefined) patch.text = updates.text;
 		if (updates.description !== undefined) patch.description = updates.description;
+		if (updates.feedItems !== undefined) patch.feedItems = updates.feedItems;
 		if (updates.timeSlot !== undefined) patch.timeSlot = updates.timeSlot;
 		if (updates.animalCategory !== undefined) patch.animalCategory = updates.animalCategory;
 		if (updates.sortOrder !== undefined) patch.sortOrder = updates.sortOrder;
@@ -146,6 +162,7 @@ export const update = mutation({
 				const dailyPatch: Record<string, unknown> = { lastModified: Date.now() };
 				if (updates.text !== undefined) dailyPatch.text = updates.text;
 				if (updates.description !== undefined) dailyPatch.description = updates.description;
+				if (updates.feedItems !== undefined) dailyPatch.feedItems = updates.feedItems;
 				if (updates.timeSlot !== undefined) dailyPatch.timeSlot = updates.timeSlot;
 				if (updates.animalCategory !== undefined)
 					dailyPatch.animalCategory = updates.animalCategory;

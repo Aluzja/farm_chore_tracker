@@ -12,8 +12,10 @@ import type * as accessKeys from "../accessKeys.js";
 import type * as auth from "../auth.js";
 import type * as authCheck from "../authCheck.js";
 import type * as dailyChores from "../dailyChores.js";
+import type * as feedTypes from "../feedTypes.js";
 import type * as http from "../http.js";
 import type * as masterChores from "../masterChores.js";
+import type * as migrations from "../migrations.js";
 import type * as photos from "../photos.js";
 import type * as users from "../users.js";
 
@@ -28,8 +30,10 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   authCheck: typeof authCheck;
   dailyChores: typeof dailyChores;
+  feedTypes: typeof feedTypes;
   http: typeof http;
   masterChores: typeof masterChores;
+  migrations: typeof migrations;
   photos: typeof photos;
   users: typeof users;
 }>;

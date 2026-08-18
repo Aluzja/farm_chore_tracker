@@ -11,6 +11,7 @@
 	import { compressImage, generateThumbnail, type CompressionProgress } from '$lib/photo/capture';
 	import { enqueuePhoto, getFailedPhotoForChore, resetFailedPhoto } from '$lib/photo/queue';
 	import Fireworks from '$lib/components/Fireworks.svelte';
+	import FeedTable from '$lib/components/FeedTable.svelte';
 	import PhotoThumbnail from '$lib/components/PhotoThumbnail.svelte';
 	import PhotoQueueModal from '$lib/components/PhotoQueueModal.svelte';
 	import SyncStatusBadge from '$lib/components/SyncStatusBadge.svelte';
@@ -536,6 +537,10 @@
 														<span class="badge photo-required" title="Photo required">Photo</span>
 													{/if}
 												</span>
+
+												{#if chore.feedItems?.length}
+													<FeedTable items={chore.feedItems} />
+												{/if}
 
 												{#if chore.description}
 													<span class="chore-description">{chore.description}</span>
