@@ -3,7 +3,9 @@
 	import { dailyChoreStore } from '$lib/stores/dailyChores.svelte';
 	import { syncEngine, getConvexClient } from '$lib/sync/engine.svelte';
 	import { connectionStatus } from '$lib/sync/status.svelte';
-	import { getStoredAccessKey } from '$lib/auth/access-key';
+	import { getStoredAccessKey, clearAccessKey } from '$lib/auth/access-key';
+	import { adminAuth } from '$lib/auth/admin.svelte';
+	import { resolve } from '$app/paths';
 	import { api } from '../../convex/_generated/api';
 	import { putDailyChore } from '$lib/db/operations';
 	import { formatTimeSlot, getTodayDayName } from '$lib/utils/date';
@@ -15,6 +17,7 @@
 	import PhotoThumbnail from '$lib/components/PhotoThumbnail.svelte';
 	import PhotoQueueModal from '$lib/components/PhotoQueueModal.svelte';
 	import SyncStatusBadge from '$lib/components/SyncStatusBadge.svelte';
+	import SignOutButton from '$lib/components/SignOutButton.svelte';
 	import type { DailyChore } from '$lib/db/schema';
 	import { browser } from '$app/environment';
 
@@ -373,6 +376,12 @@
 
 	// Photo queue modal
 	let showPhotoQueueModal = $state(false);
+
+	// Access-key users: forget the key so the app boots to the key entry screen
+	function signOut() {
+		clearAccessKey();
+		window.location.href = resolve('/');
+	}
 </script>
 
 <div class="page">
@@ -421,6 +430,9 @@
 					>
 						{syncEngine.failedCount} failed - Retry
 					</button>
+				{/if}
+				{#if !adminAuth.isAdmin}
+					<SignOutButton onconfirm={signOut} />
 				{/if}
 			</div>
 		</header>
