@@ -135,7 +135,8 @@
 		{ value: 'Geese', label: 'Geese' },
 		{ value: 'Cats', label: 'Cats' },
 		{ value: 'Garden', label: 'Garden' },
-		{ value: 'Rabbits', label: 'Rabbits' }
+		{ value: 'Rabbits', label: 'Rabbits' },
+		{ value: 'Outside', label: 'Outside' }
 	].sort((a, b) => a.label.localeCompare(b.label));
 
 	async function handleCreate(e: SubmitEvent) {
