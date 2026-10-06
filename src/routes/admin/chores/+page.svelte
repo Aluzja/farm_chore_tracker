@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { useQuery, useConvexClient } from 'convex-svelte';
+	import { tick } from 'svelte';
 	import { slide } from 'svelte/transition';
+	import { flip } from 'svelte/animate';
 	import { api } from '../../../convex/_generated/api';
 	import type { Id } from '../../../convex/_generated/dataModel';
 	import { masterChoreStore, type MasterChore } from '$lib/stores/masterChores.svelte';
@@ -221,6 +223,74 @@
 			formError = error instanceof Error ? error.message : 'Failed to update chore';
 		} finally {
 			isSubmitting = false;
+		}
+	}
+
+	// Drag-to-reorder within a section (time slot + category).
+	// The store's sortOrder is updated live so the list re-sorts while dragging
+	// (other chores slide out of the way via animate:flip), the dragged chore
+	// follows the pointer, and dropping is limited to the <ul> the drag started in.
+	let dragId = $state<Id<'masterChores'> | null>(null);
+	let dragOffset = $state(0);
+	let dragList: HTMLElement | null = null;
+	let dragItem: HTMLElement | null = null;
+	let dragStartY = 0;
+	let dragStartOrder = '';
+
+	function listItems(): HTMLElement[] {
+		return dragList ? ([...dragList.children] as HTMLElement[]) : [];
+	}
+
+	function listIds() {
+		return listItems().map((el) => el.dataset.choreId as Id<'masterChores'>);
+	}
+
+	function startDrag(e: PointerEvent, id: Id<'masterChores'>) {
+		const handle = e.currentTarget as HTMLElement;
+		handle.setPointerCapture(e.pointerId);
+		dragList = handle.closest('ul');
+		dragItem = handle.closest('li');
+		dragId = id;
+		dragStartY = e.clientY;
+		dragOffset = 0;
+		dragStartOrder = listIds().join();
+	}
+
+	async function moveDrag(e: PointerEvent) {
+		if (!dragId || !dragList || !dragItem) return;
+		// New index = number of other chores whose midpoint is above the pointer.
+		// Uses offsetTop (layout position) so in-flight flip animations don't cause jitter.
+		const y = e.clientY - dragList.getBoundingClientRect().top;
+		const others = listItems().filter((el) => el !== dragItem);
+		const index = others.filter((el) => y > el.offsetTop + el.offsetHeight / 2).length;
+		const ids = others.map((el) => el.dataset.choreId);
+		ids.splice(index, 0, dragId);
+
+		const topBefore = dragItem.offsetTop;
+		for (const chore of masterChoreStore.items) {
+			const i = ids.indexOf(chore._id);
+			if (i !== -1) chore.sortOrder = i + 1;
+		}
+		await tick();
+
+		// Keep the dragged chore under the pointer after its slot changes
+		dragStartY += dragItem.offsetTop - topBefore;
+		dragOffset = e.clientY - dragStartY;
+	}
+
+	async function endDrag() {
+		if (!dragId) return;
+		const ids = listIds();
+		dragId = null;
+		dragList = null;
+		dragItem = null;
+		if (ids.join() === dragStartOrder || !client) return;
+
+		try {
+			await client.mutation(api.masterChores.reorder, { ids, todayDate: getTodayDateString() });
+		} catch (error) {
+			console.error('Failed to reorder chores:', error);
+			alert('Failed to reorder chores');
 		}
 	}
 
@@ -528,7 +598,32 @@
 										<h4 class="category-header">{category.name}</h4>
 										<ul class="chore-list">
 											{#each category.chores as chore (chore._id)}
-												<li class="chore-item">
+												<li
+													class="chore-item"
+													class:dragging={dragId === chore._id}
+													style:transform={dragId === chore._id
+														? `translateY(${dragOffset}px)`
+														: undefined}
+													data-chore-id={chore._id}
+													animate:flip={{ duration: dragId === chore._id ? 0 : 200 }}
+												>
+													<button
+														class="drag-handle"
+														aria-label="Drag to reorder"
+														onpointerdown={(e) => startDrag(e, chore._id)}
+														onpointermove={moveDrag}
+														onpointerup={endDrag}
+														onpointercancel={endDrag}
+													>
+														<svg viewBox="0 0 24 24" fill="currentColor">
+															<circle cx="9" cy="6" r="1.5"></circle>
+															<circle cx="15" cy="6" r="1.5"></circle>
+															<circle cx="9" cy="12" r="1.5"></circle>
+															<circle cx="15" cy="12" r="1.5"></circle>
+															<circle cx="9" cy="18" r="1.5"></circle>
+															<circle cx="15" cy="18" r="1.5"></circle>
+														</svg>
+													</button>
 													<div class="chore-info">
 														<div class="chore-text-row">
 															<span class="chore-text">{chore.text}</span>
@@ -1031,6 +1126,7 @@
 	}
 
 	.chore-list {
+		position: relative;
 		list-style: none;
 		padding: 0;
 		margin: 0;
@@ -1048,7 +1144,48 @@
 		border-bottom: none;
 	}
 
+	/* Glide the dropped chore into its slot */
+	.chore-item:not(.dragging) {
+		transition: transform 150ms ease;
+	}
+
+	.chore-item.dragging {
+		position: relative;
+		z-index: 1;
+		background-color: white;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	}
+
+	.drag-handle {
+		display: flex;
+		padding: 0.375rem 0.25rem;
+		margin-left: -0.5rem;
+		margin-right: 0.25rem;
+		background: none;
+		border: none;
+		border-radius: 0.25rem;
+		color: #9ca3af;
+		cursor: grab;
+		touch-action: none;
+		user-select: none;
+	}
+
+	.drag-handle:hover {
+		background-color: #f3f4f6;
+		color: #374151;
+	}
+
+	.dragging .drag-handle {
+		cursor: grabbing;
+	}
+
+	.drag-handle svg {
+		width: 1.125rem;
+		height: 1.125rem;
+	}
+
 	.chore-info {
+		flex: 1;
 		display: flex;
 		flex-direction: column;
 		gap: 0.25rem;

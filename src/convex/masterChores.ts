@@ -153,6 +153,22 @@ export const update = mutation({
 		if (updates.isActive !== undefined) patch.isActive = updates.isActive;
 		if (updates.requiresPhoto !== undefined) patch.requiresPhoto = updates.requiresPhoto;
 
+		// Moved to a new section (time slot + category) - put it at the end
+		const timeSlot = updates.timeSlot ?? existing.timeSlot;
+		const animalCategory = updates.animalCategory ?? existing.animalCategory;
+		if (
+			updates.sortOrder === undefined &&
+			(timeSlot !== existing.timeSlot || animalCategory !== existing.animalCategory)
+		) {
+			const sectionChores = await ctx.db
+				.query('masterChores')
+				.withIndex('by_time_slot', (q) => q.eq('timeSlot', timeSlot))
+				.filter((q) => q.eq(q.field('animalCategory'), animalCategory))
+				.collect();
+			updates.sortOrder = Math.max(0, ...sectionChores.map((c) => c.sortOrder)) + 1;
+			patch.sortOrder = updates.sortOrder;
+		}
+
 		await ctx.db.patch(id, patch);
 
 		// Sync to today's daily chore
@@ -198,6 +214,46 @@ export const remove = mutation({
 			const dailyChore = await findTodaysDailyChore(ctx, todayDate, id);
 			if (dailyChore && !dailyChore.isCompleted) {
 				await ctx.db.delete(dailyChore._id);
+			}
+		}
+	}
+});
+
+// Reorder chores within one section (time slot + category) (admin only)
+// `ids` is the full section in its new order. Also syncs today's daily chores.
+export const reorder = mutation({
+	args: { ids: v.array(v.id('masterChores')), todayDate: v.optional(v.string()) },
+	handler: async (ctx, { ids, todayDate }) => {
+		const userId = await getAuthUserId(ctx);
+		if (!userId) throw new Error('Not authenticated');
+
+		const user = await ctx.db.get(userId);
+		if (!user?.isAdmin) throw new Error('Admin required');
+
+		const chores = await Promise.all(ids.map((id) => ctx.db.get(id)));
+		const first = chores[0];
+		if (!first) return;
+
+		// All chores must belong to the same section
+		for (const chore of chores) {
+			if (
+				!chore ||
+				chore.timeSlot !== first.timeSlot ||
+				chore.animalCategory !== first.animalCategory
+			) {
+				throw new Error('Chores can only be reordered within the same section');
+			}
+		}
+
+		const now = Date.now();
+		for (const [i, id] of ids.entries()) {
+			await ctx.db.patch(id, { sortOrder: i + 1, updatedAt: now });
+
+			if (todayDate) {
+				const dailyChore = await findTodaysDailyChore(ctx, todayDate, id);
+				if (dailyChore) {
+					await ctx.db.patch(dailyChore._id, { sortOrder: i + 1, lastModified: now });
+				}
 			}
 		}
 	}
