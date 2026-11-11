@@ -2,12 +2,14 @@ import { browser } from '$app/environment';
 import type { ConvexClient } from 'convex/browser';
 import { getConvexClient } from '$lib/sync/engine.svelte';
 import { api } from '../../convex/_generated/api';
+import { withTimeout } from '$lib/utils/timeout';
 
 const ACCESS_KEY_STORAGE = 'kitchen_sink_access_key';
 const VALIDATION_CACHE_STORAGE = 'kitchen_sink_key_validation';
 const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 interface ValidationCache {
+	key: string;
 	valid: boolean;
 	displayName?: string;
 	validatedAt: number;
@@ -32,14 +34,16 @@ export function clearAccessKey(): void {
 	localStorage.removeItem(VALIDATION_CACHE_STORAGE);
 }
 
-// Get cached validation result (for offline use)
-export function getCachedValidation(): ValidationCache | null {
+// Get cached validation result for this key (for offline use)
+export function getCachedValidation(key: string): ValidationCache | null {
 	if (!browser) return null;
 	const cached = localStorage.getItem(VALIDATION_CACHE_STORAGE);
 	if (!cached) return null;
 
 	try {
 		const parsed = JSON.parse(cached) as ValidationCache;
+		// Ignore results cached for a different key (e.g. an earlier typo)
+		if (parsed.key !== key) return null;
 		// Check if cache is still valid
 		if (Date.now() - parsed.validatedAt < CACHE_DURATION_MS) {
 			return parsed;
@@ -53,9 +57,10 @@ export function getCachedValidation(): ValidationCache | null {
 }
 
 // Cache validation result
-function cacheValidation(valid: boolean, displayName?: string): void {
+function cacheValidation(key: string, valid: boolean, displayName?: string): void {
 	if (!browser) return;
 	const cache: ValidationCache = {
+		key,
 		valid,
 		displayName,
 		validatedAt: Date.now()
@@ -69,25 +74,23 @@ export async function validateAccessKey(
 	client?: ConvexClient | null
 ): Promise<{
 	valid: boolean;
-	reason?: 'not_found' | 'revoked';
+	reason?: 'not_found' | 'revoked' | 'unreachable';
 	displayName?: string;
 }> {
+	const fromCache = () => {
+		const cached = getCachedValidation(key);
+		if (cached) return { valid: cached.valid, displayName: cached.displayName };
+		return { valid: false, reason: 'unreachable' as const };
+	};
+
 	const convexClient = client || getConvexClient();
-	if (!convexClient) {
-		// Offline - check cache
-		const cached = getCachedValidation();
-		if (cached) {
-			return { valid: cached.valid, displayName: cached.displayName };
-		}
-		// No cache, can't validate
-		return { valid: false, reason: 'not_found' };
-	}
+	if (!convexClient) return fromCache();
 
 	try {
-		const result = await convexClient.query(api.accessKeys.validate, { key });
+		const result = await withTimeout(convexClient.query(api.accessKeys.validate, { key }));
 
 		// Cache the result
-		cacheValidation(result.valid, result.valid ? result.displayName : undefined);
+		cacheValidation(key, result.valid, result.valid ? result.displayName : undefined);
 
 		// Record usage if valid
 		if (result.valid) {
@@ -99,12 +102,8 @@ export async function validateAccessKey(
 
 		return result;
 	} catch {
-		// Network error - check cache
-		const cached = getCachedValidation();
-		if (cached) {
-			return { valid: cached.valid, displayName: cached.displayName };
-		}
-		return { valid: false, reason: 'not_found' };
+		// Network error or timeout - check cache
+		return fromCache();
 	}
 }
 

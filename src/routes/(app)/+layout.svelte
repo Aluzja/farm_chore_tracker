@@ -97,6 +97,19 @@
 		}
 	});
 
+	function keyErrorMessage(reason?: string): string {
+		if (reason === 'revoked') return 'This access key has been revoked. Please contact the admin.';
+		if (reason === 'unreachable')
+			return "Couldn't reach the server. Check your connection and try again.";
+		return 'Invalid access key. Please check and try again.';
+	}
+
+	// Wipe any saved key/validation and start fresh
+	function resetSavedKey() {
+		clearAccessKey();
+		window.location.reload();
+	}
+
 	async function initializeApp() {
 		if (isInitialized) return;
 		isInitialized = true;
@@ -138,10 +151,7 @@
 				await initializeApp();
 				return;
 			} else {
-				error =
-					result.reason === 'revoked'
-						? 'This access key has been revoked. Please contact the admin for a new key.'
-						: 'Invalid access key. Please check the link or contact the admin.';
+				error = keyErrorMessage(result.reason);
 				isValidating = false;
 				return;
 			}
@@ -151,8 +161,10 @@
 		const storedKey = getStoredAccessKey();
 		if (storedKey) {
 			// Try online validation first
-			if (connectionStatus.isOnline) {
-				const result = await validateAccessKey(storedKey, convexClient);
+			const result = connectionStatus.isOnline
+				? await validateAccessKey(storedKey, convexClient)
+				: null;
+			if (result && result.reason !== 'unreachable') {
 				if (result.valid) {
 					hasAccess = true;
 					userName = result.displayName ?? null;
@@ -162,16 +174,14 @@
 				} else {
 					// Key was revoked or invalid
 					clearAccessKey();
-					error =
-						result.reason === 'revoked'
-							? 'Your access key has been revoked. Please contact the admin for a new key.'
-							: 'Your access key is no longer valid. Please request a new one.';
+					activeAccessKey = undefined;
+					error = keyErrorMessage(result.reason);
 					isValidating = false;
 					return;
 				}
 			} else {
-				// Offline - use cached validation
-				const cached = getCachedValidation();
+				// Offline or server unreachable - use cached validation
+				const cached = getCachedValidation(storedKey);
 				if (cached?.valid) {
 					hasAccess = true;
 					userName = cached.displayName ?? null;
@@ -224,10 +234,7 @@
 			error = null;
 			await initializeApp();
 		} else {
-			keyError =
-				result.reason === 'revoked'
-					? 'This access key has been revoked.'
-					: 'Invalid access key. Please check and try again.';
+			keyError = keyErrorMessage(result.reason);
 		}
 
 		isSubmittingKey = false;
@@ -286,6 +293,10 @@
 			</div>
 
 			<a href={resolve('/admin/login')} class="btn-secondary"> Admin Login </a>
+
+			<button type="button" class="btn-link" onclick={resetSavedKey}>
+				Having trouble? Clear saved key
+			</button>
 		</div>
 	</div>
 {/if}
@@ -401,6 +412,16 @@
 	.btn-secondary:hover {
 		background-color: #f9fafb;
 		border-color: #9ca3af;
+	}
+
+	.btn-link {
+		margin-top: 1rem;
+		background: none;
+		border: none;
+		color: #6b7280;
+		font-size: 0.875rem;
+		text-decoration: underline;
+		cursor: pointer;
 	}
 
 	.key-form {

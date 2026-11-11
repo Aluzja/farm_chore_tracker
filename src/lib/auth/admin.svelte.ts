@@ -1,6 +1,7 @@
 import { browser } from '$app/environment';
 import type { ConvexClient } from 'convex/browser';
 import { api } from '../../convex/_generated/api';
+import { withTimeout, TimeoutError } from '$lib/utils/timeout';
 
 const TOKEN_STORAGE_KEY = 'convex_auth_token';
 const REFRESH_TOKEN_KEY = 'convex_auth_refresh_token';
@@ -100,7 +101,7 @@ class AdminAuth {
 		this.client.setAuth(async () => token);
 
 		try {
-			const user = await this.client.query(api.users.currentUser, {});
+			const user = await withTimeout(this.client.query(api.users.currentUser, {}));
 			if (user) {
 				this.userId = user._id;
 				this.isAdmin = user.isAdmin ?? false;
@@ -126,6 +127,11 @@ class AdminAuth {
 				}
 			}
 		} catch (error) {
+			// Server unreachable - keep tokens so a later check can succeed
+			if (error instanceof TimeoutError) {
+				this.state = 'unauthenticated';
+				return;
+			}
 			console.error('[AdminAuth] Check failed:', error);
 			// Try to refresh token on error
 			const refreshed = await this.refreshToken();
@@ -142,9 +148,7 @@ class AdminAuth {
 		if (!refreshToken || !this.client) return false;
 
 		try {
-			const result = await this.client.action(api.auth.signIn, {
-				refreshToken
-			});
+			const result = await withTimeout(this.client.action(api.auth.signIn, { refreshToken }));
 
 			const tokens = result?.tokens;
 			if (tokens?.token) {
@@ -153,7 +157,7 @@ class AdminAuth {
 				this.client.setAuth(async () => token);
 
 				// Re-check the user
-				const user = await this.client.query(api.users.currentUser, {});
+				const user = await withTimeout(this.client.query(api.users.currentUser, {}));
 				if (user) {
 					this.userId = user._id;
 					this.isAdmin = user.isAdmin ?? false;
