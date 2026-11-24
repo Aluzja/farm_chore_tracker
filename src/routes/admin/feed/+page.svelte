@@ -78,6 +78,34 @@
 		return parts.join(' + ');
 	}
 
+	// Plain-text summary for the phone share sheet (Notes on iOS, Keep etc. on Android)
+	function exportText(): string {
+		const span = Math.max(days, 0);
+		const lines = rows.map((r) =>
+			r.lbPerDay > 0
+				? `${r.feed}: ${Math.ceil((r.lbPerDay * span) / bagSize(r.feed))} bags`
+				: `${r.feed}: ${fmtUnits(r, span)}`
+		);
+		return [`Feed for ${span} day${span === 1 ? '' : 's'}`, '', ...lines, '', `Total: ${totalBags} bags`].join('\n');
+	}
+
+	let copied = $state(false);
+
+	async function shareTotals() {
+		const text = exportText();
+		if (navigator.share) {
+			try {
+				await navigator.share({ title: 'Feed order', text });
+			} catch {
+				// User cancelled the share sheet
+			}
+			return;
+		}
+		await navigator.clipboard.writeText(text);
+		copied = true;
+		setTimeout(() => (copied = false), 2000);
+	}
+
 	function setBagSize(feed: string, value: string) {
 		const parsed = Number(value);
 		if (parsed > 0) {
@@ -98,6 +126,9 @@
 				Days
 				<input class="days-input" type="number" inputmode="numeric" min="1" bind:value={days} />
 			</label>
+			<button class="share-btn" onclick={shareTotals} disabled={rows.length === 0}>
+				{copied ? 'Copied' : 'Share'}
+			</button>
 		</div>
 
 		{#if masterChoresQuery?.isLoading}
@@ -188,6 +219,7 @@
 	}
 
 	.page-title {
+		flex: 1;
 		font-size: 1.5rem;
 		font-weight: 600;
 		color: #111827;
@@ -211,6 +243,22 @@
 		font-size: 0.9375rem;
 		background-color: white;
 		color: #111827;
+	}
+
+	.share-btn {
+		padding: 0.5rem 0.875rem;
+		border: none;
+		border-radius: 0.5rem;
+		background-color: #16a34a;
+		color: white;
+		font-size: 0.875rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.share-btn:disabled {
+		opacity: 0.5;
+		cursor: default;
 	}
 
 	.days-input:focus,
